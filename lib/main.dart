@@ -98,6 +98,7 @@ class _RootState extends State<Root> {
     } else if (_client == null) {
       _client = s.buildClient();
       _controller = PlayerController(_client!, s);
+      _controller!.restoreLastState();
     }
   }
 
