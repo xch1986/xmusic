@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         return MaterialApp(
-          title: 'My Player',
+          title: 'xmusic',
           debugShowCheckedModeBanner: false,
           themeMode: switch (settings.themeMode) {
             AppThemeMode.system => ThemeMode.system,
