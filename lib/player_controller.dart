@@ -8,7 +8,7 @@ import 'lyrics.dart';
 import 'subsonic.dart';
 
 /// Playback mode: sequential, shuffle or repeat-one.
-enum RepeatMode { sequential, shuffle, repeatOne }
+enum PlayMode { sequential, shuffle, repeatOne }
 
 /// Owns the audio player, the play queue and the current song's lyrics.
 class PlayerController extends ChangeNotifier {
@@ -26,7 +26,7 @@ class PlayerController extends ChangeNotifier {
   int index = -1;
   Lyrics? lyrics;
   bool lyricsLoading = false;
-  RepeatMode _repeat = RepeatMode.sequential;
+  PlayMode _repeat = PlayMode.sequential;
   final Random _rnd = Random();
 
   late final StreamSubscription<ProcessingState> _stateSub;
@@ -38,10 +38,10 @@ class PlayerController extends ChangeNotifier {
   bool get hasNext => index + 1 < queue.length;
   bool get hasPrev => index > 0;
   bool get playing => player.playing;
-  RepeatMode get repeat => _repeat;
+  PlayMode get repeat => _repeat;
 
   void cycleRepeat() {
-    _repeat = RepeatMode.values[(_repeat.index + 1) % RepeatMode.values.length];
+    _repeat = PlayMode.values[(_repeat.index + 1) % PlayMode.values.length];
     notifyListeners();
   }
 
@@ -58,14 +58,14 @@ class PlayerController extends ChangeNotifier {
 
   void _onCompleted() {
     switch (_repeat) {
-      case RepeatMode.repeatOne:
+      case PlayMode.repeatOne:
         unawaited(player.seek(Duration.zero));
         unawaited(player.play());
         break;
-      case RepeatMode.sequential:
+      case PlayMode.sequential:
         unawaited(next());
         break;
-      case RepeatMode.shuffle:
+      case PlayMode.shuffle:
         _playRandom();
         break;
     }
@@ -114,14 +114,14 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> next() async {
     switch (_repeat) {
-      case RepeatMode.shuffle:
+      case PlayMode.shuffle:
         _playRandom();
         break;
-      case RepeatMode.repeatOne:
+      case PlayMode.repeatOne:
         await player.seek(Duration.zero);
         await player.play();
         break;
-      case RepeatMode.sequential:
+      case PlayMode.sequential:
         if (hasNext) {
           await _load(index + 1);
         } else {
