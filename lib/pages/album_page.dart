@@ -4,10 +4,9 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
-import 'mini_player.dart';
 import 'player_page.dart';
 
-class AlbumPage extends StatelessWidget {
+class AlbumPage extends StatefulWidget {
   const AlbumPage({
     super.key,
     required this.settings,
@@ -20,11 +19,40 @@ class AlbumPage extends StatelessWidget {
   final Album album;
 
   @override
+  State<AlbumPage> createState() => _AlbumPageState();
+}
+
+class _AlbumPageState extends State<AlbumPage> {
+  late Future<List<Song>> _future;
+
+  SubsonicClient get _client => widget.controller.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _client.albumSongs(widget.album.id);
+  }
+
+  Future<void> _playSongs(List<Song> songs, int index) async {
+    await widget.controller.playQueue(songs, index);
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PlayerPage(
+        settings: widget.settings,
+        controller: widget.controller,
+      ),
+    ));
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final album = widget.album;
     return Scaffold(
       appBar: AppBar(title: Text(album.name)),
       body: FutureBuilder<List<Song>>(
-        future: controller.client.albumSongs(album.id),
+        future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
@@ -33,32 +61,92 @@ class AlbumPage extends StatelessWidget {
             return Center(child: Text('加载失败：${snap.error}'));
           }
           final songs = snap.data!;
-          return ListView.builder(
-            itemCount: songs.length,
-            itemBuilder: (context, i) {
-              final s = songs[i];
-              return ListTile(
-                leading: Text('${i + 1}',
-                    style: Theme.of(context).textTheme.bodyMedium),
-                title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle:
-                    Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: s.durationSec == null
-                    ? null
-                    : Text(formatDuration(Duration(seconds: s.durationSec!))),
-                onTap: () {
-                  controller.playQueue(songs, i);
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) =>
-                        PlayerPage(settings: settings, controller: controller),
-                  ));
-                },
-              );
-            },
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 24),
+            children: [
+              // ---- 专辑头部 ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CoverImage(
+                      client: _client,
+                      coverId: album.coverArt,
+                      size: 140,
+                      radius: 14,
+                      requestSize: 420,
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(album.name,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Text(album.artist,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                          const SizedBox(height: 4),
+                          if (album.year != null || album.songCount != null)
+                            Text(
+                              [
+                                if (album.year != null) '${album.year}',
+                                if (album.songCount != null)
+                                  '${album.songCount} 首',
+                              ].join(' · '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.play_arrow_rounded),
+                            label: const Text('播放全部'),
+                            onPressed: songs.isEmpty
+                                ? null
+                                : () => _playSongs(songs, 0),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 16),
+              // ---- 歌曲列表 ----
+              if (songs.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('专辑内没有歌曲')),
+                )
+              else
+                ...List.generate(
+                  songs.length,
+                  (i) => SongTile(
+                    song: songs[i],
+                    client: _client,
+                    showAlbum: false,
+                    leading: SizedBox(
+                      width: 40,
+                      child: Center(
+                        child: Text('${i + 1}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                      ),
+                    ),
+                    onTap: () => _playSongs(songs, i),
+                  ),
+                ),
+            ],
           );
         },
       ),
-      bottomNavigationBar: MiniPlayer(settings: settings, controller: controller),
     );
   }
 }

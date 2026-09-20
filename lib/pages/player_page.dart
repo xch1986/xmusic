@@ -9,29 +9,50 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../widgets.dart';
 
-/// Full-screen player.
+/// Full-screen player with three tabs: 推荐 / 歌曲 / 歌词.
 ///
 /// Colors come only from the app's ColorScheme, which follows the system
-/// light/dark setting. Nothing is extracted from the album art.
-class PlayerPage extends StatelessWidget {
+/// light/dark setting (or the user's override). Nothing is extracted from the
+/// album art.
+class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key, required this.settings, required this.controller});
 
   final AppSettings settings;
   final PlayerController controller;
 
   @override
+  State<PlayerPage> createState() => _PlayerPageState();
+}
+
+class _PlayerPageState extends State<PlayerPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: controller,
+      listenable: widget.controller,
       builder: (context, _) {
-        final song = controller.current;
+        final song = widget.controller.current;
         final theme = Theme.of(context);
 
         return Scaffold(
           appBar: AppBar(
             title: const Text('正在播放'),
             actions: [
-              LyricSizeControls(settings: settings),
+              LyricSizeControls(settings: widget.settings),
               const SizedBox(width: 8),
             ],
           ),
@@ -40,44 +61,30 @@ class PlayerPage extends StatelessWidget {
                 ? const Center(child: Text('没有正在播放的歌曲'))
                 : Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                        child: Row(
+                      TabBar(
+                        controller: _tab,
+                        tabs: const [
+                          Tab(text: '推荐'),
+                          Tab(text: '歌曲'),
+                          Tab(text: '歌词'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tab,
                           children: [
-                            CoverImage(
-                              client: controller.client,
-                              coverId: song.coverArt,
-                              size: 72,
-                              radius: 12,
-                              requestSize: 240,
+                            _RecommendTab(
+                              settings: widget.settings,
+                              controller: widget.controller,
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(song.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.titleLarge),
-                                  const SizedBox(height: 2),
-                                  Text(song.artist,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                              color: theme.colorScheme
-                                                  .onSurfaceVariant)),
-                                ],
-                              ),
+                            _QueueTab(
+                              settings: widget.settings,
+                              controller: widget.controller,
                             ),
+                            _lyricsArea(context, song.id),
                           ],
                         ),
                       ),
-                      Expanded(child: _lyricsArea(context, song.id)),
-                      _SeekBar(player: controller.player),
-                      _Controls(controller: controller),
-                      const SizedBox(height: 8),
                     ],
                   ),
           ),
@@ -87,10 +94,10 @@ class PlayerPage extends StatelessWidget {
   }
 
   Widget _lyricsArea(BuildContext context, String songId) {
-    if (controller.lyricsLoading) {
+    if (widget.controller.lyricsLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    final lyrics = controller.lyrics;
+    final lyrics = widget.controller.lyrics;
     if (lyrics == null) {
       return Center(
         child: Text('暂无歌词',
@@ -101,8 +108,121 @@ class PlayerPage extends StatelessWidget {
     return LyricsView(
       key: ValueKey(songId), // rebuild state when the song changes
       lyrics: lyrics,
-      player: controller.player,
-      settings: settings,
+      player: widget.controller.player,
+      settings: widget.settings,
+    );
+  }
+}
+
+/// 推荐 tab: big cover, song info, seek bar and controls.
+class _RecommendTab extends StatelessWidget {
+  const _RecommendTab({required this.settings, required this.controller});
+
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final song = controller.current!;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // Big cover with subtle shadow.
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withOpacity(0.25),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: CoverImage(
+              client: controller.client,
+              coverId: song.coverArt,
+              size: MediaQuery.of(context).size.width - 120,
+              radius: 24,
+              requestSize: 800,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Text(song.title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text('${song.artist} · ${song.album}',
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          _SeekBar(player: controller.player),
+          _Controls(controller: controller),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+/// 歌曲 tab: current queue, tap to switch.
+class _QueueTab extends StatelessWidget {
+  const _QueueTab({required this.settings, required this.controller});
+
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final queue = controller.queue;
+    final index = controller.index;
+    if (queue.isEmpty) {
+      return const Center(child: Text('队列为空'));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: queue.length,
+      itemBuilder: (context, i) {
+        final s = queue[i];
+        final active = i == index;
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          leading: CoverImage(
+            client: controller.client,
+            coverId: s.coverArt,
+            size: 44,
+            radius: 8,
+            requestSize: 120,
+          ),
+          title: Text(
+            s.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? Theme.of(context).colorScheme.primary : null,
+            ),
+          ),
+          subtitle: Text(s.artist,
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+          trailing: active
+              ? Icon(Icons.graphic_eq_rounded,
+                  color: Theme.of(context).colorScheme.primary)
+              : (s.durationSec == null
+                  ? null
+                  : Text(formatDuration(Duration(seconds: s.durationSec!)))),
+          onTap: () => controller.playAt(i),
+        );
+      },
     );
   }
 }
