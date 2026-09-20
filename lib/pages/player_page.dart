@@ -98,6 +98,7 @@ class _PlayerPageState extends State<PlayerPage>
               _RecommendTab(
                 settings: widget.settings,
                 controller: widget.controller,
+                onShowQueue: () => _tab.animateTo(1),
               ),
               _QueueTab(
                 settings: widget.settings,
@@ -152,9 +153,65 @@ class _PlayerPageState extends State<PlayerPage>
         ),
         Expanded(child: _lyricsArea(context, song.id)),
         _SeekBar(player: widget.controller.player),
-        _Controls(controller: widget.controller, compact: true),
+        _Controls(controller: widget.controller, compact: true, onShowQueue: () => _showQueueSheet(context)),
         const SizedBox(height: 4),
       ],
+    );
+  }
+
+  /// Bottom sheet listing the current queue (used in landscape mode).
+  void _showQueueSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('播放列表',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            ),
+            Expanded(
+              child: ListenableBuilder(
+                listenable: widget.controller,
+                builder: (context, _) {
+                  final q = widget.controller.queue;
+                  final idx = widget.controller.index;
+                  return ListView.builder(
+                    controller: scrollController,
+                    itemCount: q.length,
+                    itemBuilder: (context, i) {
+                      final active = i == idx;
+                      final sn = q[i];
+                      return ListTile(
+                        dense: true,
+                        leading: Text('${i + 1}',
+                            style: TextStyle(
+                                color: active
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurfaceVariant)),
+                        title: Text(sn.title,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(sn.artist,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: () {
+                          widget.controller.playAt(i);
+                          Navigator.of(ctx).pop();
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -181,58 +238,100 @@ class _PlayerPageState extends State<PlayerPage>
 
 /// 推荐 tab: big cover, song info, seek bar and controls.
 class _RecommendTab extends StatelessWidget {
-  const _RecommendTab({required this.settings, required this.controller});
+  const _RecommendTab({
+    required this.settings,
+    required this.controller,
+    this.onShowQueue,
+  });
 
   final AppSettings settings;
   final PlayerController controller;
+  final VoidCallback? onShowQueue;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final song = controller.current!;
+    final coverSize = MediaQuery.of(context).size.width - 120;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
           const SizedBox(height: 8),
-          // Big cover with subtle shadow.
+          // Vinyl-style circular cover: dark disc ring + round album art.
           Container(
+            width: coverSize,
+            height: coverSize,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              shape: BoxShape.circle,
+              color: theme.colorScheme.surfaceContainerHighest,
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.shadow.withOpacity(0.25),
+                  color: theme.colorScheme.shadow.withOpacity(0.3),
                   blurRadius: 30,
                   offset: const Offset(0, 12),
                 ),
               ],
             ),
-            child: CoverImage(
-              client: controller.client,
-              coverId: song.coverArt,
-              coverUrl: song.coverUrl,
-              size: MediaQuery.of(context).size.width - 120,
-              radius: 24,
-              requestSize: 800,
+            padding: EdgeInsets.all(coverSize * 0.04),
+            child: ClipOval(
+              child: CoverImage(
+                client: controller.client,
+                coverId: song.coverArt,
+                coverUrl: song.coverUrl,
+                size: coverSize,
+                requestSize: 800,
+              ),
             ),
           ),
           const SizedBox(height: 28),
-          Text(song.title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Text('${song.artist} · ${song.album}',
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          // Title row + favorite heart.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Column(
+                  children: [
+                    Text(song.title,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Text('${song.artist} · ${song.album}',
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) {
+                  final starred = controller.currentStarred;
+                  return IconButton(
+                    tooltip: starred ? '取消收藏' : '收藏',
+                    icon: Icon(
+                      starred
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color: starred
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    onPressed: controller.toggleStar,
+                  );
+                },
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           _SeekBar(player: controller.player),
-          _Controls(controller: controller, compact: false),
+          _Controls(controller: controller, compact: false, onShowQueue: onShowQueue),
           const SizedBox(height: 8),
         ],
       ),
@@ -544,10 +643,15 @@ class _SeekBarState extends State<_SeekBar> {
 }
 
 class _Controls extends StatelessWidget {
-  const _Controls({required this.controller, required this.compact});
+  const _Controls({
+    required this.controller,
+    required this.compact,
+    this.onShowQueue,
+  });
 
   final PlayerController controller;
   final bool compact;
+  final VoidCallback? onShowQueue;
 
   @override
   Widget build(BuildContext context) {
@@ -579,7 +683,11 @@ class _Controls extends StatelessWidget {
           onPressed: controller.hasNext ? controller.next : null,
         ),
         SizedBox(width: gap),
-        const SizedBox(width: 32), // keep layout balanced
+        IconButton(
+          tooltip: '播放列表',
+          icon: const Icon(Icons.queue_music_rounded),
+          onPressed: onShowQueue,
+        ),
       ],
     );
   }
