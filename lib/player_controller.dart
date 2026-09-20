@@ -54,6 +54,7 @@ class PlayerController extends ChangeNotifier {
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
   int _loadToken = 0;
+  String? lastError;
 
   Song? get current =>
       (index >= 0 && index < queue.length) ? queue[index] : null;
@@ -118,6 +119,8 @@ class PlayerController extends ChangeNotifier {
       _loadLyrics();
     } catch (e) {
       debugPrint('playQueue failed: $e');
+      lastError = e.toString();
+      notifyListeners();
     }
   }
 
