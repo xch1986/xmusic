@@ -9,11 +9,15 @@ import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-    androidNotificationChannelName: '音乐播放',
-    androidNotificationOngoing: true,
-  );
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+      androidNotificationChannelName: '音乐播放',
+      androidNotificationOngoing: true,
+    );
+  } catch (e) {
+    debugPrint('JustAudioBackground init failed: $e');
+  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
