@@ -24,11 +24,46 @@ jobs:
       - name: Generate Android project
         run: flutter create --platforms=android --project-name my_stream_player .
 
-      - name: Patch AndroidManifest
+      - name: Patch app label and package id
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          sed -i 's|android:label="[^"]*"|android:label="音素"|' "$f"
+          g=android/app/build.gradle
+          sed -i 's|applicationId "[^"]*"|applicationId "com.xmusic.player"|' "$g"
+          grep -n "android:label\|applicationId" "$f" "$g"
+
+      - name: Patch AndroidManifest (network)
         run: |
           f=android/app/src/main/AndroidManifest.xml
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application android:usesCleartextTraffic="true"|' "$f"
           grep -n "INTERNET\|usesCleartextTraffic" "$f"
+
+      - name: Generate app icons
+        run: |
+          # Drop any adaptive-icon xml from the template so our PNGs are used.
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          python -m pip install pillow --quiet
+          python - <<'EOF'
+          from PIL import Image, ImageDraw
+          import os
+          src = Image.open('assets/app_icon.png').convert('RGBA')
+          # Round the corners so the icon looks clean on any launcher.
+          mask = Image.new('L', src.size, 0)
+          d = ImageDraw.Draw(mask)
+          r = int(src.size[0] * 0.22)
+          d.rounded_rectangle([0, 0, src.size[0] - 1, src.size[1] - 1],
+                              radius=r, fill=255)
+          src.putalpha(mask)
+          sizes = {'mipmap-mdpi': 48, 'mipmap-hdpi': 72, 'mipmap-xhdpi': 96,
+                   'mipmap-xxhdpi': 144, 'mipmap-xxxhdpi': 192}
+          for d, s in sizes.items():
+              p = os.path.join('android/app/src/main/res', d)
+              os.makedirs(p, exist_ok=True)
+              img = src.resize((s, s), Image.LANCZOS)
+              img.save(os.path.join(p, 'ic_launcher.png'))
+              img.save(os.path.join(p, 'ic_launcher_round.png'))
+          print('icons generated')
+          EOF
 
       - run: flutter pub get
       - run: flutter build apk --release
