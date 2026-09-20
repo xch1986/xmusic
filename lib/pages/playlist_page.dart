@@ -70,6 +70,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
           final songs = snap.data!;
           if (songs.isEmpty) return const Center(child: Text('歌单为空'));
           return ListView(
+            padding: const EdgeInsets.only(bottom: 80),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
