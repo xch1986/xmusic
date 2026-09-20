@@ -426,6 +426,7 @@ class LyricSizeControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: settings,
+      builder: (context, _) {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -442,7 +443,6 @@ class LyricSizeControls extends StatelessWidget {
                   settings.canIncreaseLyric ? settings.increaseLyric : null,
             ),
           ],
-        );
         );
       },
     );
