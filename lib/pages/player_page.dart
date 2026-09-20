@@ -76,7 +76,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
               ),
               padding: const EdgeInsets.all(8),
-              child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: size.toInt(), requestSize: 800)),
+              child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: size, requestSize: 800)),
             ),
           ),
         ),
