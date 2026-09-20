@@ -14,7 +14,7 @@ class LibraryPage extends StatefulWidget {
     super.key,
     required this.settings,
     required this.controller,
-    this.initialTab = 0,
+    this.initialTab = 2,
   });
 
   final AppSettings settings;

@@ -14,6 +14,62 @@ class SettingsPage extends StatelessWidget {
   final AppSettings settings;
   final PlayerController controller;
 
+  void _showWebdavDialog(BuildContext context) {
+    final urlCtl = TextEditingController(text: settings.webdavUrl);
+    final userCtl = TextEditingController(text: settings.webdavUser);
+    final passCtl = TextEditingController(text: settings.webdavPass);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('WebDAV (NAS)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: urlCtl,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: 'WebDAV 地址',
+                hintText: 'http://nas:5005/remote.php/dav/files/user/Music',
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: userCtl,
+              decoration: const InputDecoration(
+                labelText: '用户名（可空）',
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: passCtl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '密码（可空）',
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              settings.setWebdav(urlCtl.text, userCtl.text, passCtl.text);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,6 +201,27 @@ class SettingsPage extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _ExternalApiField(settings: settings),
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+
+              // ---- NAS 下载 (WebDAV) ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text('NAS 下载',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: const Text('WebDAV 地址'),
+                subtitle: Text(settings.webdavConfigured
+                    ? '${settings.webdavUrl}（${settings.webdavUser.isEmpty ? "无账号" : settings.webdavUser}）'
+                    : '未配置，下载歌曲时上传到 NAS'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showWebdavDialog(context),
               ),
               const SizedBox(height: 12),
               const Divider(),

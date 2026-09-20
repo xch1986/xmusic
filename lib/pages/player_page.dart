@@ -12,12 +12,11 @@ import '../widgets.dart';
 
 /// Full-screen player.
 ///
-/// Portrait: three tabs (推荐 / 歌曲 / 歌词). Landscape: full-screen lyrics
-/// with compact controls — friendly for car head units.
+/// Portrait: cover -> current lyric line -> title -> seek bar -> controls.
+/// Landscape: left = cover + controls, right = title + lyrics (car-friendly).
 ///
-/// Colors come only from the app's ColorScheme, which follows the system
-/// light/dark setting (or the user's override). Nothing is extracted from the
-/// album art.
+/// Colors come only from the app ColorScheme (system light/dark); nothing is
+/// extracted from album art.
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key, required this.settings, required this.controller});
 
@@ -28,22 +27,7 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends State<PlayerPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tab;
-
-  @override
-  void initState() {
-    super.initState();
-    _tab = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tab.dispose();
-    super.dispose();
-  }
-
+class _PlayerPageState extends State<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -55,14 +39,13 @@ class _PlayerPageState extends State<PlayerPage>
 
         return Scaffold(
           appBar: AppBar(
-            title: landscape && song != null
-                ? Text(
-                    song.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  )
-                : const Text('正在播放'),
+            title: const Text('正在播放'),
             actions: [
+              IconButton(
+                tooltip: '下载',
+                icon: const Icon(Icons.download_rounded),
+                onPressed: song == null ? null : () => _downloadMenu(context),
+              ),
               LyricSizeControls(settings: widget.settings),
               const SizedBox(width: 8),
             ],
@@ -71,96 +54,237 @@ class _PlayerPageState extends State<PlayerPage>
             child: song == null
                 ? const Center(child: Text('没有正在播放的歌曲'))
                 : landscape
-                    ? _landscapeLayout(context, song)
-                    : _portraitLayout(song.id),
+                    ? _landscapeView(context, song)
+                    : _portraitView(context, song),
           ),
         );
       },
     );
   }
 
-  // ---- 竖屏：三 tab ----
-  Widget _portraitLayout(String songId) {
-    return Column(
+  // ---- 竖屏：单列 ----
+  Widget _portraitView(BuildContext context, Song song) {
+    final theme = Theme.of(context);
+    final coverSize = MediaQuery.of(context).size.width - 160;
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       children: [
-        TabBar(
-          controller: _tab,
-          tabs: const [
-            Tab(text: '推荐'),
-            Tab(text: '歌曲'),
-            Tab(text: '歌词'),
+        const SizedBox(height: 8),
+        Center(
+          child: Container(
+            width: coverSize,
+            height: coverSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.surfaceContainerHighest,
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withOpacity(0.3),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(coverSize * 0.04),
+            child: ClipOval(
+              child: CoverImage(
+                client: widget.controller.client,
+                coverId: song.coverArt,
+                coverUrl: song.coverUrl,
+                size: coverSize,
+                requestSize: 800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Current lyric line (big, centered).
+        _CurrentLyricLine(
+          controller: widget.controller,
+          settings: widget.settings,
+        ),
+        const SizedBox(height: 16),
+        // Title + artist + favorite.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Column(
+                children: [
+                  Text(song.title,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text('${song.artist} · ${song.album}',
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            _FavoriteButton(controller: widget.controller),
           ],
         ),
-        Expanded(
-          child: TabBarView(
-            controller: _tab,
-            children: [
-              _RecommendTab(
-                settings: widget.settings,
-                controller: widget.controller,
-                onShowQueue: () => _tab.animateTo(1),
-              ),
-              _QueueTab(
-                settings: widget.settings,
-                controller: widget.controller,
-              ),
-              _lyricsArea(context, songId),
-            ],
-          ),
+        const SizedBox(height: 8),
+        _SeekBar(player: widget.controller.player),
+        _Controls(
+          controller: widget.controller,
+          compact: false,
+          onShowQueue: () => _openQueue(context),
         ),
       ],
     );
   }
 
-  // ---- 横屏：全屏歌词 + 紧凑控制（车机模式） ----
-  Widget _landscapeLayout(BuildContext context, Song song) {
+  // ---- 横屏：左封面+控制，右歌名+歌词 ----
+  Widget _landscapeView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    return Column(
+    return Row(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Row(
+        // Left: cover + controls.
+        Expanded(
+          flex: 5,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CoverImage(
-                client: widget.controller.client,
-                coverId: song.coverArt,
-                coverUrl: song.coverUrl,
-                size: 44,
-                radius: 8,
-                requestSize: 160,
+              const Spacer(),
+              Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withOpacity(0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(8),
+                child: ClipOval(
+                  child: CoverImage(
+                    client: widget.controller.client,
+                    coverId: song.coverArt,
+                    coverUrl: song.coverUrl,
+                    size: 200,
+                    requestSize: 500,
+                  ),
+                ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              const Spacer(),
+              _SeekBar(player: widget.controller.player),
+              _Controls(
+                controller: widget.controller,
+                compact: true,
+                onShowQueue: () => _openQueue(context),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+        // Right: title + scrolling lyrics.
+        Expanded(
+          flex: 6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(song.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium
+                        style: theme.textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w700)),
-                    Text('${song.artist} · ${song.album}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('${song.artist} · ${song.album}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                        ),
+                        _FavoriteButton(controller: widget.controller),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              _RepeatButton(controller: widget.controller),
+              Expanded(
+                child: _lyricsArea(context, song.id),
+              ),
             ],
           ),
         ),
-        Expanded(child: _lyricsArea(context, song.id)),
-        _SeekBar(player: widget.controller.player),
-        _Controls(controller: widget.controller, compact: true, onShowQueue: () => _showQueueSheet(context)),
-        const SizedBox(height: 4),
       ],
     );
   }
 
-  /// Bottom sheet listing the current queue (used in landscape mode).
-  void _showQueueSheet(BuildContext context) {
+  Widget _lyricsArea(BuildContext context, String songId) {
+    if (widget.controller.lyricsLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final lyrics = widget.controller.lyrics;
+    if (lyrics == null) {
+      return Center(
+        child: Text('暂无歌词',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      );
+    }
+    return LyricsView(
+      key: ValueKey(songId),
+      lyrics: lyrics,
+      player: widget.controller.player,
+      settings: widget.settings,
+    );
+  }
+
+  Future<void> _downloadMenu(BuildContext context) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.phone_android_rounded),
+              title: const Text('下载到手机'),
+              onTap: () => Navigator.of(ctx).pop('local'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: const Text('上传到 NAS (WebDAV)'),
+              onTap: () => Navigator.of(ctx).pop('nas'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('正在下载…'), duration: Duration(seconds: 1)),
+    );
+    final msg = choice == 'nas'
+        ? await widget.controller.uploadCurrentToNas()
+        : await widget.controller.downloadCurrentToLocal();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  void _openQueue(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -214,179 +338,82 @@ class _PlayerPageState extends State<PlayerPage>
       ),
     );
   }
+}
 
-  Widget _lyricsArea(BuildContext context, String songId) {
-    if (widget.controller.lyricsLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final lyrics = widget.controller.lyrics;
-    if (lyrics == null) {
-      return Center(
-        child: Text('暂无歌词',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
-    }
-    return LyricsView(
-      key: ValueKey(songId), // rebuild state when the song changes
-      lyrics: lyrics,
-      player: widget.controller.player,
-      settings: widget.settings,
+/// Big single line that tracks the currently-active lyric (portrait).
+class _CurrentLyricLine extends StatefulWidget {
+  const _CurrentLyricLine({required this.controller, required this.settings});
+  final PlayerController controller;
+  final AppSettings settings;
+
+  @override
+  State<_CurrentLyricLine> createState() => _CurrentLyricLineState();
+}
+
+class _CurrentLyricLineState extends State<_CurrentLyricLine> {
+  StreamSubscription? _sub;
+  int _line = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = widget.controller.player.positionStream.listen((pos) {
+      final ly = widget.controller.lyrics;
+      if (ly == null || !ly.synced) return;
+      final i = ly.indexAt(pos);
+      if (i != _line) setState(() => _line = i);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ly = widget.controller.lyrics;
+    final text = (ly == null || _line < 0 || _line >= ly.lines.length)
+        ? ''
+        : ly.lines[_line].text;
+    return ListenableBuilder(
+      listenable: widget.settings,
+      builder: (context, _) {
+        final scale = widget.settings.lyricScale;
+        return Text(
+          text.isEmpty ? '♪' : text,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontSize: 22 * scale,
+                fontWeight: FontWeight.w600,
+              ),
+        );
+      },
     );
   }
 }
 
-/// 推荐 tab: big cover, song info, seek bar and controls.
-class _RecommendTab extends StatelessWidget {
-  const _RecommendTab({
-    required this.settings,
-    required this.controller,
-    this.onShowQueue,
-  });
-
-  final AppSettings settings;
-  final PlayerController controller;
-  final VoidCallback? onShowQueue;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final song = controller.current!;
-    final coverSize = MediaQuery.of(context).size.width - 120;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          // Vinyl-style circular cover: dark disc ring + round album art.
-          Container(
-            width: coverSize,
-            height: coverSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.surfaceContainerHighest,
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.shadow.withOpacity(0.3),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            padding: EdgeInsets.all(coverSize * 0.04),
-            child: ClipOval(
-              child: CoverImage(
-                client: controller.client,
-                coverId: song.coverArt,
-                coverUrl: song.coverUrl,
-                size: coverSize,
-                requestSize: 800,
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-          // Title row + favorite heart.
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Column(
-                  children: [
-                    Text(song.title,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    Text('${song.artist} · ${song.album}',
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ListenableBuilder(
-                listenable: controller,
-                builder: (context, _) {
-                  final starred = controller.currentStarred;
-                  return IconButton(
-                    tooltip: starred ? '取消收藏' : '收藏',
-                    icon: Icon(
-                      starred
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: starred
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    onPressed: controller.toggleStar,
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _SeekBar(player: controller.player),
-          _Controls(controller: controller, compact: false, onShowQueue: onShowQueue),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-/// 歌曲 tab: current queue, tap to switch.
-class _QueueTab extends StatelessWidget {
-  const _QueueTab({required this.settings, required this.controller});
-
-  final AppSettings settings;
+/// Favorite heart for the current song.
+class _FavoriteButton extends StatelessWidget {
+  const _FavoriteButton({required this.controller});
   final PlayerController controller;
 
   @override
   Widget build(BuildContext context) {
-    final queue = controller.queue;
-    final index = controller.index;
-    if (queue.isEmpty) {
-      return const Center(child: Text('队列为空'));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: queue.length,
-      itemBuilder: (context, i) {
-        final s = queue[i];
-        final active = i == index;
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-          leading: CoverImage(
-            client: controller.client,
-            coverId: s.coverArt,
-            coverUrl: s.coverUrl,
-            size: 44,
-            radius: 8,
-            requestSize: 120,
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final starred = controller.currentStarred;
+        return IconButton(
+          tooltip: starred ? '取消收藏' : '收藏',
+          icon: Icon(
+            starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            color: starred ? Theme.of(context).colorScheme.primary : null,
           ),
-          title: Text(
-            s.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? Theme.of(context).colorScheme.primary : null,
-            ),
-          ),
-          subtitle: Text(s.artist,
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: active
-              ? Icon(Icons.graphic_eq_rounded,
-                  color: Theme.of(context).colorScheme.primary)
-              : (s.durationSec == null
-                  ? null
-                  : Text(formatDuration(Duration(seconds: s.durationSec!)))),
-          onTap: () => controller.playAt(i),
+          onPressed: controller.toggleStar,
         );
       },
     );
@@ -482,7 +509,7 @@ class LyricsView extends StatefulWidget {
 
 class _LyricsViewState extends State<LyricsView> {
   static const double _baseFontSize = 22;
-  static const double _anchor = 0.38; // where the active line rests (0 top, 1 bottom)
+  static const double _anchor = 0.38;
 
   final ItemScrollController _scroll = ItemScrollController();
   StreamSubscription<Duration>? _positionSub;
@@ -510,7 +537,6 @@ class _LyricsViewState extends State<LyricsView> {
     super.dispose();
   }
 
-  // Line heights change with the font size, so re-anchor after layout.
   void _onScaleChanged() {
     WidgetsBinding.instance.addPostFrameCallback((_) => _follow(jump: true));
   }

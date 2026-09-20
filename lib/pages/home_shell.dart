@@ -5,9 +5,10 @@ import '../settings.dart';
 import 'home_page.dart';
 import 'library_page.dart';
 import 'mini_player.dart';
+import 'search_page.dart';
 import 'settings_page.dart';
 
-/// Main shell with bottom navigation: 首页 / 音乐库 / 设置.
+/// Main shell with bottom navigation: 首页 / 音乐库 / 搜索 / 设置.
 /// The mini player sits above the navigation bar.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.settings, required this.controller});
@@ -27,6 +28,7 @@ class _HomeShellState extends State<HomeShell> {
     final pages = <Widget>[
       HomePage(settings: widget.settings, controller: widget.controller),
       LibraryPage(settings: widget.settings, controller: widget.controller),
+      SearchPage(settings: widget.settings, controller: widget.controller),
       SettingsPage(settings: widget.settings, controller: widget.controller),
     ];
 
@@ -49,6 +51,11 @@ class _HomeShellState extends State<HomeShell> {
                 icon: Icon(Icons.library_music_outlined),
                 selectedIcon: Icon(Icons.library_music_rounded),
                 label: '音乐库',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.search_rounded),
+                selectedIcon: Icon(Icons.search_rounded),
+                label: '搜索',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
