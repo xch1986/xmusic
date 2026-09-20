@@ -162,6 +162,61 @@ class _SearchPageState extends State<SearchPage> {
     await _playSongs(copy, index);
   }
 
+  void _showSongMenu(BuildContext context, Song s) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: const Icon(Icons.playlist_add), title: const Text('添加到播放列表'), onTap: () => Navigator.of(ctx).pop('enqueue')),
+          ListTile(leading: const Icon(Icons.queue_music), title: const Text('添加到歌单'), onTap: () => Navigator.of(ctx).pop('playlist')),
+          ListTile(leading: const Icon(Icons.download), title: const Text('下载到手机'), onTap: () => Navigator.of(ctx).pop('local')),
+          ListTile(leading: const Icon(Icons.cloud_upload_outlined), title: const Text('上传到 NAS'), onTap: () => Navigator.of(ctx).pop('nas')),
+        ]),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    switch (choice) {
+      case 'enqueue':
+        await widget.controller.enqueue(s);
+        _showSnack('已加入播放列表');
+        break;
+      case 'playlist':
+        await _addToPlaylist(context, s);
+        break;
+      case 'local':
+        _showSnack('正在下载…');
+        _showSnack(await widget.controller.downloadSongToLocal(s));
+        break;
+      case 'nas':
+        _showSnack('正在上传…');
+        _showSnack(await widget.controller.uploadSongToNas(s));
+        break;
+    }
+  }
+
+  Future<void> _addToPlaylist(BuildContext context, Song s) async {
+    try {
+      final pls = await _client.playlists();
+      if (!mounted) return;
+      if (pls.isEmpty) { _showSnack('没有歌单'); return; }
+      if (!mounted) return;
+      final chosen = await showDialog<Playlist>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('选择歌单'),
+          children: [
+            for (final p in pls)
+              SimpleDialogOption(onPressed: () => Navigator.of(ctx).pop(p), child: Text(p.name)),
+          ],
+        ),
+      );
+      if (chosen == null) return;
+      await _client.addToPlaylist(chosen.id, s.id);
+      _showSnack('已添加到 ${chosen.name}');
+    } catch (e) {
+      _showSnack('添加失败: $e');
+    }
+  }
   void _showSnack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -324,11 +379,19 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     return ListView(
-      children: songs.asMap().entries.map((e) => SongTile(
-            song: e.value,
-            client: _client,
-            onTap: () => _playExternal(songs, e.key),
-          )).toList(),
+      children: songs.asMap().entries.map((e) {
+        final s = e.value;
+        return ListTile(
+          leading: CoverImage(client: _client, coverId: s.coverArt, coverUrl: s.coverUrl, size: 48, radius: 8, requestSize: 200),
+          title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+          trailing: IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showSongMenu(context, s),
+          ),
+          onTap: () => _playExternal(songs, e.key),
+        );
+      }).toList(),
     );
   }
 

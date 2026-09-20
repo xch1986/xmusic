@@ -62,76 +62,32 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // ---- 竖屏：单列 ----
+  // ---- 竖屏：歌名在上，歌词占中间，进度条控制压底部 ----
   Widget _portraitView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    final coverSize = MediaQuery.of(context).size.width - 160;
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    return Column(
       children: [
-        const SizedBox(height: 8),
-        Center(
-          child: Container(
-            width: coverSize,
-            height: coverSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.surfaceContainerHighest,
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.shadow.withOpacity(0.3),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 8, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ],
                 ),
-              ],
-            ),
-            padding: EdgeInsets.all(coverSize * 0.04),
-            child: ClipOval(
-              child: CoverImage(
-                client: widget.controller.client,
-                coverId: song.coverArt,
-                coverUrl: song.coverUrl,
-                size: coverSize,
-                requestSize: 800,
               ),
-            ),
+              _FavoriteButton(controller: widget.controller),
+            ],
           ),
         ),
-        const SizedBox(height: 24),
-        // Current lyric line (big, centered).
-        _CurrentLyricLine(
-          controller: widget.controller,
-          settings: widget.settings,
-        ),
-        const SizedBox(height: 16),
-        // Title + artist + favorite.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(
-              child: Column(
-                children: [
-                  Text(song.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text('${song.artist} · ${song.album}',
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            _FavoriteButton(controller: widget.controller),
-          ],
-        ),
-        const SizedBox(height: 8),
+        Expanded(child: _lyricsArea(context, song.id)),
         _SeekBar(player: widget.controller.player),
         _Controls(
           controller: widget.controller,
