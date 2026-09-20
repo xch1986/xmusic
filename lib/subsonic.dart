@@ -245,7 +245,8 @@ class SubsonicClient {
 
   Future<List<Song>> playlistSongs(String playlistId) async {
     final root = await _get('getPlaylist', {'id': playlistId});
-    final list = (root['playlist']?['entry'] as List?) ?? const [];
+    final raw = root['playlist']?['entry'];
+    final list = raw is List ? raw : (raw is Map ? [raw] : const []);
     return list.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
   }
 
