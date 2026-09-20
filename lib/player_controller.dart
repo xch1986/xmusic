@@ -92,8 +92,8 @@ class PlayerController extends ChangeNotifier {
 
   Song? get current =>
       (index >= 0 && index < queue.length) ? queue[index] : null;
-  bool get hasNext => player.hasNext;
-  bool get hasPrev => player.hasPrevious;
+  bool get hasNext => queue.length > 1;
+  bool get hasPrev => queue.length > 1;
   bool get playing => player.playing;
   PlayMode get repeat => _repeat;
 
@@ -137,20 +137,8 @@ class PlayerController extends ChangeNotifier {
     queue = List.of(songs);
     index = startIndex;
     notifyListeners();
-
-    final children = <AudioSource>[];
-    for (final s in songs) {
-      final url = await _mediaUrlForSong(s);
-      children.add(_sourceFor(s, url));
-    }
     try {
-      await player.setAudioSource(
-        ConcatenatingAudioSource(children: children),
-        initialIndex: startIndex,
-      );
-      _applyLoopMode();
-      await player.play();
-      _loadLyrics();
+      await _playAt(startIndex, autoplay: true);
       saveLastState();
     } catch (e) {
       debugPrint('playQueue failed: $e');
@@ -159,39 +147,50 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
+  Future<void> _playAt(int i, {bool autoplay = true}) async {
+    if (i < 0 || i >= queue.length) return;
+    final s = queue[i];
+    final url = await _mediaUrlForSong(s);
+    if (url.isEmpty) throw '无法获取播放地址';
+    final cover = s.coverUrl != null
+        ? Uri.tryParse(s.coverUrl!)
+        : client.coverUrl(s.coverArt, size: 500);
+    index = i;
+    notifyListeners();
+    await player.setUrl(
+      url,
+      tag: MediaItem(
+        id: s.id, title: s.title, album: s.album,
+        artist: s.artist, artUri: cover,
+      ),
+    );
+    _applyLoopMode();
+    if (autoplay) await player.play();
+    _loadLyrics();
+  }
+
   /// Append [s] to the end of the play queue (enqueue).
   Future<void> enqueue(Song s) async {
-    try {
-      final url = await _mediaUrlForSong(s);
-      queue = List.of(queue)..add(s);
-      await (player.audioSource as ConcatenatingAudioSource)
-          .add(_sourceFor(s, url));
-      notifyListeners();
-    } catch (e) {
-      debugPrint('enqueue failed: $e');
-    }
+    queue = List.of(queue)..add(s);
+    notifyListeners();
   }
 
   /// Play the queue item at [i] (same queue, new index).
   Future<void> playAt(int i) async {
     if (i < 0 || i >= queue.length) return;
-    await player.seek(Duration.zero, index: i);
+    try { await _playAt(i); } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
   void _onCompleted() {
     if (_repeat == PlayMode.repeatOne) return;
-    if (_repeat == PlayMode.shuffle) {
-      _playRandom();
-    }
+    next();
   }
 
   void _playRandom() {
     if (queue.length <= 1) return;
-    var nextIndex = index;
-    while (nextIndex == index) {
-      nextIndex = _rnd.nextInt(queue.length);
-    }
-    unawaited(player.seek(Duration.zero, index: nextIndex));
+    var ni = index;
+    while (ni == index) { ni = _rnd.nextInt(queue.length); }
+    unawaited(_playAt(ni));
   }
 
   Future<void> _loadLyrics() async {
@@ -269,19 +268,20 @@ class PlayerController extends ChangeNotifier {
       s.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
 
   Future<void> next() async {
-    if (_repeat == PlayMode.shuffle) {
-      _playRandom();
-    } else {
-      await player.seekToNext();
-    }
+    if (_repeat == PlayMode.shuffle) { _playRandom(); return; }
+    if (queue.isEmpty) return;
+    final ni = (index + 1) % queue.length;
+    try { await _playAt(ni); } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
   Future<void> previous() async {
-    if (player.position > const Duration(seconds: 3) || !hasPrev) {
+    if (player.position > const Duration(seconds: 3)) {
       await player.seek(Duration.zero);
-    } else {
-      await player.seekToPrevious();
+      return;
     }
+    if (queue.isEmpty) return;
+    final pi = index <= 0 ? queue.length - 1 : index - 1;
+    try { await _playAt(pi); } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
   void togglePlay() {
