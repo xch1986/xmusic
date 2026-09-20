@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
@@ -9,7 +9,11 @@ import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // JustAudioBackground disabled - breaks playback on this device.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.xmusic.player.audio',
+    androidNotificationChannelName: 'xmusic playback',
+    androidNotificationOngoing: true,
+  );
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -38,9 +42,9 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-          scaffoldBackgroundColor: const Color(0x99F4F5F7),
+          scaffoldBackgroundColor: const Color(0x66FFFFFF),
             appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
-            navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0x99F4F5F7), elevation: 0),
+            navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0x66FFFFFF), elevation: 0),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
@@ -48,7 +52,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x991A1A1A),
+            scaffoldBackgroundColor: const Color(0x661A1A1A),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
