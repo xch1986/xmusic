@@ -51,42 +51,42 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   // ---- 竖屏：收起按钮 -> 大黑胶 -> 歌名收藏 -> 当前歌词 -> 进度条 -> 控制 ----
-  // ---- 竖屏：小封面+歌名在上，中间完整歌词，底部进度+控制 ----
+  // ---- 竖屏：歌词占满上方，封面歌名控制压在下方 ----
   Widget _portraitView(BuildContext context, Song song) {
     final theme = Theme.of(context);
     return Column(
       children: [
-        // 小封面 + 歌名歌手 + 收藏 + 下载
+        // 歌词占满
+        Expanded(child: _lyricsArea(context, song.id)),
+        // 下方：小封面+歌名+收藏+下载+歌词缩放
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+          padding: const EdgeInsets.fromLTRB(16, 4, 8, 0),
           child: Row(
             children: [
-              CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 56, radius: 8, requestSize: 200),
+              CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 48, radius: 6, requestSize: 200),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
+                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 1),
                     Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ),
+              LyricSizeControls(settings: widget.settings),
               _FavoriteButton(controller: widget.controller),
               IconButton(tooltip: '下载', icon: const Icon(Icons.download_rounded), onPressed: () => _downloadMenu(context)),
             ],
           ),
         ),
-        // 完整歌词列表
-        Expanded(child: _lyricsArea(context, song.id)),
-        // 歌词缩放
-        Align(alignment: Alignment.centerRight, child: LyricSizeControls(settings: widget.settings)),
         _SeekBar(player: widget.controller.player),
         _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
         const SizedBox(height: 8),
       ],
     );
+  }
   }
 
   // ---- 横屏：左封面+控制，右歌名+歌词 ----
