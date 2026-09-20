@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
@@ -8,6 +9,11 @@ import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+    androidNotificationChannelName: '音乐播放',
+    androidNotificationOngoing: true,
+  );
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -86,7 +92,7 @@ class _RootState extends State<Root> {
       _client = null;
     } else if (_client == null) {
       _client = s.buildClient();
-      _controller = PlayerController(_client!);
+      _controller = PlayerController(_client!, s);
     }
   }
 

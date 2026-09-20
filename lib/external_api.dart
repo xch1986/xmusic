@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'lyrics.dart';
 import 'subsonic.dart';
 
 /// External music search client for the gdstudio music-api (API.php) style:
@@ -88,6 +89,18 @@ class ExternalApi {
       if (r is Map && r['url'] != null) {
         final url = r['url'].toString();
         return url.isEmpty ? null : url;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Fetch synced lyrics for an external track id (LRC text from the API).
+  Future<Lyrics?> lyricFor(String trackId) async {
+    try {
+      final r = await _getJson('lyric', {'id': trackId});
+      if (r is Map && r['lyric'] != null) {
+        final raw = r['lyric'].toString();
+        if (raw.trim().isNotEmpty) return Lyrics.fromLrc(raw);
       }
     } catch (_) {}
     return null;

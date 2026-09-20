@@ -22,6 +22,9 @@ class AppSettings extends ChangeNotifier {
   static const _kToken = 'token';
   static const _kTheme = 'theme_mode';
   static const _kExternal = 'external_api_url';
+  static const _kDavUrl = 'webdav_url';
+  static const _kDavUser = 'webdav_user';
+  static const _kDavPass = 'webdav_pass';
 
   late final SharedPreferences _prefs;
 
@@ -30,6 +33,9 @@ class AppSettings extends ChangeNotifier {
   String salt = '';
   String token = '';
   String externalApiUrl = '';
+  String webdavUrl = '';
+  String webdavUser = '';
+  String webdavPass = '';
   double _lyricScale = 1.0;
   AppThemeMode _themeMode = AppThemeMode.system;
 
@@ -37,6 +43,7 @@ class AppSettings extends ChangeNotifier {
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
+  bool get webdavConfigured => webdavUrl.trim().isNotEmpty;
 
   bool get hasLogin =>
       serverUrl.isNotEmpty &&
@@ -51,6 +58,9 @@ class AppSettings extends ChangeNotifier {
     salt = _prefs.getString(_kSalt) ?? '';
     token = _prefs.getString(_kToken) ?? '';
     externalApiUrl = _prefs.getString(_kExternal) ?? 'https://music-api.gdstudio.xyz';
+    webdavUrl = _prefs.getString(_kDavUrl) ?? '';
+    webdavUser = _prefs.getString(_kDavUser) ?? '';
+    webdavPass = _prefs.getString(_kDavPass) ?? '';
     _lyricScale =
         (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
     final themeIdx = _prefs.getInt(_kTheme) ?? 0;
@@ -108,5 +118,15 @@ class AppSettings extends ChangeNotifier {
     externalApiUrl = v;
     notifyListeners();
     await _prefs.setString(_kExternal, v);
+  }
+
+  Future<void> setWebdav(String url, String user, String pass) async {
+    webdavUrl = url.trim();
+    webdavUser = user.trim();
+    webdavPass = pass;
+    notifyListeners();
+    await _prefs.setString(_kDavUrl, webdavUrl);
+    await _prefs.setString(_kDavUser, webdavUser);
+    await _prefs.setString(_kDavPass, webdavPass);
   }
 }
