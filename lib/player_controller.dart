@@ -56,6 +56,40 @@ class PlayerController extends ChangeNotifier {
   int _loadToken = 0;
   String? lastError;
 
+  Future<File> get _stateFile async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/last_player.json');
+  }
+
+  Future<void> saveLastState() async {
+    final s = current;
+    if (s == null) return;
+    try {
+      final f = await _stateFile;
+      await f.writeAsString(jsonEncode({
+        'id': s.id, 'title': s.title, 'artist': s.artist, 'album': s.album,
+        'coverArt': s.coverArt, 'coverUrl': s.coverUrl, 'streamUrl': s.streamUrl,
+        'fromExternal': s.fromExternal,
+      }));
+    } catch (_) {}
+  }
+
+  Future<void> restoreLastState() async {
+    try {
+      final f = await _stateFile;
+      if (!await f.exists()) return;
+      final m = jsonDecode(await f.readAsString()) as Map;
+      final s = Song(
+        id: m['id'], title: m['title'], artist: m['artist'], album: m['album'],
+        coverArt: m['coverArt'], coverUrl: m['coverUrl'], streamUrl: m['streamUrl'],
+        fromExternal: m['fromExternal'] ?? false,
+      );
+      queue = [s];
+      index = 0;
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Song? get current =>
       (index >= 0 && index < queue.length) ? queue[index] : null;
   bool get hasNext => player.hasNext;
@@ -117,6 +151,7 @@ class PlayerController extends ChangeNotifier {
       _applyLoopMode();
       await player.play();
       _loadLyrics();
+      saveLastState();
     } catch (e) {
       debugPrint('playQueue failed: $e');
       lastError = e.toString();
