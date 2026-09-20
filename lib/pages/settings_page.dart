@@ -18,6 +18,8 @@ class SettingsPage extends StatelessWidget {
     final urlCtl = TextEditingController(text: settings.webdavUrl);
     final userCtl = TextEditingController(text: settings.webdavUser);
     final passCtl = TextEditingController(text: settings.webdavPass);
+    final pathCtl = TextEditingController(text: settings.webdavPath);
+    final nameCtl = TextEditingController(text: settings.webdavName);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -51,6 +53,22 @@ class SettingsPage extends StatelessWidget {
                 isDense: true,
               ),
             ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: pathCtl,
+              decoration: const InputDecoration(
+                labelText: '下载路径（可空，如 /Music/）',
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: nameCtl,
+              decoration: const InputDecoration(
+                labelText: 'NAS 名称（可空，如 飞牛）',
+                isDense: true,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -60,7 +78,7 @@ class SettingsPage extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              settings.setWebdav(urlCtl.text, userCtl.text, passCtl.text);
+              settings.setWebdav(urlCtl.text, userCtl.text, passCtl.text, path: pathCtl.text, name: nameCtl.text);
               Navigator.of(ctx).pop();
             },
             child: const Text('保存'),
