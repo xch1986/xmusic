@@ -288,12 +288,17 @@ class PlayerController extends ChangeNotifier {
     try { await _playAt(pi); } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
-  void togglePlay() {
+  Future<void> togglePlay() async {
     if (player.playing) {
-      unawaited(player.pause());
+      await player.pause();
     } else {
-      unawaited(player.play());
+      if (player.processingState == ProcessingState.idle) {
+        try { await _playAt(index, autoplay: true); } catch (_) {}
+      } else {
+        await player.play();
+      }
     }
+    notifyListeners();
   }
 
   bool get currentStarred => current?.starred ?? false;
