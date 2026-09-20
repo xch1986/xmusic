@@ -63,8 +63,10 @@ class _AlbumPageState extends State<AlbumPage> {
             return Center(child: Text('加载失败：${snap.error}'));
           }
           final songs = snap.data!;
+          // 底部留白 = 系统手势条/车机底栏 inset + MiniPlayer 高度 + 余量。
+          final bottomInset = MediaQuery.paddingOf(context).bottom + 96;
           return ListView(
-            padding: const EdgeInsets.only(bottom: 80),
+            padding: EdgeInsets.only(bottom: bottomInset),
             children: [
               // ---- 专辑头部 ----
               Padding(

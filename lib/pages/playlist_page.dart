@@ -69,17 +69,24 @@ class _PlaylistPageState extends State<PlaylistPage> {
           }
           final songs = snap.data!;
           if (songs.isEmpty) return const Center(child: Text('歌单为空'));
+          // 底部留白 = 系统手势条/车机底栏 inset + MiniPlayer 高度 + 余量，
+          // 保证最后一行歌曲永远能滚到 MiniPlayer / 系统栏之上，不被遮挡。
+          final bottomInset = MediaQuery.paddingOf(context).bottom + 96;
           return ListView(
-            padding: const EdgeInsets.only(bottom: 80),
+            padding: EdgeInsets.only(bottom: bottomInset),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Row(
                   children: [
-                    Text('${songs.length} 首歌曲',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                    const Spacer(),
+                    Expanded(
+                      child: Text('${songs.length} 首歌曲',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    ),
+                    const SizedBox(width: 8),
                     FilledButton.tonalIcon(
                       icon: const Icon(Icons.play_arrow_rounded),
                       label: const Text('顺序'),

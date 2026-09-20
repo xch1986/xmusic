@@ -297,7 +297,9 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     return ListView(
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.paddingOf(context).bottom + 96,
+      ),
       children: [
         if (r.songs.isNotEmpty) ...[
           _header('歌曲'),
@@ -383,7 +385,9 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
     return ListView(
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.paddingOf(context).bottom + 96,
+      ),
       children: songs.asMap().entries.map((e) {
         final s = e.value;
         return ListTile(
