@@ -87,7 +87,6 @@ class _PlayerPageState extends State<PlayerPage> {
       ],
     );
   }
-  }
 
   // ---- 横屏：左封面+控制，右歌名+歌词 ----
   Widget _landscapeView(BuildContext context, Song song) {
