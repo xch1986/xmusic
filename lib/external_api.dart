@@ -4,73 +4,92 @@ import 'package:http/http.dart' as http;
 
 import 'subsonic.dart';
 
-/// External (non-Subsonic) music search client.
+/// External music search client for the gdstudio music-api (API.php) style:
+///   GET {base}/api.php?types=search&source=netease&name=<kw>&count=<n>&pages=<p>
+///     -> [ {id, name, artist:[...], album, pic_id, url_id, lyric_id, source}, ... ]
+///   GET {base}/api.php?types=url&source=netease&id=<trackId>&br=320
+///     -> {url, br, size}
+///   GET {base}/api.php?types=pic&source=netease&id=<picId>&size=500
+///     -> {url}
 ///
-/// Expects a self-hosted NeteaseCloudMusicApi-compatible server:
-///   GET {base}/search?keywords=<q>&limit=<n>
-///     -> {"result": {"songs": [{"id": 123, "name": "...",
-///         "artists": [{"name": "..."}], "album": {"name": "...", "picUrl": "..."}}]}}
-///   GET {base}/song/url?id=<id>
-///     -> {"data": [{"url": "https://..."}]}
-///
-/// Configure the base URL in 设置 -> 外部搜索 API.
+/// Configure the base URL in 设置 -> 外部搜索 API, e.g.
+///   https://music-api.gdstudio.xyz
 class ExternalApi {
   ExternalApi(this.baseUrl);
 
   final String baseUrl;
 
+  static const String _source = 'netease';
+  static const int _bitrate = 320;
+
   bool get isConfigured => baseUrl.trim().isNotEmpty;
 
-  Future<List<Song>> search(String keyword, {int limit = 30}) async {
-    final uri = Uri.parse('$baseUrl/search').replace(queryParameters: {
-      'keywords': keyword,
-      'limit': '$limit',
+  String get _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+
+  Future<dynamic> _getJson(String types, Map<String, String> params) async {
+    final uri = Uri.parse('$_root/api.php').replace(queryParameters: {
+      'types': types,
+      'source': _source,
+      ...params,
     });
     final res = await http.get(uri);
     if (res.statusCode != 200) {
       throw SubsonicException('HTTP ${res.statusCode}');
     }
-    final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-    final result = body['result'] as Map<String, dynamic>?;
-    final songs = (result?['songs'] as List?) ?? const [];
+    return jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  Future<List<Song>> search(String keyword, {int limit = 20}) async {
+    final raw = await _getJson('search', {
+      'name': keyword,
+      'count': '$limit',
+      'pages': '1',
+    });
+    if (raw is! List) return const [];
+    final items = raw.cast<Map<String, dynamic>>();
+
+    // Resolve cover URLs in parallel (each needs a /pic call).
+    final coverFutures = items.map((it) async {
+      final picId = it['pic_id']?.toString();
+      if (picId == null || picId.isEmpty) return null;
+      try {
+        final r = await _getJson('pic', {'id': picId, 'size': '500'});
+        if (r is Map && r['url'] != null) return r['url'].toString();
+      } catch (_) {}
+      return null;
+    });
+    final covers = await Future.wait(coverFutures);
+
     final out = <Song>[];
-    for (final s in songs.cast<Map<String, dynamic>>()) {
-      final id = s['id'];
-      if (id == null) continue;
-      final artists = (s['artists'] as List?) ?? const [];
-      final artistName = artists
-          .cast<Map<String, dynamic>>()
-          .map((a) => (a['name'] ?? '').toString())
-          .where((n) => n.isNotEmpty)
-          .join(' / ');
-      final album = (s['album'] as Map<String, dynamic>?) ?? const {};
+    for (var i = 0; i < items.length; i++) {
+      final it = items[i];
+      final id = it['id']?.toString();
+      if (id == null || id.isEmpty) continue;
+      final artists = (it['artist'] as List?) ?? const [];
+      final artistName = artists.map((a) => a.toString()).join(' / ');
       out.add(Song(
-        id: 'ext_$id',
-        title: (s['name'] ?? '').toString(),
+        id: id,
+        title: (it['name'] ?? '').toString(),
         artist: artistName.isEmpty ? '未知歌手' : artistName,
-        album: (album['name'] ?? '').toString(),
+        album: (it['album'] ?? '').toString(),
         coverArt: null,
-        coverUrl: album['picUrl']?.toString(),
-        durationSec: ((s['dt'] as num?)?.toInt() ?? 0) ~/ 1000,
+        coverUrl: covers[i],
+        durationSec: null,
         fromExternal: true,
-        // streamUrl is resolved lazily right before playback.
       ));
     }
     return out;
   }
 
-  /// Resolve the playable stream URL for an external song id like "ext_123".
-  Future<String?> streamUrlFor(String songId) async {
-    final netId = songId.startsWith('ext_') ? songId.substring(4) : songId;
-    final uri = Uri.parse('$baseUrl/song/url').replace(queryParameters: {
-      'id': netId,
-    });
-    final res = await http.get(uri);
-    if (res.statusCode != 200) return null;
-    final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-    final data = (body['data'] as List?) ?? const [];
-    if (data.isEmpty) return null;
-    final url = ((data.first as Map<String, dynamic>)['url'] ?? '').toString();
-    return url.isEmpty ? null : url;
+  /// Resolve the playable stream URL for an external track id.
+  Future<String?> streamUrlFor(String trackId) async {
+    try {
+      final r = await _getJson('url', {'id': trackId, 'br': '$_bitrate'});
+      if (r is Map && r['url'] != null) {
+        final url = r['url'].toString();
+        return url.isEmpty ? null : url;
+      }
+    } catch (_) {}
+    return null;
   }
 }

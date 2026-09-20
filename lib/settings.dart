@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'subsonic.dart';
@@ -50,7 +50,7 @@ class AppSettings extends ChangeNotifier {
     username = _prefs.getString(_kUser) ?? '';
     salt = _prefs.getString(_kSalt) ?? '';
     token = _prefs.getString(_kToken) ?? '';
-    externalApiUrl = _prefs.getString(_kExternal) ?? '';
+    externalApiUrl = _prefs.getString(_kExternal) ?? 'https://music-api.gdstudio.xyz';
     _lyricScale =
         (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
     final themeIdx = _prefs.getInt(_kTheme) ?? 0;

@@ -297,6 +297,9 @@ class SubsonicClient {
     return list.map((e) => Album.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<void> starSong(String id) => _get('star', {'id': id});
+  Future<void> unstarSong(String id) => _get('unstar', {'id': id});
+
   // ---- 播放/封面/歌词 ----
   Uri streamUrl(String songId) => _uri('stream', {'id': songId});
 

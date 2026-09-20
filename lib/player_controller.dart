@@ -148,6 +148,39 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
+  bool get currentStarred => current?.starred ?? false;
+
+  Future<void> toggleStar() async {
+    final s = current;
+    if (s == null) return;
+    final nowStarred = !s.starred;
+    // Optimistic update: rebuild the immutable Song in the queue.
+    queue[index] = Song(
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      albumId: s.albumId,
+      durationSec: s.durationSec,
+      coverArt: s.coverArt,
+      starred: nowStarred,
+      coverUrl: s.coverUrl,
+      streamUrl: s.streamUrl,
+      fromExternal: s.fromExternal,
+    );
+    notifyListeners();
+    if (s.fromExternal) return; // external IDs aren't starrable on this server
+    try {
+      if (nowStarred) {
+        await client.starSong(s.id);
+      } else {
+        await client.unstarSong(s.id);
+      }
+    } catch (e) {
+      debugPrint('star toggle failed: $e');
+    }
+  }
+
   @override
   void dispose() {
     _stateSub.cancel();
