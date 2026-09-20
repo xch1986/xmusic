@@ -98,6 +98,9 @@ class Song {
     this.durationSec,
     this.coverArt,
     this.starred = false,
+    this.coverUrl,
+    this.streamUrl,
+    this.fromExternal = false,
   });
 
   final String id;
@@ -108,6 +111,11 @@ class Song {
   final int? durationSec;
   final String? coverArt;
   final bool starred;
+  /// Direct cover image URL (external songs). Takes priority over [coverArt].
+  final String? coverUrl;
+  /// Direct stream URL (external songs). Takes priority over server stream.
+  final String? streamUrl;
+  final bool fromExternal;
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'].toString(),

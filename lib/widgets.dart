@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'subsonic.dart';
 
-/// Cover art loaded from the server, with a neutral placeholder.
-/// Colors come from the current theme only — nothing is extracted from the art.
+/// Cover art loaded from the server (or a direct URL), with a neutral
+/// placeholder. Colors come from the current theme only — nothing is
+/// extracted from the art.
 class CoverImage extends StatelessWidget {
   const CoverImage({
     super.key,
     required this.client,
     required this.coverId,
+    this.coverUrl,
     this.size,
     this.radius = 12,
     this.requestSize = 600,
@@ -16,6 +18,7 @@ class CoverImage extends StatelessWidget {
 
   final SubsonicClient client;
   final String? coverId;
+  final String? coverUrl;
   final double? size;
   final double radius;
   final int requestSize;
@@ -23,7 +26,10 @@ class CoverImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final url = client.coverUrl(coverId, size: requestSize);
+    // A direct URL wins over a server cover id (external songs).
+    final url = coverUrl?.isNotEmpty == true
+        ? Uri.parse(coverUrl!)
+        : client.coverUrl(coverId, size: requestSize);
 
     final placeholder = ColoredBox(
       color: cs.surfaceContainerHighest,
@@ -130,6 +136,7 @@ class SongTile extends StatelessWidget {
           CoverImage(
             client: client,
             coverId: song.coverArt,
+            coverUrl: song.coverUrl,
             size: 44,
             radius: 8,
             requestSize: 120,

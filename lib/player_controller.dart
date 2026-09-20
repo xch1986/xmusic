@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -6,11 +7,14 @@ import 'package:just_audio/just_audio.dart';
 import 'lyrics.dart';
 import 'subsonic.dart';
 
+/// Playback mode: sequential, shuffle or repeat-one.
+enum RepeatMode { sequential, shuffle, repeatOne }
+
 /// Owns the audio player, the play queue and the current song's lyrics.
 class PlayerController extends ChangeNotifier {
   PlayerController(this.client) {
     _stateSub = player.processingStateStream.listen((s) {
-      if (s == ProcessingState.completed) next();
+      if (s == ProcessingState.completed) _onCompleted();
     });
     _playingSub = player.playingStream.listen((_) => notifyListeners());
   }
@@ -22,6 +26,8 @@ class PlayerController extends ChangeNotifier {
   int index = -1;
   Lyrics? lyrics;
   bool lyricsLoading = false;
+  RepeatMode _repeat = RepeatMode.sequential;
+  final Random _rnd = Random();
 
   late final StreamSubscription<ProcessingState> _stateSub;
   late final StreamSubscription<bool> _playingSub;
@@ -32,6 +38,12 @@ class PlayerController extends ChangeNotifier {
   bool get hasNext => index + 1 < queue.length;
   bool get hasPrev => index > 0;
   bool get playing => player.playing;
+  RepeatMode get repeat => _repeat;
+
+  void cycleRepeat() {
+    _repeat = RepeatMode.values[(_repeat.index + 1) % RepeatMode.values.length];
+    notifyListeners();
+  }
 
   Future<void> playQueue(List<Song> songs, int startIndex) async {
     queue = List.of(songs);
@@ -44,7 +56,37 @@ class PlayerController extends ChangeNotifier {
     await _load(i);
   }
 
+  void _onCompleted() {
+    switch (_repeat) {
+      case RepeatMode.repeatOne:
+        unawaited(player.seek(Duration.zero));
+        unawaited(player.play());
+        break;
+      case RepeatMode.sequential:
+        unawaited(next());
+        break;
+      case RepeatMode.shuffle:
+        _playRandom();
+        break;
+    }
+  }
+
+  void _playRandom() {
+    if (queue.isEmpty) return;
+    if (queue.length == 1) {
+      unawaited(player.seek(Duration.zero));
+      unawaited(player.play());
+      return;
+    }
+    var nextIndex = index;
+    while (nextIndex == index) {
+      nextIndex = _rnd.nextInt(queue.length);
+    }
+    unawaited(_load(nextIndex));
+  }
+
   Future<void> _load(int i) async {
+    if (i < 0 || i >= queue.length) return;
     final song = queue[i];
     final token = ++_loadToken;
     index = i;
@@ -56,7 +98,8 @@ class PlayerController extends ChangeNotifier {
     final lyricsFuture = client.lyricsFor(song);
 
     try {
-      await player.setUrl(client.streamUrl(song.id).toString());
+      final url = song.streamUrl ?? client.streamUrl(song.id).toString();
+      await player.setUrl(url);
       unawaited(player.play());
     } catch (e) {
       debugPrint('Playback failed: $e');
@@ -70,11 +113,22 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> next() async {
-    if (hasNext) {
-      await _load(index + 1);
-    } else {
-      await player.pause();
-      await player.seek(Duration.zero);
+    switch (_repeat) {
+      case RepeatMode.shuffle:
+        _playRandom();
+        break;
+      case RepeatMode.repeatOne:
+        await player.seek(Duration.zero);
+        await player.play();
+        break;
+      case RepeatMode.sequential:
+        if (hasNext) {
+          await _load(index + 1);
+        } else {
+          await player.pause();
+          await player.seek(Duration.zero);
+        }
+        break;
     }
   }
 

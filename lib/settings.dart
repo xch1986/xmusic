@@ -21,6 +21,7 @@ class AppSettings extends ChangeNotifier {
   static const _kSalt = 'salt';
   static const _kToken = 'token';
   static const _kTheme = 'theme_mode';
+  static const _kExternal = 'external_api_url';
 
   late final SharedPreferences _prefs;
 
@@ -28,6 +29,7 @@ class AppSettings extends ChangeNotifier {
   String username = '';
   String salt = '';
   String token = '';
+  String externalApiUrl = '';
   double _lyricScale = 1.0;
   AppThemeMode _themeMode = AppThemeMode.system;
 
@@ -48,6 +50,7 @@ class AppSettings extends ChangeNotifier {
     username = _prefs.getString(_kUser) ?? '';
     salt = _prefs.getString(_kSalt) ?? '';
     token = _prefs.getString(_kToken) ?? '';
+    externalApiUrl = _prefs.getString(_kExternal) ?? '';
     _lyricScale =
         (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
     final themeIdx = _prefs.getInt(_kTheme) ?? 0;
@@ -97,5 +100,13 @@ class AppSettings extends ChangeNotifier {
     _themeMode = mode;
     notifyListeners();
     await _prefs.setInt(_kTheme, mode.index);
+  }
+
+  Future<void> setExternalApiUrl(String url) async {
+    final v = url.trim();
+    if (v == externalApiUrl) return;
+    externalApiUrl = v;
+    notifyListeners();
+    await _prefs.setString(_kExternal, v);
   }
 }
