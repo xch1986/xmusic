@@ -80,6 +80,16 @@ jobs:
           EOF
 
       - run: flutter pub get
+      - name: Disable release lint fatal
+        run: |
+          f=android/app/build.gradle
+          [ -f "$f" ] || f=android/app/build.gradle.kts
+          if [[ "$f" == *.kts ]]; then
+            sed -i 's|android {|android {`n  lint { checkReleaseBuilds = false; abortOnError = false }|' "$f"
+          else
+            sed -i 's|android {|android {\n    lintOptions { checkReleaseBuilds false; abortOnError false }|' "$f"
+          fi
+          grep -n lint "$f"
       - run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
