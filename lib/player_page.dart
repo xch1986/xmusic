@@ -90,9 +90,14 @@ class _PlayerPageState extends State<PlayerPage> {
                   ],
                 ),
               ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
               LyricSizeControls(settings: widget.settings),
               _FavoriteButton(controller: widget.controller),
               IconButton(tooltip: '下载', icon: const Icon(Icons.download_rounded), onPressed: () => _downloadMenu(context)),
+                ],
+              ),
             ],
           ),
         ),
