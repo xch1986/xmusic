@@ -161,10 +161,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
     await player.setUrl(
       url,
-      tag: MediaItem(
-        id: s.id, title: s.title, album: s.album,
-        artist: s.artist, artUri: cover,
-      ),
     );
     _applyLoopMode();
     if (autoplay) await player.play();
