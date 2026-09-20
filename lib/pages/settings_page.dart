@@ -237,7 +237,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const ListTile(
                 leading: Icon(Icons.info_outline_rounded),
-                title: Text('My Player'),
+                title: Text('xmusic'),
                 subtitle: Text('Navidrome / Subsonic 客户端 · v0.3.0'),
               ),
             ],

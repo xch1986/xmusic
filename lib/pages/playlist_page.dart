@@ -4,6 +4,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import 'mini_player.dart';
 import 'player_page.dart';
 
 /// Playlist page: songs of a single playlist.
@@ -50,6 +51,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.playlist.name)),
+      bottomNavigationBar: MiniPlayer(settings: widget.settings, controller: widget.controller),
       body: FutureBuilder<List<Song>>(
         future: _future,
         builder: (context, snap) {
