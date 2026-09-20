@@ -2076,7 +2076,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
           );
         },
       ),
-      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }
