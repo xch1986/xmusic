@@ -51,16 +51,15 @@ jobs:
           f=android/app/src/main/AndroidManifest.xml
           sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioServicePlugin" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n  </application>|' "$f"
           grep -n "AudioServicePlugin" "$f"
-          python3 -c "
-import re
-p='$f'
+          python3 - <<'PYEOF'
+p="android/app/src/main/AndroidManifest.xml"
 s=open(p).read()
 if 'audio/*' not in s:
-    s=s.replace('<category android:name=\"android.intent.category.LAUNCHER\" />',
-        '<category android:name=\"android.intent.category.LAUNCHER\" />\n            </intent-filter>\n            <intent-filter>\n              <action android:name=\"android.intent.action.VIEW\" />\n              <category android:name=\"android.intent.category.DEFAULT\" />\n              <data android:mimeType=\"audio/*\" />',1)
+    s=s.replace('<category android:name="android.intent.category.LAUNCHER" />',
+        '<category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n            <intent-filter>\n              <action android:name="android.intent.action.VIEW" />\n              <category android:name="android.intent.category.DEFAULT" />\n              <data android:mimeType="audio/*" />',1)
     open(p,'w').write(s)
 print('intent-filter patched')
-"
+PYEOF
 
 
       - name: Generate app icons
