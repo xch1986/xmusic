@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
@@ -9,15 +8,7 @@ import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-      androidNotificationChannelName: '音乐播放',
-      androidNotificationOngoing: true,
-    );
-  } catch (e) {
-    debugPrint('JustAudioBackground init failed: $e');
-  }
+  // JustAudioBackground disabled - breaks playback on this device.
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
