@@ -238,7 +238,8 @@ class PlayerController extends ChangeNotifier {
     final media = await http.get(Uri.parse(url));
     if (media.statusCode != 200) return '获取歌曲失败 HTTP ${media.statusCode}';
     final base = settings.webdavUrl.replaceAll(RegExp(r'/+$'), '');
-    final path = '$base/${_safeName("${s.artist} - ${s.title}")}.mp3';
+    final sub = (settings.webdavPath.trim().isEmpty ? 'Music/xmusic' : settings.webdavPath.trim()).replaceAll(RegExp(r'^/|/$'), '');
+    final path = '$base/$sub/${_safeName("${s.artist} - ${s.title}")}.mp3';
     final auth = '${settings.webdavUser}:${settings.webdavPass}';
     final encoded = base64Encode(utf8.encode(auth));
     final resp = await http.put(
