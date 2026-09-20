@@ -65,6 +65,7 @@ class _AlbumPageState extends State<AlbumPage> {
           final songs = snap.data!;
           return ListView(
             padding: const EdgeInsets.only(bottom: 80),
+            padding: const EdgeInsets.only(bottom: 24),
             children: [
               // ---- 专辑头部 ----
               Padding(
