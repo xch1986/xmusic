@@ -132,13 +132,6 @@ class PlayerController extends ChangeNotifier {
         : client.coverUrl(s.coverArt, size: 500);
     return AudioSource.uri(
       Uri.parse(url),
-      tag: MediaItem(
-        id: s.id,
-        title: s.title,
-        album: s.album,
-        artist: s.artist,
-        artUri: cover,
-      ),
     );
   }
 
