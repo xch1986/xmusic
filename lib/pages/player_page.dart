@@ -51,55 +51,37 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   // ---- 竖屏：收起按钮 -> 大黑胶 -> 歌名收藏 -> 当前歌词 -> 进度条 -> 控制 ----
+  // ---- 竖屏：小封面+歌名在上，中间完整歌词，底部进度+控制 ----
   Widget _portraitView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size.width * 0.72;
     return Column(
       children: [
-        // 顶部：收起 + 下载 + 字号
-        Row(
-          children: [
-            IconButton(icon: const Icon(Icons.keyboard_arrow_down_rounded), onPressed: () => Navigator.of(context).pop()),
-            const Spacer(),
-            IconButton(tooltip: '下载', icon: const Icon(Icons.download_rounded), onPressed: () => _downloadMenu(context)),
-            LyricSizeControls(settings: widget.settings),
-          ],
-        ),
-        // 大黑胶
-        Expanded(
-          child: Center(
-            child: Container(
-              width: size, height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.surfaceContainerHighest,
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
-              ),
-              padding: const EdgeInsets.all(8),
-              child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: size, requestSize: 800)),
-            ),
-          ),
-        ),
-        // 歌名 + 收藏 + 更多
+        // 小封面 + 歌名歌手 + 收藏 + 下载
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
           child: Row(
             children: [
-              Expanded(child: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700))),
+              CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 56, radius: 8, requestSize: 200),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
               _FavoriteButton(controller: widget.controller),
-              IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _downloadMenu(context)),
+              IconButton(tooltip: '下载', icon: const Icon(Icons.download_rounded), onPressed: () => _downloadMenu(context)),
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          child: Align(alignment: Alignment.centerLeft, child: Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
-        ),
-        // 当前歌词句
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: _CurrentLyricLine(controller: widget.controller, settings: widget.settings),
-        ),
+        // 完整歌词列表
+        Expanded(child: _lyricsArea(context, song.id)),
+        // 歌词缩放
+        Align(alignment: Alignment.centerRight, child: LyricSizeControls(settings: widget.settings)),
         _SeekBar(player: widget.controller.player),
         _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
         const SizedBox(height: 8),
