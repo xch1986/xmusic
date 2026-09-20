@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'player_controller.dart';
 import 'settings.dart';
 import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 初始化系统级 MediaSession：车机/蓝牙耳机/锁屏/通知栏才能识别本应用并支持方向盘按键。
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+    androidNotificationChannelName: '音乐播放',
+    androidNotificationOngoing: true,
+  );
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
