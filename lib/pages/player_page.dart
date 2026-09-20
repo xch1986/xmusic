@@ -426,8 +426,7 @@ class LyricSizeControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: settings,
-      builder: (context, _) {
-        return Row(
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
@@ -436,14 +435,6 @@ class LyricSizeControls extends StatelessWidget {
               onPressed:
                   settings.canDecreaseLyric ? settings.decreaseLyric : null,
             ),
-            SizedBox(
-              width: 44,
-              child: Text(
-                '${(settings.lyricScale * 100).round()}%',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
             IconButton(
               tooltip: '增大歌词字号',
               icon: const Icon(Icons.text_increase),
@@ -451,6 +442,7 @@ class LyricSizeControls extends StatelessWidget {
                   settings.canIncreaseLyric ? settings.increaseLyric : null,
             ),
           ],
+        );
         );
       },
     );
