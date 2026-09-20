@@ -14,7 +14,7 @@ class LibraryPage extends StatefulWidget {
     super.key,
     required this.settings,
     required this.controller,
-    this.initialTab = 2,
+    this.initialTab = 0,
   });
 
   final AppSettings settings;
@@ -62,22 +62,22 @@ class _LibraryPageState extends State<LibraryPage>
         bottom: TabBar(
           controller: _tab,
           tabs: const [
+            Tab(text: '歌单'),
             Tab(text: '专辑'),
             Tab(text: '歌手'),
-            Tab(text: '歌单'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tab,
         children: [
-          _AlbumTab(client: _client, onOpenAlbum: _openAlbum),
-          _ArtistTab(
+          _PlaylistTab(
             client: _client,
             settings: widget.settings,
             controller: widget.controller,
           ),
-          _PlaylistTab(
+          _AlbumTab(client: _client, onOpenAlbum: _openAlbum),
+          _ArtistTab(
             client: _client,
             settings: widget.settings,
             controller: widget.controller,

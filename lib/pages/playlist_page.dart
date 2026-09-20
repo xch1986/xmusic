@@ -84,10 +84,16 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     const Spacer(),
-                    FilledButton.icon(
+                    FilledButton.tonalIcon(
                       icon: const Icon(Icons.play_arrow_rounded),
-                      label: const Text('播放全部'),
+                      label: const Text('顺序'),
                       onPressed: () => _playSongs(songs, 0),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.shuffle_rounded),
+                      label: const Text('随机'),
+                      onPressed: () { final s = [...songs]..shuffle(); _playSongs(s, 0); },
                     ),
                   ],
                 ),
