@@ -26,7 +26,7 @@ class MiniPlayer extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
             child: Container(
-              color: cs.surfaceContainerHigh.withOpacity(0.5),
+              color: cs.surfaceContainerHigh.withOpacity(0.3),
               child: SafeArea(
                 top: false,
                 child: InkWell(
