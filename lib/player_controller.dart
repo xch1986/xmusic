@@ -62,14 +62,15 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> saveLastState() async {
-    final s = current;
-    if (s == null) return;
     try {
       final f = await _stateFile;
       await f.writeAsString(jsonEncode({
-        'id': s.id, 'title': s.title, 'artist': s.artist, 'album': s.album,
-        'coverArt': s.coverArt, 'coverUrl': s.coverUrl, 'streamUrl': s.streamUrl,
-        'fromExternal': s.fromExternal,
+        'index': index,
+        'queue': queue.map((s) => {
+          'id': s.id, 'title': s.title, 'artist': s.artist, 'album': s.album,
+          'coverArt': s.coverArt, 'coverUrl': s.coverUrl, 'streamUrl': s.streamUrl,
+          'fromExternal': s.fromExternal,
+        }).toList(),
       }));
     } catch (_) {}
   }
@@ -79,13 +80,15 @@ class PlayerController extends ChangeNotifier {
       final f = await _stateFile;
       if (!await f.exists()) return;
       final m = jsonDecode(await f.readAsString()) as Map;
-      final s = Song(
-        id: m['id'], title: m['title'], artist: m['artist'], album: m['album'],
-        coverArt: m['coverArt'], coverUrl: m['coverUrl'], streamUrl: m['streamUrl'],
-        fromExternal: m['fromExternal'] ?? false,
-      );
-      queue = [s];
-      index = 0;
+      final list = (m['queue'] as List?) ?? [];
+      if (list.isEmpty) return;
+      queue = list.map((e) => Song(
+        id: e['id'], title: e['title'], artist: e['artist'], album: e['album'],
+        coverArt: e['coverArt'], coverUrl: e['coverUrl'], streamUrl: e['streamUrl'],
+        fromExternal: e['fromExternal'] ?? false,
+      )).toList();
+      index = (m['index'] as int?) ?? 0;
+      if (index >= queue.length) index = 0;
       notifyListeners();
     } catch (_) {}
   }
