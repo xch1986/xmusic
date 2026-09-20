@@ -85,7 +85,8 @@ jobs:
           f=android/app/build.gradle
           [ -f "$f" ] || f=android/app/build.gradle.kts
           if [[ "$f" == *.kts ]]; then
-            sed -i 's|android {|android {`n  lint { checkReleaseBuilds = false; abortOnError = false }|' "$f"
+            sed -i 's|android {|android {
+  lint { checkReleaseBuilds = false; abortOnError = false }|' "$f"
           else
             sed -i 's|android {|android {\n    lintOptions { checkReleaseBuilds false; abortOnError false }|' "$f"
           fi
