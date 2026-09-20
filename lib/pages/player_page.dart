@@ -307,14 +307,14 @@ class _RepeatButton extends StatelessWidget {
       builder: (context, _) {
         final mode = controller.repeat;
         final (icon, tooltip) = switch (mode) {
-          RepeatMode.sequential => (Icons.repeat_rounded, '顺序播放'),
-          RepeatMode.shuffle => (Icons.shuffle_rounded, '随机播放'),
-          RepeatMode.repeatOne => (Icons.repeat_one_rounded, '单曲循环'),
+          PlayMode.sequential => (Icons.repeat_rounded, '顺序播放'),
+          PlayMode.shuffle => (Icons.shuffle_rounded, '随机播放'),
+          PlayMode.repeatOne => (Icons.repeat_one_rounded, '单曲循环'),
         };
         return IconButton(
           tooltip: tooltip,
           icon: Icon(icon),
-          color: mode == RepeatMode.sequential
+          color: mode == PlayMode.sequential
               ? null
               : Theme.of(context).colorScheme.primary,
           onPressed: controller.cycleRepeat,

@@ -328,7 +328,7 @@ class _SearchPageState extends State<SearchPage> {
             song: e.value,
             client: _client,
             onTap: () => _playExternal(songs, e.key),
-          )),
+          )).toList(),
     );
   }
 
