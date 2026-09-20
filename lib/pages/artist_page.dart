@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../player_controller.dart';
 import '../settings.dart';
@@ -37,6 +37,7 @@ class _ArtistPageState extends State<ArtistPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(widget.artist.name)),
       body: FutureBuilder<List<Album>>(
         future: _future,
@@ -91,3 +92,4 @@ class _ArtistPageState extends State<ArtistPage> {
     );
   }
 }
+

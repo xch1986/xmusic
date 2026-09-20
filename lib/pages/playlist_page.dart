@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../player_controller.dart';
 import '../settings.dart';
@@ -43,6 +43,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 不透明背景，避免半透明主题导致看穿到下层页面、列表区域视觉混乱。
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(widget.playlist.name)),
       bottomNavigationBar: MiniPlayer(settings: widget.settings, controller: widget.controller),
       body: FutureBuilder<List<Song>>(
@@ -116,3 +118,4 @@ class _PlaylistPageState extends State<PlaylistPage> {
     );
   }
 }
+

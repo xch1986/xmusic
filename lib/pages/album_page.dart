@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../player_controller.dart';
 import '../settings.dart';
@@ -51,6 +51,7 @@ class _AlbumPageState extends State<AlbumPage> {
     final theme = Theme.of(context);
     final album = widget.album;
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       bottomNavigationBar: MiniPlayer(settings: widget.settings, controller: widget.controller),
       appBar: AppBar(title: Text(album.name)),
       body: FutureBuilder<List<Song>>(
@@ -158,3 +159,4 @@ class _AlbumPageState extends State<AlbumPage> {
     );
   }
 }
+
