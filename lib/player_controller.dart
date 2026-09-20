@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'external_api.dart';
@@ -61,6 +62,9 @@ class PlayerController extends ChangeNotifier {
   DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
   String? lastError;
+  /// 是否已经把当前 queue 装载成 ConcatenatingAudioSource。
+  /// 装载后 next/prev/跳曲直接走 player.seek*，不再重建音源。
+  bool _sourceLoaded = false;
 
   Future<File> get _stateFile async {
     final dir = await getApplicationDocumentsDirectory();
@@ -126,13 +130,45 @@ class PlayerController extends ChangeNotifier {
     return client.streamUrl(s.id).toString();
   }
 
-  AudioSource _sourceFor(Song s, String url) {
-    final cover = s.coverUrl != null
-        ? Uri.tryParse(s.coverUrl!)
-        : client.coverUrl(s.coverArt, size: 500);
-    return AudioSource.uri(
-      Uri.parse(url),
+  Uri? _artUriFor(Song s) {
+    if (s.coverUrl != null && s.coverUrl!.isNotEmpty) {
+      return Uri.tryParse(s.coverUrl!);
+    }
+    return client.coverUrl(s.coverArt, size: 500);
+  }
+
+  /// 把 queue 里的歌逐首解析成带 MediaItem 元数据的音源，整体装载进播放器。
+  /// 元数据（歌名/歌手/专辑/封面）会被系统 MediaSession 同步到车机、通知栏和锁屏。
+  Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
+    final sources = <AudioSource>[];
+    for (final s in queue) {
+      final url = await _mediaUrlForSong(s);
+      if (url.isEmpty) continue;
+      sources.add(AudioSource.uri(
+        Uri.parse(url),
+        tag: MediaItem(
+          id: s.id,
+          title: s.title,
+          artist: s.artist,
+          album: s.album,
+          duration:
+              s.durationSec != null ? Duration(seconds: s.durationSec!) : null,
+          artUri: _artUriFor(s),
+        ),
+      ));
+    }
+    if (sources.isEmpty) throw '无法获取播放地址';
+    await player.setAudioSource(
+      ConcatenatingAudioSource(children: sources),
+      initialIndex: i,
+      initialPosition: Duration.zero,
     );
+    _sourceLoaded = true;
+    index = i;
+    notifyListeners();
+    _applyLoopMode();
+    if (autoplay) await player.play();
+    _loadLyrics();
   }
 
   Future<void> playQueue(List<Song> songs, int startIndex) async {
@@ -140,31 +176,13 @@ class PlayerController extends ChangeNotifier {
     index = startIndex;
     notifyListeners();
     try {
-      await _playAt(startIndex, autoplay: true);
+      await _loadAndPlay(startIndex, autoplay: true);
       saveLastState();
     } catch (e) {
       debugPrint('playQueue failed: $e');
       lastError = e.toString();
       notifyListeners();
     }
-  }
-
-  Future<void> _playAt(int i, {bool autoplay = true}) async {
-    if (i < 0 || i >= queue.length) return;
-    final s = queue[i];
-    final url = await _mediaUrlForSong(s);
-    if (url.isEmpty) throw '无法获取播放地址';
-    final cover = s.coverUrl != null
-        ? Uri.tryParse(s.coverUrl!)
-        : client.coverUrl(s.coverArt, size: 500);
-    index = i;
-    notifyListeners();
-    await player.setUrl(
-      url,
-    );
-    _applyLoopMode();
-    if (autoplay) await player.play();
-    _loadLyrics();
   }
 
   /// Append [s] to the end of the play queue (enqueue).
@@ -176,7 +194,13 @@ class PlayerController extends ChangeNotifier {
   /// Play the queue item at [i] (same queue, new index).
   Future<void> playAt(int i) async {
     if (i < 0 || i >= queue.length) return;
-    try { await _playAt(i); } catch (e) { lastError = e.toString(); notifyListeners(); }
+    try {
+      if (_sourceLoaded) {
+        await player.seek(Duration.zero, index: i);
+      } else {
+        await _loadAndPlay(i);
+      }
+    } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
   void _onCompleted() {
@@ -188,7 +212,11 @@ class PlayerController extends ChangeNotifier {
     if (queue.length <= 1) return;
     var ni = index;
     while (ni == index) { ni = _rnd.nextInt(queue.length); }
-    unawaited(_playAt(ni));
+    if (_sourceLoaded) {
+      unawaited(player.seek(Duration.zero, index: ni));
+    } else {
+      unawaited(_loadAndPlay(ni));
+    }
   }
 
   Future<void> _loadLyrics() async {
@@ -269,8 +297,17 @@ class PlayerController extends ChangeNotifier {
   Future<void> next() async {
     if (_repeat == PlayMode.shuffle) { _playRandom(); return; }
     if (queue.isEmpty) return;
-    final ni = (index + 1) % queue.length;
-    try { await _playAt(ni); } catch (e) { lastError = e.toString(); notifyListeners(); }
+    try {
+      if (_sourceLoaded) {
+        if (player.hasNext) {
+          await player.seekToNext();
+        } else {
+          await player.seek(Duration.zero, index: 0);
+        }
+      } else {
+        await _loadAndPlay((index + 1) % queue.length);
+      }
+    } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
   Future<void> previous() async {
@@ -279,8 +316,17 @@ class PlayerController extends ChangeNotifier {
       return;
     }
     if (queue.isEmpty) return;
-    final pi = index <= 0 ? queue.length - 1 : index - 1;
-    try { await _playAt(pi); } catch (e) { lastError = e.toString(); notifyListeners(); }
+    try {
+      if (_sourceLoaded) {
+        if (player.hasPrevious) {
+          await player.seekToPrevious();
+        } else {
+          await player.seek(Duration.zero, index: queue.length - 1);
+        }
+      } else {
+        await _loadAndPlay(index <= 0 ? queue.length - 1 : index - 1);
+      }
+    } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
   void togglePlay() {
