@@ -133,6 +133,22 @@ class SettingsPage extends StatelessWidget {
               ),
               const Divider(),
 
+              // ---- 外网搜索 ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text('外网搜索',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _ExternalApiField(settings: settings),
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+
               // ---- 关于 ----
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -145,12 +161,50 @@ class SettingsPage extends StatelessWidget {
               const ListTile(
                 leading: Icon(Icons.info_outline_rounded),
                 title: Text('My Player'),
-                subtitle: Text('Navidrome / Subsonic 客户端 · v0.2.0'),
+                subtitle: Text('Navidrome / Subsonic 客户端 · v0.3.0'),
               ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+/// External search API URL field that keeps its own controller so typing
+/// is not reset when settings change.
+class _ExternalApiField extends StatefulWidget {
+  const _ExternalApiField({required this.settings});
+
+  final AppSettings settings;
+
+  @override
+  State<_ExternalApiField> createState() => _ExternalApiFieldState();
+}
+
+class _ExternalApiFieldState extends State<_ExternalApiField> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.settings.externalApiUrl);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      keyboardType: TextInputType.url,
+      decoration: const InputDecoration(
+        labelText: '外部搜索 API 地址',
+        hintText: 'https://api.example.com',
+        helperText: 'NeteaseCloudMusicApi 兼容服务（/search、/song/url）',
+        border: OutlineInputBorder(),
+        isDense: true,
+      ),
+      onSubmitted: (v) => widget.settings.setExternalApiUrl(v),
     );
   }
 }

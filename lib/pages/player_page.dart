@@ -7,9 +7,13 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../lyrics.dart';
 import '../player_controller.dart';
 import '../settings.dart';
+import '../subsonic.dart';
 import '../widgets.dart';
 
-/// Full-screen player with three tabs: 推荐 / 歌曲 / 歌词.
+/// Full-screen player.
+///
+/// Portrait: three tabs (推荐 / 歌曲 / 歌词). Landscape: full-screen lyrics
+/// with compact controls — friendly for car head units.
 ///
 /// Colors come only from the app's ColorScheme, which follows the system
 /// light/dark setting (or the user's override). Nothing is extracted from the
@@ -46,11 +50,18 @@ class _PlayerPageState extends State<PlayerPage>
       listenable: widget.controller,
       builder: (context, _) {
         final song = widget.controller.current;
-        final theme = Theme.of(context);
+        final landscape =
+            MediaQuery.of(context).orientation == Orientation.landscape;
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('正在播放'),
+            title: landscape && song != null
+                ? Text(
+                    song.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : const Text('正在播放'),
             actions: [
               LyricSizeControls(settings: widget.settings),
               const SizedBox(width: 8),
@@ -59,37 +70,91 @@ class _PlayerPageState extends State<PlayerPage>
           body: SafeArea(
             child: song == null
                 ? const Center(child: Text('没有正在播放的歌曲'))
-                : Column(
-                    children: [
-                      TabBar(
-                        controller: _tab,
-                        tabs: const [
-                          Tab(text: '推荐'),
-                          Tab(text: '歌曲'),
-                          Tab(text: '歌词'),
-                        ],
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tab,
-                          children: [
-                            _RecommendTab(
-                              settings: widget.settings,
-                              controller: widget.controller,
-                            ),
-                            _QueueTab(
-                              settings: widget.settings,
-                              controller: widget.controller,
-                            ),
-                            _lyricsArea(context, song.id),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                : landscape
+                    ? _landscapeLayout(context, song)
+                    : _portraitLayout(song.id),
           ),
         );
       },
+    );
+  }
+
+  // ---- 竖屏：三 tab ----
+  Widget _portraitLayout(String songId) {
+    return Column(
+      children: [
+        TabBar(
+          controller: _tab,
+          tabs: const [
+            Tab(text: '推荐'),
+            Tab(text: '歌曲'),
+            Tab(text: '歌词'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tab,
+            children: [
+              _RecommendTab(
+                settings: widget.settings,
+                controller: widget.controller,
+              ),
+              _QueueTab(
+                settings: widget.settings,
+                controller: widget.controller,
+              ),
+              _lyricsArea(context, songId),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---- 横屏：全屏歌词 + 紧凑控制（车机模式） ----
+  Widget _landscapeLayout(BuildContext context, Song song) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          child: Row(
+            children: [
+              CoverImage(
+                client: widget.controller.client,
+                coverId: song.coverArt,
+                coverUrl: song.coverUrl,
+                size: 44,
+                radius: 8,
+                requestSize: 160,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text('${song.artist} · ${song.album}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              _RepeatButton(controller: widget.controller),
+            ],
+          ),
+        ),
+        Expanded(child: _lyricsArea(context, song.id)),
+        _SeekBar(player: widget.controller.player),
+        _Controls(controller: widget.controller, compact: true),
+        const SizedBox(height: 4),
+      ],
     );
   }
 
@@ -145,6 +210,7 @@ class _RecommendTab extends StatelessWidget {
             child: CoverImage(
               client: controller.client,
               coverId: song.coverArt,
+              coverUrl: song.coverUrl,
               size: MediaQuery.of(context).size.width - 120,
               radius: 24,
               requestSize: 800,
@@ -166,7 +232,7 @@ class _RecommendTab extends StatelessWidget {
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 8),
           _SeekBar(player: controller.player),
-          _Controls(controller: controller),
+          _Controls(controller: controller, compact: false),
           const SizedBox(height: 8),
         ],
       ),
@@ -199,6 +265,7 @@ class _QueueTab extends StatelessWidget {
           leading: CoverImage(
             client: controller.client,
             coverId: s.coverArt,
+            coverUrl: s.coverUrl,
             size: 44,
             radius: 8,
             requestSize: 120,
@@ -221,6 +288,36 @@ class _QueueTab extends StatelessWidget {
                   ? null
                   : Text(formatDuration(Duration(seconds: s.durationSec!)))),
           onTap: () => controller.playAt(i),
+        );
+      },
+    );
+  }
+}
+
+/// Playback mode toggle: 顺序 -> 随机 -> 单曲循环.
+class _RepeatButton extends StatelessWidget {
+  const _RepeatButton({required this.controller});
+
+  final PlayerController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final mode = controller.repeat;
+        final (icon, tooltip) = switch (mode) {
+          RepeatMode.sequential => (Icons.repeat_rounded, '顺序播放'),
+          RepeatMode.shuffle => (Icons.shuffle_rounded, '随机播放'),
+          RepeatMode.repeatOne => (Icons.repeat_one_rounded, '单曲循环'),
+        };
+        return IconButton(
+          tooltip: tooltip,
+          icon: Icon(icon),
+          color: mode == RepeatMode.sequential
+              ? null
+              : Theme.of(context).colorScheme.primary,
+          onPressed: controller.cycleRepeat,
         );
       },
     );
@@ -447,34 +544,42 @@ class _SeekBarState extends State<_SeekBar> {
 }
 
 class _Controls extends StatelessWidget {
-  const _Controls({required this.controller});
+  const _Controls({required this.controller, required this.compact});
 
   final PlayerController controller;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final gap = compact ? 12.0 : 20.0;
+    final playSize = compact ? 40.0 : 44.0;
+    final navSize = compact ? 30.0 : 32.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        _RepeatButton(controller: controller),
+        SizedBox(width: gap),
         IconButton.filledTonal(
-          iconSize: 32,
+          iconSize: navSize,
           icon: const Icon(Icons.skip_previous_rounded),
           onPressed: controller.previous,
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: gap),
         IconButton.filled(
-          iconSize: 44,
+          iconSize: playSize,
           icon: Icon(controller.playing
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded),
           onPressed: controller.togglePlay,
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: gap),
         IconButton.filledTonal(
-          iconSize: 32,
+          iconSize: navSize,
           icon: const Icon(Icons.skip_next_rounded),
           onPressed: controller.hasNext ? controller.next : null,
         ),
+        SizedBox(width: gap),
+        const SizedBox(width: 32), // keep layout balanced
       ],
     );
   }
