@@ -19,18 +19,72 @@ class Album {
     required this.name,
     required this.artist,
     this.coverArt,
+    this.songCount,
+    this.year,
+    this.starred = false,
   });
 
   final String id;
   final String name;
   final String artist;
   final String? coverArt;
+  final int? songCount;
+  final int? year;
+  final bool starred;
 
   factory Album.fromJson(Map<String, dynamic> j) => Album(
         id: j['id'].toString(),
         name: (j['name'] ?? j['title'] ?? '').toString(),
         artist: (j['artist'] ?? '').toString(),
         coverArt: j['coverArt']?.toString(),
+        songCount: (j['songCount'] as num?)?.toInt(),
+        year: (j['year'] as num?)?.toInt(),
+        starred: j['starred'] != null,
+      );
+}
+
+class Artist {
+  const Artist({
+    required this.id,
+    required this.name,
+    this.albumCount,
+    this.coverArt,
+  });
+
+  final String id;
+  final String name;
+  final int? albumCount;
+  final String? coverArt;
+
+  factory Artist.fromJson(Map<String, dynamic> j) => Artist(
+        id: j['id'].toString(),
+        name: (j['name'] ?? '').toString(),
+        albumCount: (j['albumCount'] as num?)?.toInt(),
+        coverArt: j['coverArt']?.toString(),
+      );
+}
+
+class Playlist {
+  const Playlist({
+    required this.id,
+    required this.name,
+    this.songCount,
+    this.coverArt,
+    this.comment,
+  });
+
+  final String id;
+  final String name;
+  final int? songCount;
+  final String? coverArt;
+  final String? comment;
+
+  factory Playlist.fromJson(Map<String, dynamic> j) => Playlist(
+        id: j['id'].toString(),
+        name: (j['name'] ?? '').toString(),
+        songCount: (j['songCount'] as num?)?.toInt(),
+        coverArt: j['coverArt']?.toString(),
+        comment: j['comment']?.toString(),
       );
 }
 
@@ -40,28 +94,41 @@ class Song {
     required this.title,
     required this.artist,
     required this.album,
+    this.albumId,
     this.durationSec,
     this.coverArt,
+    this.starred = false,
   });
 
   final String id;
   final String title;
   final String artist;
   final String album;
+  final String? albumId;
   final int? durationSec;
   final String? coverArt;
+  final bool starred;
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'].toString(),
         title: (j['title'] ?? '').toString(),
         artist: (j['artist'] ?? '').toString(),
         album: (j['album'] ?? '').toString(),
+        albumId: j['albumId']?.toString(),
         durationSec: (j['duration'] as num?)?.toInt(),
         coverArt: j['coverArt']?.toString(),
+        starred: j['starred'] != null,
       );
 }
 
-/// Minimal Subsonic / OpenSubsonic client (works with Navidrome).
+class SearchResults {
+  const SearchResults({this.songs = const [], this.albums = const [], this.artists = const []});
+  final List<Song> songs;
+  final List<Album> albums;
+  final List<Artist> artists;
+}
+
+/// Subsonic / OpenSubsonic client (works with Navidrome).
 class SubsonicClient {
   SubsonicClient({
     required String baseUrl,
@@ -114,9 +181,14 @@ class SubsonicClient {
 
   Future<void> ping() => _get('ping');
 
-  Future<List<Album>> newestAlbums({int size = 60, int offset = 0}) async {
+  // ---- 专辑列表 ----
+  Future<List<Album>> albumList({
+    String type = 'newest',
+    int size = 60,
+    int offset = 0,
+  }) async {
     final root = await _get('getAlbumList2', {
-      'type': 'newest',
+      'type': type,
       'size': '$size',
       'offset': '$offset',
     });
@@ -124,12 +196,100 @@ class SubsonicClient {
     return list.map((e) => Album.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<List<Album>> newestAlbums({int size = 30}) =>
+      albumList(type: 'newest', size: size);
+
+  Future<List<Album>> recentAlbums({int size = 30}) =>
+      albumList(type: 'recent', size: size);
+
+  Future<List<Album>> frequentAlbums({int size = 30}) =>
+      albumList(type: 'frequent', size: size);
+
+  Future<List<Album>> randomAlbums({int size = 30}) =>
+      albumList(type: 'random', size: size);
+
+  // ---- 歌手 ----
+  Future<List<Artist>> artists() async {
+    final root = await _get('getArtists');
+    final indexes = (root['artists']?['index'] as List?) ?? const [];
+    final out = <Artist>[];
+    for (final idx in indexes) {
+      final list = (idx['artist'] as List?) ?? const [];
+      for (final a in list) {
+        out.add(Artist.fromJson(a as Map<String, dynamic>));
+      }
+    }
+    return out;
+  }
+
+  Future<List<Album>> artistAlbums(String artistId) async {
+    final root = await _get('getArtist', {'id': artistId});
+    final list = (root['artist']?['album'] as List?) ?? const [];
+    return list.map((e) => Album.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---- 歌单 ----
+  Future<List<Playlist>> playlists() async {
+    final root = await _get('getPlaylists');
+    final list = (root['playlists']?['playlist'] as List?) ?? const [];
+    return list.map((e) => Playlist.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Song>> playlistSongs(String playlistId) async {
+    final root = await _get('getPlaylist', {'id': playlistId});
+    final list = (root['playlist']?['entry'] as List?) ?? const [];
+    return list.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---- 专辑歌曲 ----
   Future<List<Song>> albumSongs(String albumId) async {
     final root = await _get('getAlbum', {'id': albumId});
     final list = (root['album']?['song'] as List?) ?? const [];
     return list.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  // ---- 搜索 ----
+  Future<SearchResults> search(String query, {int count = 30}) async {
+    if (query.trim().isEmpty) return const SearchResults();
+    final root = await _get('search3', {
+      'query': query.trim(),
+      'songCount': '$count',
+      'albumCount': '$count',
+      'artistCount': '$count',
+    });
+    final sr = (root['searchResult3'] as Map<String, dynamic>?) ?? const {};
+    final songs = ((sr['song'] as List?) ?? const [])
+        .map((e) => Song.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final albums = ((sr['album'] as List?) ?? const [])
+        .map((e) => Album.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final artists = ((sr['artist'] as List?) ?? const [])
+        .map((e) => Artist.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return SearchResults(songs: songs, albums: albums, artists: artists);
+  }
+
+  // ---- 随机/收藏 ----
+  Future<List<Song>> randomSongs({int size = 50}) async {
+    final root = await _get('getRandomSongs', {'size': '$size'});
+    final list = (root['randomSongs']?['song'] as List?) ?? const [];
+    return list.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Song>> starredSongs() async {
+    final root = await _get('getStarred2');
+    final list = (root['starred2']?['song'] as List?) ?? const [];
+    return list.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Album>> starredAlbums() async {
+    final root = await _get('getStarred2');
+    final list = (root['starred2']?['album'] as List?) ?? const [];
+    return list.map((e) => Album.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---- 播放/封面/歌词 ----
   Uri streamUrl(String songId) => _uri('stream', {'id': songId});
 
   Uri? coverUrl(String? coverId, {int size = 600}) {

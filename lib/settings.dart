@@ -1,9 +1,12 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'subsonic.dart';
 
-/// App-wide persisted settings: login info and the lyric size scale.
+/// Theme mode persisted: 0 = system, 1 = light, 2 = dark.
+enum AppThemeMode { system, light, dark }
+
+/// App-wide persisted settings: login info, lyric size scale and theme mode.
 ///
 /// The password is never stored. On login we derive a Subsonic salt + token
 /// (md5(password + salt)) and keep only those.
@@ -17,6 +20,7 @@ class AppSettings extends ChangeNotifier {
   static const _kUser = 'username';
   static const _kSalt = 'salt';
   static const _kToken = 'token';
+  static const _kTheme = 'theme_mode';
 
   late final SharedPreferences _prefs;
 
@@ -25,8 +29,10 @@ class AppSettings extends ChangeNotifier {
   String salt = '';
   String token = '';
   double _lyricScale = 1.0;
+  AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
+  AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
 
@@ -44,6 +50,8 @@ class AppSettings extends ChangeNotifier {
     token = _prefs.getString(_kToken) ?? '';
     _lyricScale =
         (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
+    final themeIdx = _prefs.getInt(_kTheme) ?? 0;
+    _themeMode = AppThemeMode.values[themeIdx.clamp(0, 2).toInt()];
   }
 
   SubsonicClient buildClient() => SubsonicClient(
@@ -83,4 +91,11 @@ class AppSettings extends ChangeNotifier {
 
   void increaseLyric() => setLyricScale(_lyricScale + scaleStep);
   void decreaseLyric() => setLyricScale(_lyricScale - scaleStep);
+
+  Future<void> setThemeMode(AppThemeMode mode) async {
+    if (mode == _themeMode) return;
+    _themeMode = mode;
+    notifyListeners();
+    await _prefs.setInt(_kTheme, mode.index);
+  }
 }

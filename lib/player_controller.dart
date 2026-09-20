@@ -38,6 +38,12 @@ class PlayerController extends ChangeNotifier {
     await _load(startIndex);
   }
 
+  /// Play the queue item at [i] (same queue, new index).
+  Future<void> playAt(int i) async {
+    if (i < 0 || i >= queue.length) return;
+    await _load(i);
+  }
+
   Future<void> _load(int i) async {
     final song = queue[i];
     final token = ++_loadToken;
