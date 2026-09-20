@@ -43,8 +43,8 @@ jobs:
       - name: Patch AndroidManifest (network)
         run: |
           f=android/app/src/main/AndroidManifest.xml
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application android:usesCleartextTraffic="true"|' "$f"
-          grep -n "INTERNET\|usesCleartextTraffic" "$f"
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>\n    <application android:usesCleartextTraffic="true"|' "$f"
+          grep -n "INTERNET\|FOREGROUND_SERVICE" "$f"
 
       - name: Generate app icons
         run: |
