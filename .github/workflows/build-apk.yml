@@ -52,6 +52,12 @@ jobs:
           sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioServicePlugin" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n  </application>|' "$f"
           grep -n "AudioServicePlugin" "$f"
 
+      - name: Patch intent-filter (music player)
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          sed -i 's|<category android:name="android.intent.category.LAUNCHER" />|<category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n            <intent-filter>\n              <action android:name="android.intent.action.VIEW" />\n              <category android:name="android.intent.category.DEFAULT" />\n              <data android:mimeType="audio/*" />\n              <data android:mimeType="application/ogg" />\n              <data android:mimeType="application/x-ogg" />\n              <data android:mimeType="application/mp4" />\n              <data android:mimeType="application/x-mp3" />' "$f"
+          grep -n "audio" "$f"
+
       - name: Generate app icons
         run: |
           # Drop any adaptive-icon xml from the template so our PNGs are used.
