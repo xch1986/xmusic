@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -28,9 +28,17 @@ jobs:
         run: |
           f=android/app/src/main/AndroidManifest.xml
           sed -i 's|android:label="[^"]*"|android:label="音素"|' "$f"
+          # Newer Flutter templates use build.gradle.kts, older use build.gradle.
           g=android/app/build.gradle
-          sed -i 's|applicationId "[^"]*"|applicationId "com.xmusic.player"|' "$g"
-          grep -n "android:label\|applicationId" "$f" "$g"
+          if [ -f "$g" ]; then
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId "com.xmusic.player"|' "$g"
+          fi
+          g=android/app/build.gradle.kts
+          if [ -f "$g" ]; then
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId = "com.xmusic.player"|' "$g"
+          fi
+          grep -n "android:label" "$f"
+          grep -rn "applicationId" android/app/build.gradle* || true
 
       - name: Patch AndroidManifest (network)
         run: |
