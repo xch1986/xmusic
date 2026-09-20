@@ -35,6 +35,10 @@ class PlayerController extends ChangeNotifier {
       if (s == ProcessingState.completed) _onCompleted();
     });
     _playingSub = player.playingStream.listen((_) => notifyListeners());
+    _positionSub = player.positionStream.listen((pos) {
+      _lastPos = pos;
+      _lastPosTime = DateTime.now();
+    });
   }
 
   final SubsonicClient client;
@@ -53,6 +57,9 @@ class PlayerController extends ChangeNotifier {
   late final StreamSubscription<int?> _idxSub;
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
+  late final StreamSubscription<Duration> _positionSub;
+  Duration _lastPos = Duration.zero;
+  DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
   String? lastError;
 
@@ -288,17 +295,12 @@ class PlayerController extends ChangeNotifier {
     try { await _playAt(pi); } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
-  Future<void> togglePlay() async {
+  void togglePlay() {
     if (player.playing) {
-      await player.pause();
+      unawaited(player.pause());
     } else {
-      if (player.processingState == ProcessingState.idle) {
-        try { await _playAt(index, autoplay: true); } catch (_) {}
-      } else {
-        await player.play();
-      }
+      unawaited(player.play());
     }
-    notifyListeners();
   }
 
   bool get currentStarred => current?.starred ?? false;
