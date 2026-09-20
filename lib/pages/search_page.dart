@@ -116,6 +116,9 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> _playSongs(List<Song> songs, int index) async {
     await widget.controller.playQueue(songs, index);
+    if (widget.controller.lastError != null) {
+      _showSnack('播放失败: ${widget.controller.lastError}');
+    }
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PlayerPage(
@@ -385,9 +388,13 @@ class _SearchPageState extends State<SearchPage> {
           leading: CoverImage(client: _client, coverId: s.coverArt, coverUrl: s.coverUrl, size: 48, radius: 8, requestSize: 200),
           title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => _showSongMenu(context, s),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(icon: const Icon(Icons.playlist_add), tooltip: '加入列表', iconSize: 20, onPressed: () async { await widget.controller.enqueue(s); _showSnack('已加入播放列表'); }),
+              IconButton(icon: const Icon(Icons.download), tooltip: '下载到手机', iconSize: 20, onPressed: () async { _showSnack('正在下载…'); _showSnack(await widget.controller.downloadSongToLocal(s)); }),
+              IconButton(icon: const Icon(Icons.cloud_upload_outlined), tooltip: '上传到NAS', iconSize: 20, onPressed: () async { _showSnack('正在上传…'); _showSnack(await widget.controller.uploadSongToNas(s)); }),
+            ],
           ),
           onTap: () => _playExternal(songs, e.key),
         );

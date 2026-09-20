@@ -87,6 +87,19 @@ class _PlayerPageState extends State<PlayerPage> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        Center(
+          child: Container(
+            width: 150, height: 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0,8))],
+            ),
+            padding: const EdgeInsets.all(6),
+            child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 150, requestSize: 600)),
+          ),
+        ),
         Expanded(child: _lyricsArea(context, song.id)),
         _SeekBar(player: widget.controller.player),
         _Controls(
