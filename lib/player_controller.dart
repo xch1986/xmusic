@@ -74,6 +74,30 @@ class PlayerController extends ChangeNotifier {
         : LoopMode.off);
   }
 
+  Future<String> _mediaUrlForSong(Song s) async {
+    if (s.streamUrl != null) return s.streamUrl!;
+    if (s.fromExternal) {
+      return (await external.streamUrlFor(s.id)) ?? '';
+    }
+    return client.streamUrl(s.id).toString();
+  }
+
+  AudioSource _sourceFor(Song s, String url) {
+    final cover = s.coverUrl != null
+        ? Uri.tryParse(s.coverUrl!)
+        : client.coverUrl(s.coverArt, size: 500);
+    return AudioSource.uri(
+      Uri.parse(url),
+      tag: MediaItem(
+        id: s.id,
+        title: s.title,
+        album: s.album,
+        artist: s.artist,
+        artUri: cover,
+      ),
+    );
+  }
+
   Future<void> playQueue(List<Song> songs, int startIndex) async {
     queue = List.of(songs);
     index = startIndex;
@@ -81,20 +105,8 @@ class PlayerController extends ChangeNotifier {
 
     final children = <AudioSource>[];
     for (final s in songs) {
-      final url = s.streamUrl ?? client.streamUrl(s.id).toString();
-      final cover = s.coverUrl != null
-          ? Uri.tryParse(s.coverUrl!)
-          : client.coverUrl(s.coverArt, size: 500);
-      children.add(AudioSource.uri(
-        Uri.parse(url),
-        tag: MediaItem(
-          id: s.id,
-          title: s.title,
-          album: s.album,
-          artist: s.artist,
-          artUri: cover,
-        ),
-      ));
+      final url = await _mediaUrlForSong(s);
+      children.add(_sourceFor(s, url));
     }
     try {
       await player.setAudioSource(
@@ -109,6 +121,19 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
+  /// Append [s] to the end of the play queue (enqueue).
+  Future<void> enqueue(Song s) async {
+    try {
+      final url = await _mediaUrlForSong(s);
+      queue = List.of(queue)..add(s);
+      await (player.audioSource as ConcatenatingAudioSource)
+          .add(_sourceFor(s, url));
+      notifyListeners();
+    } catch (e) {
+      debugPrint('enqueue failed: $e');
+    }
+  }
+
   /// Play the queue item at [i] (same queue, new index).
   Future<void> playAt(int i) async {
     if (i < 0 || i >= queue.length) return;
@@ -116,12 +141,10 @@ class PlayerController extends ChangeNotifier {
   }
 
   void _onCompleted() {
-    // With LoopMode.one, just_audio repeats the current track itself.
     if (_repeat == PlayMode.repeatOne) return;
     if (_repeat == PlayMode.shuffle) {
       _playRandom();
     }
-    // sequential: just_audio stops at the end of the list (no-op needed).
   }
 
   void _playRandom() {
@@ -155,22 +178,9 @@ class PlayerController extends ChangeNotifier {
 
   // ---- 下载 ----
 
-  /// Resolve the direct media URL of [s] (external: already resolved in
-  /// song.streamUrl; local: via the Subsonic stream endpoint).
-  Future<String?> _mediaUrlFor(Song s) async {
-    if (s.streamUrl != null) return s.streamUrl;
-    if (s.fromExternal) {
-      return external.streamUrlFor(s.id);
-    }
-    return client.streamUrl(s.id).toString();
-  }
-
-  /// Download the current song to shared external storage (Downloads).
-  Future<String> downloadCurrentToLocal() async {
-    final s = current;
-    if (s == null) return '没有正在播放的歌曲';
-    final url = await _mediaUrlFor(s);
-    if (url == null) return '无法获取下载地址';
+  Future<String> downloadSongToLocal(Song s) async {
+    final url = await _mediaUrlForSong(s);
+    if (url.isEmpty) return '无法获取下载地址';
     final bytes = await http.get(Uri.parse(url));
     if (bytes.statusCode != 200) return '下载失败 HTTP ${bytes.statusCode}';
     final dir = await getExternalStorageDirectory() ??
@@ -181,16 +191,12 @@ class PlayerController extends ChangeNotifier {
     return '已保存到 ${file.path}';
   }
 
-  /// Upload the current song to the configured WebDAV (NAS) server.
-  Future<String> uploadCurrentToNas() async {
-    final s = current;
-    if (s == null) return '没有正在播放的歌曲';
+  Future<String> uploadSongToNas(Song s) async {
     if (!settings.webdavConfigured) return '未配置 NAS (WebDAV) 地址';
-    final url = await _mediaUrlFor(s);
-    if (url == null) return '无法获取下载地址';
+    final url = await _mediaUrlForSong(s);
+    if (url.isEmpty) return '无法获取下载地址';
     final media = await http.get(Uri.parse(url));
     if (media.statusCode != 200) return '获取歌曲失败 HTTP ${media.statusCode}';
-
     final base = settings.webdavUrl.replaceAll(RegExp(r'/+$'), '');
     final path = '$base/${_safeName("${s.artist} - ${s.title}")}.mp3';
     final auth = '${settings.webdavUser}:${settings.webdavPass}';
@@ -207,6 +213,18 @@ class PlayerController extends ChangeNotifier {
       return '已上传到 NAS: $path';
     }
     return 'NAS 上传失败 HTTP ${resp.statusCode}';
+  }
+
+  Future<String> downloadCurrentToLocal() async {
+    final s = current;
+    if (s == null) return '没有正在播放的歌曲';
+    return downloadSongToLocal(s);
+  }
+
+  Future<String> uploadCurrentToNas() async {
+    final s = current;
+    if (s == null) return '没有正在播放的歌曲';
+    return uploadSongToNas(s);
   }
 
   static String _safeName(String s) =>

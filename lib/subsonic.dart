@@ -300,6 +300,9 @@ class SubsonicClient {
   Future<void> starSong(String id) => _get('star', {'id': id});
   Future<void> unstarSong(String id) => _get('unstar', {'id': id});
 
+  Future<void> addToPlaylist(String playlistId, String songId) =>
+      _get('updatePlaylist', {'playlistId': playlistId, 'songIdToAdd': songId});
+
   // ---- 播放/封面/歌词 ----
   Uri streamUrl(String songId) => _uri('stream', {'id': songId});
 
