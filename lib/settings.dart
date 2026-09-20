@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'subsonic.dart';
@@ -25,6 +25,8 @@ class AppSettings extends ChangeNotifier {
   static const _kDavUrl = 'webdav_url';
   static const _kDavUser = 'webdav_user';
   static const _kDavPass = 'webdav_pass';
+  static const _kDavPath = 'webdav_path';
+  static const _kDavName = 'webdav_name';
 
   late final SharedPreferences _prefs;
 
@@ -36,6 +38,8 @@ class AppSettings extends ChangeNotifier {
   String webdavUrl = '';
   String webdavUser = '';
   String webdavPass = '';
+  String webdavPath = '';
+  String webdavName = '';
   double _lyricScale = 1.0;
   AppThemeMode _themeMode = AppThemeMode.system;
 
@@ -61,6 +65,8 @@ class AppSettings extends ChangeNotifier {
     webdavUrl = _prefs.getString(_kDavUrl) ?? '';
     webdavUser = _prefs.getString(_kDavUser) ?? '';
     webdavPass = _prefs.getString(_kDavPass) ?? '';
+    webdavPath = _prefs.getString(_kDavPath) ?? '';
+    webdavName = _prefs.getString(_kDavName) ?? '';
     _lyricScale =
         (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
     final themeIdx = _prefs.getInt(_kTheme) ?? 0;
@@ -128,5 +134,7 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setString(_kDavUrl, webdavUrl);
     await _prefs.setString(_kDavUser, webdavUser);
     await _prefs.setString(_kDavPass, webdavPass);
+    await _prefs.setString(_kDavPath, webdavPath);
+    await _prefs.setString(_kDavName, webdavName);
   }
 }
