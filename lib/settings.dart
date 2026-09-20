@@ -126,10 +126,12 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setString(_kExternal, v);
   }
 
-  Future<void> setWebdav(String url, String user, String pass) async {
+  Future<void> setWebdav(String url, String user, String pass, {String path = '', String name = ''}) async {
     webdavUrl = url.trim();
     webdavUser = user.trim();
     webdavPass = pass;
+    webdavPath = path.trim();
+    webdavName = name.trim();
     notifyListeners();
     await _prefs.setString(_kDavUrl, webdavUrl);
     await _prefs.setString(_kDavUser, webdavUser);
