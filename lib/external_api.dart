@@ -33,7 +33,7 @@ class ExternalApi {
       'source': _source,
       ...params,
     });
-    final res = await http.get(uri);
+    final res = await http.get(uri).timeout(const Duration(seconds: 10));
     if (res.statusCode != 200) {
       throw SubsonicException('HTTP ${res.statusCode}');
     }
@@ -84,13 +84,16 @@ class ExternalApi {
 
   /// Resolve the playable stream URL for an external track id.
   Future<String?> streamUrlFor(String trackId) async {
-    try {
-      final r = await _getJson('url', {'id': trackId, 'br': '$_bitrate'});
-      if (r is Map && r['url'] != null) {
-        final url = r['url'].toString();
-        return url.isEmpty ? null : url;
-      }
-    } catch (_) {}
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final r = await _getJson('url', {'id': trackId, 'br': '$_bitrate'});
+        if (r is Map && r['url'] != null) {
+          final url = r['url'].toString();
+          if (url.isNotEmpty) return url;
+        }
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 400));
+    }
     return null;
   }
 
