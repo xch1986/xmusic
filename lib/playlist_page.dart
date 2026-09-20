@@ -56,7 +56,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('加载失败：${snap.error}'),
+                  Text('加载失败：${snap.error}\n${snap.stackTrace ?? ''}'),
                   const SizedBox(height: 12),
                   FilledButton(
                     onPressed: () => setState(() =>
