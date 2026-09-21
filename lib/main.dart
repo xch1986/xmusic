@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 
+import 'audio_handler.dart';
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
 import 'player_controller.dart';
 import 'settings.dart';
 import 'subsonic.dart';
 
+/// 全局 audio handler（通知栏/车机/锁屏控制）。
+late MyAudioHandler audioHandler;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 初始化系统级音频服务（通知栏播放控制）。
+  try {
+    audioHandler = await AudioService.init(
+      builder: () => MyAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+        androidNotificationChannelName: '音乐播放',
+        androidNotificationOngoing: true,
+        androidStopForegroundOnPause: true,
+      ),
+    ).timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('AudioService init failed: $e, using plain player');
+    audioHandler = MyAudioHandler();
+  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -18,8 +38,7 @@ class MyApp extends StatelessWidget {
 
   final AppSettings settings;
 
-  // 清亮蓝色调，不发灰。
-  static const _seed = Color(0xFF5B8DEF);
+  static const _seed = Color(0xFF4A7CF7);
 
   @override
   Widget build(BuildContext context) {
@@ -35,13 +54,13 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xFFEAF0FA),
+            scaffoldBackgroundColor: const Color(0xB8EAF0FA),
             appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFFEAF0FA),
+                backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0xFFEAF0FA),
+                backgroundColor: Color(0xB8EAF0FA),
                 elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
@@ -49,27 +68,25 @@ class MyApp extends StatelessWidget {
               seedColor: _seed,
               brightness: Brightness.light,
               surface: const Color(0xFFEAF0FA),
-              surfaceContainerHighest: const Color(0xFFD5E0F5),
-              surfaceContainerLow: const Color(0xFFF0F4FC),
+              surfaceContainerHighest: const Color(0xFFD8E2F5),
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xFF141820),
+            scaffoldBackgroundColor: const Color(0xB8141820),
             appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFF141820),
+                backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0xFF141820),
+                backgroundColor: Color(0xB8141820),
                 elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.dark,
-              surface: const Color(0xFF1A1F2E),
-              surfaceContainerHighest: const Color(0xFF252C40),
-              surfaceContainerLow: const Color(0xFF1E2433),
+              surface: const Color(0xFF1E2433),
+              surfaceContainerHighest: const Color(0xFF2A3145),
             ),
           ),
           home: Root(settings: settings),
@@ -79,8 +96,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Switches between the login screen and the main shell depending on login
-/// state and owns the [PlayerController] for the logged-in session.
 class Root extends StatefulWidget {
   const Root({super.key, required this.settings});
 
