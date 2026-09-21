@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -118,7 +118,7 @@ class PlayerController extends ChangeNotifier {
   Future<String> _mediaUrlForSong(Song s) async {
     if (s.streamUrl != null) return s.streamUrl!;
     if (s.fromExternal) {
-      return (await external.streamUrlFor(s.id)) ?? '';
+      return (await external.streamUrlFor(s.id, source: s.externalSource ?? 'qq')) ?? '';
     }
     return client.streamUrl(s.id).toString();
   }
@@ -215,7 +215,7 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
     try {
       final result = s.fromExternal
-          ? await external.lyricFor(s.id)
+          ? await external.lyricFor(s.id, source: s.externalSource ?? 'qq')
           : await client.lyricsFor(s);
       if (token != _loadToken) return;
       lyrics = (result == null || result.lines.isEmpty) ? null : result;
