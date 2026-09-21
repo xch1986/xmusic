@@ -89,6 +89,28 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  Widget _colorBtn(BuildContext context, AppSettings settings, int color, String label) {
+    final selected = settings.bgColor == color;
+    return GestureDetector(
+      onTap: () => settings.setBgColor(color),
+      child: Container(
+        width: 48, height: 48,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: color == 0 ? null : Color(color),
+          border: Border.all(
+            color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,
+            width: selected ? 3 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: color == 0
+            ? const Center(child: Text('默', style: TextStyle(fontSize: 11)))
+            : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,6 +208,38 @@ class SettingsPage extends StatelessWidget {
                 label: '${(settings.glassOpacity * 100).round()}%',
                 onChanged: (v) => settings.setGlassOpacity(v),
               ),
+              // ---- 自定义背景色 ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Text('背景颜色',
+                    style: Theme.of(context).textTheme.titleSmall),
+              ),
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _colorBtn(context, settings, 0, '默认'),
+                    _colorBtn(context, settings, 0xFF1a1a2e, '深蓝'),
+                    _colorBtn(context, settings, 0xFF16213e, '藏青'),
+                    _colorBtn(context, settings, 0xFF0f3460, '海蓝'),
+                    _colorBtn(context, settings, 0xFF1a1a2e, '夜空'),
+                    _colorBtn(context, settings, 0xFF2d132c, '暗紫'),
+                    _colorBtn(context, settings, 0xFF3e1f3c, '深紫'),
+                    _colorBtn(context, settings, 0xFF1b1b2f, '深灰'),
+                    _colorBtn(context, settings, 0xFF252525, '炭黑'),
+                    _colorBtn(context, settings, 0xFF1e3a2f, '墨绿'),
+                    _colorBtn(context, settings, 0xFF0d2b1e, '深绿'),
+                    _colorBtn(context, settings, 0xFF3d2c29, '棕褐'),
+                    _colorBtn(context, settings, 0xFF2c2c54, '靛蓝'),
+                    _colorBtn(context, settings, 0xFF472f4f, '梅紫'),
+                    _colorBtn(context, settings, 0xFF1c1c2e, '灰蓝'),
+                    _colorBtn(context, settings, 0xFF2c3e50, '石板'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
               const Divider(),
 
               // ---- 账号 ----
@@ -314,6 +368,28 @@ class _ExternalApiFieldState extends State<_ExternalApiField> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Widget _colorBtn(BuildContext context, AppSettings settings, int color, String label) {
+    final selected = settings.bgColor == color;
+    return GestureDetector(
+      onTap: () => settings.setBgColor(color),
+      child: Container(
+        width: 48, height: 48,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: color == 0 ? null : Color(color),
+          border: Border.all(
+            color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,
+            width: selected ? 3 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: color == 0
+            ? const Center(child: Text('默', style: TextStyle(fontSize: 11)))
+            : null,
+      ),
+    );
   }
 
   @override
