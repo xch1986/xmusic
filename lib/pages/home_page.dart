@@ -19,7 +19,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Song>> _hot;
-  late Future<List<Song>> _newMusic;
+  late Future<List<Song>> _classic;
+  late Future<List<Song>> _pop;
+  late Future<List<Song>> _folk;
   late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
@@ -34,7 +36,11 @@ class _HomePageState extends State<HomePage> {
     final ext = widget.controller.external;
     _hot = ext.search('热歌榜 华语流行', source: 'netease', limit: 24)
         .timeout(const Duration(seconds: 30)).catchError((_) => <Song>[]);
-    _newMusic = ext.search('经典老歌 华语', source: 'netease', limit: 24)
+    _classic = ext.search('经典老歌 华语', source: 'netease', limit: 24)
+        .timeout(const Duration(seconds: 30)).catchError((_) => <Song>[]);
+    _pop = ext.search('欧美流行 热门', source: 'netease', limit: 24)
+        .timeout(const Duration(seconds: 30)).catchError((_) => <Song>[]);
+    _folk = ext.search('民谣 清新', source: 'netease', limit: 24)
         .timeout(const Duration(seconds: 30)).catchError((_) => <Song>[]);
     _localRec = _client.randomSongs(size: 20);
   }
@@ -68,7 +74,7 @@ class _HomePageState extends State<HomePage> {
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
         child: FutureBuilder(
-          future: Future.wait([_hot, _newMusic, _localRec]),
+          future: Future.wait([_hot, _classic, _pop, _folk, _localRec]),
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -79,7 +85,9 @@ class _HomePageState extends State<HomePage> {
               children: [
                 _section('网易云热歌', data[0] as List<Song>),
                 _section('经典华语', data[1] as List<Song>),
-                _section('本地推荐', data[2] as List<Song>),
+                _section('欧美流行', data[2] as List<Song>),
+                _section('清新民谣', data[3] as List<Song>),
+                _section('本地推荐', data[4] as List<Song>),
               ],
             );
           },
