@@ -38,7 +38,7 @@ class _PlayerPageState extends State<PlayerPage> {
             MediaQuery.of(context).orientation == Orientation.landscape;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: song == null
                 ? const Center(child: Text('没有正在播放的歌曲'))
@@ -54,12 +54,12 @@ class _PlayerPageState extends State<PlayerPage> {
   // ---- 竖屏：黑胶封面 -> 歌词(右侧按钮栏) -> 歌名歌手 -> 进度 -> 控制 ----
   Widget _portraitView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size.width * 0.55;
+    final size = MediaQuery.of(context).size.width * 0.42;
     return Column(
       children: [
         // 黑胶封面
         Expanded(
-          flex: 5,
+          flex: 3,
           child: Center(
             child: Container(
               width: size, height: size,
@@ -75,7 +75,7 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
         // 歌词区 + 右侧按钮栏（缩放/收藏/下载）
         Expanded(
-          flex: 4,
+          flex: 6,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -138,7 +138,7 @@ class _PlayerPageState extends State<PlayerPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 190, height: 190,
+                width: 140, height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: theme.colorScheme.surfaceContainerHighest,
