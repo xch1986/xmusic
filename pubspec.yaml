@@ -17,6 +17,8 @@ dependencies:
   shared_preferences: ^2.2.3
   scrollable_positioned_list: ^0.3.8
   permission_handler: ^11.3.0
+  cached_network_image: ^3.3.1
+  file_picker: ^8.0.0
 
 dev_dependencies:
   flutter_test:
