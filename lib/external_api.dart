@@ -25,7 +25,7 @@ class ExternalApi {
 
   bool get isConfigured => baseUrl.trim().isNotEmpty;
 
-  String _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  String get _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
 
   Future<dynamic> _getJson(String types, Map<String, String> params, {String? source}) async {
     final uri = Uri.parse('$_root/api.php').replace(queryParameters: {
