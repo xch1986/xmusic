@@ -96,6 +96,8 @@ class PlayerController extends ChangeNotifier {
       if (index >= queue.length) index = 0;
       notifyListeners();
       // 先停止AudioService自动恢复的播放，避免双播
+      audioHandler.allowPlay = false;
+      await audioHandler.stop();
       await player.stop();
       try {
         await player.processingStateStream.firstWhere(
