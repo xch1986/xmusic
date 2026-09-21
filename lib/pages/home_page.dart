@@ -9,7 +9,7 @@ import 'library_page.dart';
 import 'player_page.dart';
 import 'search_page.dart';
 
-/// Home page: daily mix cards, newest albums, recent albums.
+/// Home page: multi-source recommendations + newest albums.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.settings, required this.controller});
 
@@ -22,9 +22,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Album>> _newest;
-  late Future<List<Song>> _dailyMix;
-  late Future<List<Album>> _recent;
-  late Future<List<Album>> _frequent;
+  late Future<List<Song>> _qqRec;
+  late Future<List<Song>> _neteaseRec;
+  late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
 
@@ -36,14 +36,19 @@ class _HomePageState extends State<HomePage> {
 
   void _load() {
     _newest = _client.newestAlbums();
-    _recent = _client.recentAlbums(size: 20);
-    _frequent = _client.frequentAlbums(size: 20);
-    // 每日推荐：优先 QQ音乐外部搜索，30秒超时后回退本地随机。
     final ext = widget.controller.external;
-    _dailyMix = ext
-        .search('热门华语流行', limit: 24)
+    // QQ音乐推荐
+    _qqRec = ext
+        .search('热门华语流行', limit: 20, source: 'qq')
         .timeout(const Duration(seconds: 30))
-        .catchError((_) => _client.randomSongs(size: 20));
+        .catchError((_) => <Song>[]);
+    // 网易云推荐
+    _neteaseRec = ext
+        .search('热门华语流行', limit: 20, source: 'netease')
+        .timeout(const Duration(seconds: 30))
+        .catchError((_) => <Song>[]);
+    // 本地推荐
+    _localRec = _client.randomSongs(size: 20);
   }
 
   void _reload() => setState(_load);
@@ -92,7 +97,7 @@ class _HomePageState extends State<HomePage> {
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
         child: FutureBuilder(
-          future: Future.wait([_newest, _dailyMix, _recent, _frequent]),
+          future: Future.wait([_newest, _qqRec, _neteaseRec, _localRec]),
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -111,45 +116,41 @@ class _HomePageState extends State<HomePage> {
             }
             final data = snap.data as List;
             final newest = data[0] as List<Album>;
-            final daily = data[1] as List<Song>;
-            final recent = data[2] as List<Album>;
-            final frequent = data[3] as List<Album>;
+            final qq = data[1] as List<Song>;
+            final netease = data[2] as List<Song>;
+            final local = data[3] as List<Song>;
 
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                // ---- 每日推荐（横滑卡片）----
-                SectionHeader(
-                  title: '每日推荐',
-                  actionLabel: daily.isEmpty ? null : '播放全部',
-                  onAction: daily.isEmpty
-                      ? null
-                      : () => _playSongs(daily, 0),
-                ),
-                if (daily.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('暂无推荐歌曲'),
-                  )
-                else
-                  SizedBox(
-                    height: 190,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: daily.length > 12 ? 12 : daily.length,
-                      itemBuilder: (context, i) => Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: _SongCard(
-                          song: daily[i],
-                          client: _client,
-                          onTap: () => _playSongs(daily, i),
-                        ),
-                      ),
-                    ),
+                // QQ音乐推荐
+                if (qq.isNotEmpty) ...[
+                  SectionHeader(
+                    title: 'QQ音乐推荐',
+                    actionLabel: '播放全部',
+                    onAction: () => _playSongs(qq, 0),
                   ),
-
-                // ---- 最新专辑 ----
+                  _songRow(qq),
+                ],
+                // 网易云推荐
+                if (netease.isNotEmpty) ...[
+                  SectionHeader(
+                    title: '网易云推荐',
+                    actionLabel: '播放全部',
+                    onAction: () => _playSongs(netease, 0),
+                  ),
+                  _songRow(netease),
+                ],
+                // 本地推荐
+                if (local.isNotEmpty) ...[
+                  SectionHeader(
+                    title: '本地推荐',
+                    actionLabel: '播放全部',
+                    onAction: () => _playSongs(local, 0),
+                  ),
+                  _songRow(local),
+                ],
+                // 最新专辑
                 SectionHeader(
                   title: '最新专辑',
                   actionLabel: newest.isEmpty ? null : '更多',
@@ -164,29 +165,28 @@ class _HomePageState extends State<HomePage> {
                           )),
                 ),
                 _albumRow(newest),
-
-                // ---- 最近播放 ----
-                SectionHeader(
-                  title: '最近播放',
-                  actionLabel: recent.isEmpty ? null : '更多',
-                  onAction: recent.isEmpty
-                      ? null
-                      : () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => LibraryPage(
-                              settings: widget.settings,
-                              controller: widget.controller,
-                              initialTab: 0,
-                            ),
-                          )),
-                ),
-                _albumRow(recent),
-
-                // ---- 常听专辑 ----
-                SectionHeader(title: '常听专辑'),
-                _albumRow(frequent),
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _songRow(List<Song> songs) {
+    return SizedBox(
+      height: 190,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: songs.length > 12 ? 12 : songs.length,
+        itemBuilder: (context, i) => Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: _SongCard(
+            song: songs[i],
+            client: _client,
+            onTap: () => _playSongs(songs, i),
+          ),
         ),
       ),
     );
@@ -219,7 +219,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// 歌曲卡片：封面 + 歌名/歌手叠加，类似网易云每日推荐。
+/// 歌曲卡片：封面 + 歌名/歌手叠加。
 class _SongCard extends StatelessWidget {
   const _SongCard({
     required this.song,
