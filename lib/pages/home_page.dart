@@ -38,15 +38,11 @@ class _HomePageState extends State<HomePage> {
     _newest = _client.newestAlbums();
     _recent = _client.recentAlbums(size: 20);
     _frequent = _client.frequentAlbums(size: 20);
-    // 每日推荐：优先外部 API（网易云），失败回退本地随机。
+    // 每日推荐：优先 QQ音乐外部搜索，失败回退本地随机。
     final ext = widget.controller.external;
-    if (ext.isConfigured) {
-      _dailyMix = ext.search('华语流行', limit: 20).catchError((_) async {
-        return _client.randomSongs(size: 20);
-      });
-    } else {
-      _dailyMix = _client.randomSongs(size: 20);
-    }
+    _dailyMix = ext
+        .search('热门华语流行', limit: 24)
+        .catchError((_) => _client.randomSongs(size: 20));
   }
 
   void _reload() => setState(_load);
