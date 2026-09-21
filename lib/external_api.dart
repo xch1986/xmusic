@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
@@ -86,7 +86,7 @@ class ExternalApi {
   Future<String?> streamUrlFor(String trackId, {String source = 'qq'}) async {
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        final r = await _getJson('url', {'id': trackId, 'br': '$_bitrate'});
+        final r = await _getJson('url', source, {'id': trackId, 'br': '$_bitrate'});
         if (r is Map && r['url'] != null) {
           final url = r['url'].toString();
           if (url.isNotEmpty) return url;
