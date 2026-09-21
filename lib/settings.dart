@@ -3,7 +3,45 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'subsonic.dart';
 
-enum AppThemeMode { system, light, dark }
+enum AppThemeMode { system, light, dark 
+  SubsonicClient buildClient() {
+    return SubsonicClient(
+      baseUrl: serverUrl,
+      username: username,
+      salt: salt,
+      token: token,
+    );
+  }
+
+  Future<void> saveLogin({
+    required String url,
+    required String user,
+    required String salt,
+    required String token,
+  }) async {
+    serverUrl = url.trim();
+    username = user.trim();
+    this.salt = salt;
+    this.token = token;
+    notifyListeners();
+    await _prefs.setString(_kUrl, serverUrl);
+    await _prefs.setString(_kUser, username);
+    await _prefs.setString(_kSalt, salt);
+    await _prefs.setString(_kToken, token);
+  }
+
+  Future<void> clearLogin() async {
+    serverUrl = '';
+    username = '';
+    salt = '';
+    token = '';
+    notifyListeners();
+    await _prefs.remove(_kUrl);
+    await _prefs.remove(_kUser);
+    await _prefs.remove(_kSalt);
+    await _prefs.remove(_kToken);
+  }
+}
 
 class AppSettings extends ChangeNotifier {
   static const double minScale = 0.7;
