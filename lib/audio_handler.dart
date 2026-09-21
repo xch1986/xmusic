@@ -9,8 +9,10 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> Function()? onSkipNext;
   Future<void> Function()? onSkipPrevious;
 
+  /// 阻止系统自动恢复播放（双播根因：audio_service恢复session时会自动play）
+  bool allowPlay = false;
+
   MyAudioHandler() {
-    // 构造时立即停止任何自动恢复的播放，防止双播
     _player.stop();
     _player.playbackEventStream.map(_transformEvent).pipe(playbackState);
     _player.durationStream.listen((d) {
@@ -24,7 +26,10 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
   AudioPlayer get player => _player;
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    if (!allowPlay) return;
+    await _player.play();
+  }
 
   @override
   Future<void> pause() => _player.pause();
@@ -50,7 +55,6 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> onStart(mediaId) async {
-    // 从通知栏恢复时不要自动播放，等用户主动点
     await _player.stop();
   }
 

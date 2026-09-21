@@ -174,7 +174,10 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
     _applyLoopMode();
     _loadLyrics();
-    if (autoplay) await player.play();
+    if (autoplay) {
+      audioHandler.allowPlay = true;
+      await player.play();
+    }
   }
 
   void _checkStuck() {
@@ -332,6 +335,7 @@ class PlayerController extends ChangeNotifier {
     if (player.playing) {
       unawaited(player.pause());
     } else {
+      audioHandler.allowPlay = true;
       unawaited(player.play());
     }
   }
