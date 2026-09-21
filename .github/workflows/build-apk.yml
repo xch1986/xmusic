@@ -49,8 +49,11 @@ jobs:
       - name: Patch audio service
         run: |
           f=android/app/src/main/AndroidManifest.xml
-          sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n  </application>|' "$f"
-          grep -n "AudioServicePlugin" "$f"
+          # Change Activity to AudioServiceActivity
+          sed -i 's|android:name=".MainActivity"|android:name="com.ryanheise.audioservice.AudioServiceActivity"|' "$f"
+          # Add service and receiver before </application>
+          sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n    <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver" android:exported="true">\n      <intent-filter>\n        <action android:name="android.intent.action.MEDIA_BUTTON" />\n      </intent-filter>\n    </receiver>\n  </application>|' "$f"
+          grep -n "AudioService" "$f" || true
           python3 - <<'PYEOF'
           p="android/app/src/main/AndroidManifest.xml"
           s=open(p).read()
