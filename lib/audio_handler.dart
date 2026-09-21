@@ -10,6 +10,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> Function()? onSkipPrevious;
 
   MyAudioHandler() {
+    // 构造时立即停止任何自动恢复的播放，防止双播
+    _player.stop();
     _player.playbackEventStream.map(_transformEvent).pipe(playbackState);
     _player.durationStream.listen((d) {
       final mi = mediaItem.value;
