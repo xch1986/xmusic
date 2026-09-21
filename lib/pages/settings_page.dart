@@ -238,16 +238,25 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.volume_up_rounded, color: Colors.amber),
             title: const Text('当前行颜色'),
+            trailing: settings.lyricActive != 0
+                ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.lyricActive), borderRadius: BorderRadius.circular(4)))
+                : const Text('默认'),
             onTap: () => _showColorPicker(context, '当前行颜色', settings.lyricActive, (c) => settings.setLyricColors(active: c)),
           ),
           ListTile(
             leading: const Icon(Icons.check_circle_outline, color: Colors.green),
             title: const Text('已唱行颜色'),
+            trailing: settings.lyricPast != 0
+                ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.lyricPast), borderRadius: BorderRadius.circular(4)))
+                : const Text('默认'),
             onTap: () => _showColorPicker(context, '已唱行颜色', settings.lyricPast, (c) => settings.setLyricColors(past: c)),
           ),
           ListTile(
             leading: const Icon(Icons.radio_button_unchecked, color: Colors.grey),
             title: const Text('未唱行颜色'),
+            trailing: settings.lyricFuture != 0
+                ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.lyricFuture), borderRadius: BorderRadius.circular(4)))
+                : const Text('默认'),
             onTap: () => _showColorPicker(context, '未唱行颜色', settings.lyricFuture, (c) => settings.setLyricColors(future: c)),
           ),
           const Divider(),
