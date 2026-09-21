@@ -217,13 +217,9 @@ class PlayerController extends ChangeNotifier {
     lyricsLoading = true;
     notifyListeners();
     try {
-      var result = s.fromExternal
-          ? await external.lyricFor(s.id, source: s.externalSource ?? 'netease')
+      final result = s.fromExternal
+          ? await external.lyricFor(s.id, source: s.externalSource ?? 'qq')
           : await client.lyricsFor(s);
-      // 外部源没歌词时回退网易云
-      if (result == null && s.fromExternal) {
-        result = await external.lyricFor(s.id, source: 'netease');
-      }
       if (token != _loadToken) return;
       lyrics = (result == null || result.lines.isEmpty) ? null : result;
     } catch (e) {
@@ -232,6 +228,8 @@ class PlayerController extends ChangeNotifier {
     lyricsLoading = false;
     notifyListeners();
   }
+
+  void reloadLyrics() => _loadLyrics();
 
   // ---- 下载 ----
 
