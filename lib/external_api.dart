@@ -25,41 +25,29 @@ class ExternalApi {
 
   bool get isConfigured => baseUrl.trim().isNotEmpty;
 
-  String get _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  String _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
 
-  Future<dynamic> _getJson(String types, Map<String, String> params) async {
+  Future<dynamic> _getJson(String types, Map<String, String> params, {String? source}) async {
     final uri = Uri.parse('$_root/api.php').replace(queryParameters: {
       'types': types,
-      'source': _source,
+      'source': source ?? _source,
       ...params,
     });
-    final res = await http.get(uri).timeout(const Duration(seconds: 10));
+    final res = await http.get(uri).timeout(const Duration(seconds: 15));
     if (res.statusCode != 200) {
       throw SubsonicException('HTTP ${res.statusCode}');
     }
     return jsonDecode(utf8.decode(res.bodyBytes));
   }
 
-  Future<List<Song>> search(String keyword, {int limit = 20}) async {
+  Future<List<Song>> search(String keyword, {int limit = 20, String? source}) async {
     final raw = await _getJson('search', {
       'name': keyword,
       'count': '$limit',
       'pages': '1',
-    });
+    }, source: source);
     if (raw is! List) return const [];
     final items = raw.cast<Map<String, dynamic>>();
-
-    // Resolve cover URLs in parallel (each needs a /pic call).
-    final coverFutures = items.map((it) async {
-      final picId = it['pic_id']?.toString();
-      if (picId == null || picId.isEmpty) return null;
-      try {
-        final r = await _getJson('pic', {'id': picId, 'size': '500'});
-        if (r is Map && r['url'] != null) return r['url'].toString();
-      } catch (_) {}
-      return null;
-    });
-    final covers = await Future.wait(coverFutures);
 
     final out = <Song>[];
     for (var i = 0; i < items.length; i++) {
@@ -68,13 +56,21 @@ class ExternalApi {
       if (id == null || id.isEmpty) continue;
       final artists = (it['artist'] as List?) ?? const [];
       final artistName = artists.map((a) => a.toString()).join(' / ');
+      final picId = it['pic_id']?.toString();
+      String? coverUrl;
+      if (picId != null && picId.isNotEmpty) {
+        try {
+          final r = await _getJson('pic', {'id': picId, 'size': '500'}, source: source);
+          if (r is Map && r['url'] != null) coverUrl = r['url'].toString();
+        } catch (_) {}
+      }
       out.add(Song(
         id: id,
         title: (it['name'] ?? '').toString(),
         artist: artistName.isEmpty ? '未知歌手' : artistName,
         album: (it['album'] ?? '').toString(),
         coverArt: null,
-        coverUrl: covers[i],
+        coverUrl: coverUrl,
         durationSec: null,
         fromExternal: true,
       ));
