@@ -53,51 +53,108 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick) {
-    int r = currentColor != 0 ? (currentColor >> 16) & 0xFF : 255;
-    int g = currentColor != 0 ? (currentColor >> 8) & 0xFF : 255;
-    int b = currentColor != 0 ? currentColor & 0xFF : 255;
+    Color base = currentColor != 0 ? Color(currentColor) : Colors.white;
+    HSVColor hsv = HSVColor.fromColor(base);
+    final hexCtl = TextEditingController(text: currentColor != 0 ? '#${(currentColor & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}' : '');
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setD) => AlertDialog(
-          title: Text(title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity, height: 50,
-                decoration: BoxDecoration(
-                  color: Color.fromARGB(255, r, g, b),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+        builder: (ctx, setD) {
+          final c = hsv.toColor().withOpacity(1.0);
+          return AlertDialog(
+            title: Text(title),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 预览
+                  Container(
+                    width: double.infinity, height: 50,
+                    decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(8)),
+                  ),
+                  const SizedBox(height: 12),
+                  // 饱和度+亮度面板
+                  GestureDetector(
+                    onPanUpdate: (d) {
+                      final box = ctx.findRenderObject() as RenderBox?;
+                      // 用简单的Slider代替
+                    },
+                    child: Container(
+                      width: double.infinity, height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                          colors: [Colors.white, Colors.black],
+                        ),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          gradient: LinearGradient(
+                            colors: [
+                              HSVColor.fromAHSV(1, hsv.hue / 360.0, 0, 1).toColor(),
+                              HSVColor.fromAHSV(1, hsv.hue / 360.0, 1, 1).toColor(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // 饱和度
+                  Row(children: [
+                    const Text('饱和', style: TextStyle(fontSize: 12)),
+                    Expanded(child: Slider(value: hsv.saturation, min: 0, max: 1, onChanged: (v) => setD(() => hsv = HSVColor.fromAHSV(1, hsv.hue / 360.0, v, hsv.value)))),
+                  ]),
+                  // 亮度
+                  Row(children: [
+                    const Text('亮度', style: TextStyle(fontSize: 12)),
+                    Expanded(child: Slider(value: hsv.value, min: 0, max: 1, onChanged: (v) => setD(() => hsv = HSVColor.fromAHSV(1, hsv.hue / 360.0, hsv.saturation, v)))),
+                  ]),
+                  // 色相
+                  Row(children: [
+                    const Text('色相', style: TextStyle(fontSize: 12)),
+                    Expanded(child: Slider(
+                      value: hsv.hue, min: 0, max: 360, divisions: 360,
+                      activeColor: HSVColor.fromAHSV(1, hsv.hue / 360.0, 1, 1).toColor(),
+                      onChanged: (v) => setD(() => hsv = HSVColor.fromAHSV(1, v / 360.0, hsv.saturation, hsv.value)),
+                    )),
+                  ]),
+                  const SizedBox(height: 8),
+                  // 16进制输入
+                  TextField(
+                    controller: hexCtl,
+                    decoration: const InputDecoration(
+                      labelText: '16进制颜色', hintText: '#FF0000',
+                      isDense: true, prefixText: '#',
+                    ),
+                    onChanged: (v) {
+                      final hex = v.replaceAll('#', '').trim();
+                      if (hex.length == 6) {
+                        final val = int.tryParse(hex, radix: 16);
+                        if (val != null) setD(() => hsv = HSVColor.fromColor(Color(0xFF000000 | val)));
+                      }
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              _rgbSlider('R', r, (v) => setD(() => r = v)),
-              _rgbSlider('G', g, (v) => setD(() => g = v)),
-              _rgbSlider('B', b, (v) => setD(() => b = v)),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
-            FilledButton(
-              onPressed: () {
-                onPick((0xFF << 24) | (r << 16) | (g << 8) | b);
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('确定'),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+              FilledButton(
+                onPressed: () {
+                  final rgb = (hsv.toColor().value & 0xFFFFFF);
+                  onPick(0xFF000000 | rgb);
+                  Navigator.of(ctx).pop();
+                },
+                child: const Text('确定'),
+              ),
+            ],
+          );
+        },
       ),
     );
-  }
-
-  Widget _rgbSlider(String label, int value, ValueChanged<int> onChanged) {
-    return Row(children: [
-      SizedBox(width: 16, child: Text(label, style: const TextStyle(fontSize: 12))),
-      Expanded(child: Slider(value: value.toDouble(), min: 0, max: 255, divisions: 255, onChanged: (v) => onChanged(v.round()))),
-      SizedBox(width: 28, child: Text('$value', style: const TextStyle(fontSize: 11))),
-    ]);
   }
 
   @override
