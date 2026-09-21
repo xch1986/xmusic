@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -178,7 +178,6 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       ],
     );
-  }
   }
 
   Widget _lyricsArea(BuildContext context, String songId) {
