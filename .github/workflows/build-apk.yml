@@ -48,21 +48,45 @@ jobs:
 
       - name: Patch audio service
         run: |
-          f=android/app/src/main/AndroidManifest.xml
-          # Change Activity to AudioServiceActivity
-          sed -i 's|android:name=".MainActivity"|android:name="com.ryanheise.audioservice.AudioServiceActivity"|' "$f"
-          # Add service and receiver before </application>
-          sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n    <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver" android:exported="true">\n      <intent-filter>\n        <action android:name="android.intent.action.MEDIA_BUTTON" />\n      </intent-filter>\n    </receiver>\n  </application>|' "$f"
-          grep -n "AudioService" "$f" || true
           python3 - <<'PYEOF'
-          p="android/app/src/main/AndroidManifest.xml"
+          import re
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p).read()
+          print("=== BEFORE ===")
+          print(s)
+          # Replace any activity name with AudioServiceActivity
+          s = re.sub(r'android:name="\.\w*Activity"', 'android:name="com.ryanheise.audioservice.AudioServiceActivity"', s)
+          # Add service and receiver if not present
+          if 'AudioService' not in s:
+              svc = '''
+      <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">
+        <intent-filter>
+          <action android:name="android.media.browse.MediaBrowserService" />
+        </intent-filter>
+      </service>
+      <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver" android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.MEDIA_BUTTON" />
+        </intent-filter>
+      </receiver>
+  </application>'''
+              s = s.replace('</application>', svc)
+          open(p, 'w').write(s)
+          print("=== AFTER ===")
+          print(s)
+          PYEOF
+
+          # Patch audio/* intent filter
+          python3 -c "
+          p='android/app/src/main/AndroidManifest.xml'
           s=open(p).read()
           if 'audio/*' not in s:
               s=s.replace('<category android:name="android.intent.category.LAUNCHER" />',
-                  '<category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n            <intent-filter>\n              <action android:name="android.intent.action.VIEW" />\n              <category android:name="android.intent.category.DEFAULT" />\n              <data android:mimeType="audio/*" />',1)
+                  '<category android:name="android.intent.category.LAUNCHER" />\\n            </intent-filter>\\n            <intent-filter>\\n              <action android:name="android.intent.action.VIEW" />\\n              <category android:name="android.intent.category.DEFAULT" />\\n              <data android:mimeType="audio/*" />',1)
               open(p,'w').write(s)
           print('intent-filter patched')
-          PYEOF
+          "
+
 
 
       - name: Generate app icons
