@@ -37,26 +37,14 @@ class _PlayerPageState extends State<PlayerPage> {
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
 
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [const Color(0xFF2a2e3a), const Color(0xFF1a1d25)]
-                  : [const Color(0xFFcfe0ff), const Color(0xFFe8edff)],
-            ),
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: song == null
-                  ? const Center(child: Text('没有正在播放的歌曲'))
-                  : landscape
-                      ? _landscapeView(context, song)
-                      : _portraitView(context, song),
-            ),
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: song == null
+                ? const Center(child: Text('没有正在播放的歌曲'))
+                : landscape
+                    ? _landscapeView(context, song)
+                    : _portraitView(context, song),
           ),
         );
       },
