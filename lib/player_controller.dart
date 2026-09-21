@@ -100,7 +100,12 @@ class PlayerController extends ChangeNotifier {
       notifyListeners();
       // 先停止AudioService自动恢复的播放，避免双播
       await player.stop();
-      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        await player.processingStateStream.firstWhere(
+          (st) => st == ProcessingState.idle,
+        ).timeout(const Duration(milliseconds: 800));
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 300));
       try {
         await _loadAndPlay(index, autoplay: settings.autoPlay);
       } catch (_) {}
@@ -161,7 +166,12 @@ class PlayerController extends ChangeNotifier {
     if (url.isEmpty) throw '无法获取播放地址';
     _updateMediaItem(s);
     await player.stop();
-    await Future.delayed(const Duration(milliseconds: 100));
+    // 等待player真正停止再加载新URL，防止双播
+    try {
+      await player.processingStateStream.firstWhere(
+        (st) => st == ProcessingState.idle,
+      ).timeout(const Duration(milliseconds: 800));
+    } catch (_) {}
     await player.setUrl(url);
     index = i;
     notifyListeners();
@@ -345,6 +355,7 @@ class PlayerController extends ChangeNotifier {
       coverUrl: s.coverUrl,
       streamUrl: s.streamUrl,
       fromExternal: s.fromExternal,
+      externalSource: s.externalSource,
     );
     notifyListeners();
     if (s.fromExternal) return;
