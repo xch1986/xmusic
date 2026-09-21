@@ -2,24 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'player_controller.dart';
 import 'settings.dart';
 import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 初始化系统级 MediaSession：车机/蓝牙耳机/锁屏/通知栏才能识别本应用并支持方向盘按键。
-  // 包 try-catch + timeout：即使初始化失败也不阻塞 App 启动（避免白屏）。
-  try {
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-      androidNotificationChannelName: '音乐播放',
-      androidNotificationOngoing: true,
-    ).timeout(const Duration(seconds: 5));
-  } catch (e) {
-    debugPrint('JustAudioBackground init failed: $e');
-  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -48,13 +36,14 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xCCF0F4FF),
+            scaffoldBackgroundColor: const Color(0x99E8F0FF),
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
             navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: const Color(0x88FFFFFF),
+                backgroundColor: const Color(0x55FFFFFF),
                 elevation: 0,
-                indicatorColor: _seed.withOpacity(0.15)),
+                indicatorColor: _seed.withOpacity(0.12),
+                labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
@@ -62,13 +51,14 @@ class MyApp extends StatelessWidget {
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xCC141820),
+            scaffoldBackgroundColor: const Color(0x990F1218),
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
             navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: const Color(0x331A1F2E),
+                backgroundColor: const Color(0x221A1F2E),
                 elevation: 0,
-                indicatorColor: _seed.withOpacity(0.25)),
+                indicatorColor: _seed.withOpacity(0.2),
+                labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
