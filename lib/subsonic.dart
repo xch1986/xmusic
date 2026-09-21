@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
@@ -116,6 +116,8 @@ class Song {
   /// Direct stream URL (external songs). Takes priority over server stream.
   final String? streamUrl;
   final bool fromExternal;
+  /// Source for external songs: 'qq' or 'netease'. Null for local.
+  final String? externalSource;
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'].toString(),
