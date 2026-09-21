@@ -95,6 +95,7 @@ class PlayerController extends ChangeNotifier {
       notifyListeners();
       // 先停止AudioService自动恢复的播放，避免双播
       await player.stop();
+      await Future.delayed(const Duration(milliseconds: 200));
       try {
         await _loadAndPlay(index, autoplay: settings.autoPlay);
       } catch (_) {}
@@ -148,19 +149,26 @@ class PlayerController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  bool _loading = false;
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
     if (i < 0 || i >= queue.length) return;
-    final s = queue[i];
-    final url = await _mediaUrlForSong(s);
-    if (url.isEmpty) throw '无法获取播放地址';
-    _updateMediaItem(s);
-    await player.stop();
-    await player.setUrl(url);
-    index = i;
-    notifyListeners();
-    _applyLoopMode();
-    if (autoplay) await player.play();
-    _loadLyrics();
+    if (_loading) return;
+    _loading = true;
+    try {
+      final s = queue[i];
+      final url = await _mediaUrlForSong(s);
+      if (url.isEmpty) throw '无法获取播放地址';
+      _updateMediaItem(s);
+      await player.stop();
+      await player.setUrl(url);
+      index = i;
+      notifyListeners();
+      _applyLoopMode();
+      if (autoplay) await player.play();
+      _loadLyrics();
+    } finally {
+      _loading = false;
+    }
   }
 
   void _checkStuck() {
