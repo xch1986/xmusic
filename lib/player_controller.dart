@@ -72,7 +72,7 @@ class PlayerController extends ChangeNotifier {
         'queue': queue.map((s) => {
           'id': s.id, 'title': s.title, 'artist': s.artist, 'album': s.album,
           'coverArt': s.coverArt, 'coverUrl': s.coverUrl, 'streamUrl': s.streamUrl,
-          'fromExternal': s.fromExternal,
+          'fromExternal': s.fromExternal, 'externalSource': s.externalSource,
         }).toList(),
       }));
     } catch (_) {}
@@ -88,7 +88,7 @@ class PlayerController extends ChangeNotifier {
       queue = list.map((e) => Song(
         id: e['id'], title: e['title'], artist: e['artist'], album: e['album'],
         coverArt: e['coverArt'], coverUrl: e['coverUrl'], streamUrl: e['streamUrl'],
-        fromExternal: e['fromExternal'] ?? false,
+        fromExternal: e['fromExternal'] ?? false, externalSource: e['externalSource'],
       )).toList();
       index = (m['index'] as int?) ?? 0;
       if (index >= queue.length) index = 0;
@@ -152,7 +152,6 @@ class PlayerController extends ChangeNotifier {
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) throw '无法获取播放地址';
     _updateMediaItem(s);
-    await player.stop();
     await player.setUrl(url);
     index = i;
     notifyListeners();
