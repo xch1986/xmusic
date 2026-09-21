@@ -58,13 +58,13 @@ class SettingsPage extends StatelessWidget {
     final hexCtl = TextEditingController(text: currentColor != 0 ? '#${(currentColor & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0').toUpperCase()}' : '');
 
     final presets = [
-      const Color(0x99B8B0), const Color(0x8FA8B8), const Color(0x9DB0C4),
-      const Color(0xA8B89D), const Color(0xB8B89D), const Color(0xC4B89D),
-      const Color(0xC4A89D), const Color(0xB89D9D), const Color(0xC49DB0),
-      const Color(0xB09DB8), const Color(0x9DA8C4), const Color(0x9DC4B8),
-      const Color(0xD4D4D4), const Color(0x8C8C8C), const Color(0xB8B8B8),
-      const Color(0x7A8B9C), const Color(0x8B9C7A), const Color(0x9C8B7A),
-      const Color(0x7A7A8B), const Color(0x8B7A8B), const Color(0x6B6B6B),
+      const Color(0xFF99B8B0), const Color(0xFF8FA8B8), const Color(0xFF9DB0C4),
+      const Color(0xFFA8B89D), const Color(0xFFB8B89D), const Color(0xFFC4B89D),
+      const Color(0xFFC4A89D), const Color(0xFFB89D9D), const Color(0xFFC49DB0),
+      const Color(0xFFB09DB8), const Color(0xFF9DA8C4), const Color(0xFF9DC4B8),
+      const Color(0xFFD4D4D4), const Color(0xFF8C8C8C), const Color(0xFFB8B8B8),
+      const Color(0xFF7A8B9C), const Color(0xFF8B9C7A), const Color(0xFF9C8B7A),
+      const Color(0xFF7A7A8B), const Color(0xFF8B7A8B), const Color(0xFF6B6B6B),
     ];
 
     showDialog(
