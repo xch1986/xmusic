@@ -133,6 +133,12 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setInt(_kLyricFuture, _lyricFuture);
   }
 
+  Future<void> setAutoPlay(bool v) async {
+    _autoPlay = v;
+    notifyListeners();
+    await _prefs.setBool(_kAutoPlay, v);
+  }
+
   Future<void> setThemeMode(AppThemeMode mode) async {
     if (mode == _themeMode) return;
     _themeMode = mode;
