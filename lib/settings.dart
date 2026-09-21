@@ -28,6 +28,7 @@ class AppSettings extends ChangeNotifier {
   static const _kLyricPast = 'lyric_past';
   static const _kLyricFuture = 'lyric_future';
   static const _kAutoPlay = 'auto_play';
+  static const _kDownloadPath = 'download_path';
 
   late final SharedPreferences _prefs;
 
@@ -48,6 +49,7 @@ class AppSettings extends ChangeNotifier {
   int _lyricPast = 0;
   int _lyricFuture = 0;
   bool _autoPlay = true;
+  String downloadPath = '';
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
@@ -86,6 +88,7 @@ class AppSettings extends ChangeNotifier {
     _lyricPast = _prefs.getInt(_kLyricPast) ?? 0;
     _lyricFuture = _prefs.getInt(_kLyricFuture) ?? 0;
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
+    downloadPath = _prefs.getString(_kDownloadPath) ?? '';
   }
 
   SubsonicClient buildClient() {
