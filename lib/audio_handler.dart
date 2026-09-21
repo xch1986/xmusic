@@ -46,6 +46,12 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
     await super.stop();
   }
 
+  @override
+  Future<void> onStart(mediaId) async {
+    // 从通知栏恢复时不要自动播放，等用户主动点
+    await _player.stop();
+  }
+
   void setMediaItem(MediaItem item) {
     mediaItem.add(item);
   }
