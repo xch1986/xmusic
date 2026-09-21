@@ -26,7 +26,7 @@ Future<void> main() async {
         androidNotificationChannelId: 'com.xmusic.player.channel.audio',
         androidNotificationChannelName: '音乐播放',
         androidNotificationChannelDescription: '音素音乐播放器',
-        androidNotificationOngoing: true,
+        androidNotificationOngoing: false,
         androidStopForegroundOnPause: false,
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
