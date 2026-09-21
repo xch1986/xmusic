@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_version.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 
@@ -253,10 +254,10 @@ class SettingsPage extends StatelessWidget {
                         .titleSmall
                         ?.copyWith(color: Theme.of(context).colorScheme.primary)),
               ),
-              const ListTile(
-                leading: Icon(Icons.info_outline_rounded),
-                title: Text('xmusic'),
-                subtitle: Text('Navidrome / Subsonic 客户端 · v0.3.0'),
+              ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: const Text('音素 xmusic'),
+                subtitle: Text('Navidrome / Subsonic 客户端 · v$appVersion'),
               ),
             ],
           );
