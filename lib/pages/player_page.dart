@@ -50,11 +50,10 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // ---- 竖屏：收起按钮 -> 大黑胶 -> 歌名收藏 -> 当前歌词 -> 进度条 -> 控制 ----
-  // ---- 竖屏：黑胶封面 -> 歌词 -> 歌名歌手收藏 -> 进度 -> 控制 ----
+  // ---- 竖屏：黑胶封面 -> 歌词(右侧按钮栏) -> 歌名歌手 -> 进度 -> 控制 ----
   Widget _portraitView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size.width * 0.6;
+    final size = MediaQuery.of(context).size.width * 0.55;
     return Column(
       children: [
         // 黑胶封面
@@ -73,31 +72,29 @@ class _PlayerPageState extends State<PlayerPage> {
             ),
           ),
         ),
-        // 歌词
-        Expanded(flex: 4, child: _lyricsArea(context, song.id)),
-        // 歌名+歌手+收藏+字号+下载
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+        // 歌词区 + 右侧按钮栏（缩放/收藏/下载）
+        Expanded(
+          flex: 4,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-              LyricSizeControls(settings: widget.settings),
-              _FavoriteButton(controller: widget.controller),
-              IconButton(tooltip: '下载', icon: const Icon(Icons.download_rounded), onPressed: () => _downloadMenu(context)),
-                ],
-              ),
+              Expanded(child: _lyricsArea(context, song.id)),
+              _actionSidebar(context),
+            ],
+          ),
+        ),
+        // 歌名+歌手（放大居中）
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+          child: Column(
+            children: [
+              Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2)),
+              const SizedBox(height: 4),
+              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
             ],
           ),
         ),
@@ -108,7 +105,28 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // ---- 横屏：左封面+控制，右歌名+歌词 ----
+  // 右侧竖排按钮：歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
+  Widget _actionSidebar(BuildContext context) {
+    return Container(
+      width: 52,
+      margin: const EdgeInsets.only(right: 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          LyricSizeControls(settings: widget.settings),
+          const SizedBox(height: 2),
+          _FavoriteButton(controller: widget.controller),
+          IconButton(
+            tooltip: '下载',
+            icon: const Icon(Icons.download_rounded, size: 22),
+            onPressed: () => _downloadMenu(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- 横屏：左封面+控制，右歌名+歌词(右侧按钮栏) ----
   Widget _landscapeView(BuildContext context, Song song) {
     final theme = Theme.of(context);
     return Row(
@@ -121,8 +139,8 @@ class _PlayerPageState extends State<PlayerPage> {
             children: [
               const Spacer(),
               Container(
-                width: 200,
-                height: 200,
+                width: 220,
+                height: 220,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: theme.colorScheme.surfaceContainerHighest,
@@ -140,7 +158,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     client: widget.controller.client,
                     coverId: song.coverArt,
                     coverUrl: song.coverUrl,
-                    size: 200,
+                    size: 220,
                     requestSize: 500,
                   ),
                 ),
@@ -149,14 +167,14 @@ class _PlayerPageState extends State<PlayerPage> {
               _SeekBar(player: widget.controller.player),
               _Controls(
                 controller: widget.controller,
-                compact: true,
+                compact: false,
                 onShowQueue: () => _openQueue(context),
               ),
               const SizedBox(height: 8),
             ],
           ),
         ),
-        // Right: title + scrolling lyrics.
+        // Right: title + scrolling lyrics + action sidebar.
         Expanded(
           flex: 6,
           child: Column(
@@ -171,25 +189,24 @@ class _PlayerPageState extends State<PlayerPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w700)),
+                            ?.copyWith(fontWeight: FontWeight.w800, fontSize: 24)),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text('${song.artist} · ${song.album}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant)),
-                        ),
-                        _FavoriteButton(controller: widget.controller),
-                      ],
-                    ),
+                    Text('${song.artist} · ${song.album}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
                   ],
                 ),
               ),
               Expanded(
-                child: _lyricsArea(context, song.id),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _lyricsArea(context, song.id)),
+                    _actionSidebar(context),
+                  ],
+                ),
               ),
             ],
           ),
@@ -597,14 +614,21 @@ class _SeekBarState extends State<_SeekBar> {
 
             return Column(
               children: [
-                Slider(
-                  value: value.toDouble(),
-                  max: maxMs,
-                  onChanged: (v) => setState(() => _dragMs = v),
-                  onChangeEnd: (v) {
-                    widget.player.seek(Duration(milliseconds: v.round()));
-                    setState(() => _dragMs = null);
-                  },
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 5,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
+                  ),
+                  child: Slider(
+                    value: value.toDouble(),
+                    max: maxMs,
+                    onChanged: (v) => setState(() => _dragMs = v),
+                    onChangeEnd: (v) {
+                      widget.player.seek(Duration(milliseconds: v.round()));
+                      setState(() => _dragMs = null);
+                    },
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -612,8 +636,8 @@ class _SeekBarState extends State<_SeekBar> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(formatDuration(Duration(milliseconds: value.round())),
-                          style: style),
-                      Text(formatDuration(total), style: style),
+                          style: style?.copyWith(fontSize: 14)),
+                      Text(formatDuration(total), style: style?.copyWith(fontSize: 14)),
                     ],
                   ),
                 ),
@@ -639,9 +663,9 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = compact ? 12.0 : 20.0;
-    final playSize = compact ? 40.0 : 44.0;
-    final navSize = compact ? 30.0 : 32.0;
+    final gap = compact ? 16.0 : 24.0;
+    final playSize = compact ? 56.0 : 64.0;
+    final navSize = compact ? 42.0 : 48.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -670,6 +694,7 @@ class _Controls extends StatelessWidget {
         IconButton(
           tooltip: '播放列表',
           icon: const Icon(Icons.queue_music_rounded),
+          iconSize: navSize,
           onPressed: onShowQueue,
         ),
       ],
