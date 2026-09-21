@@ -663,22 +663,40 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = compact ? 16.0 : 24.0;
-    final playSize = compact ? 56.0 : 64.0;
-    final navSize = compact ? 42.0 : 48.0;
+    final gap = compact ? 16.0 : 12.0;
+    final playSize = compact ? 56.0 : 52.0;
+    final navSize = compact ? 42.0 : 36.0;
+    final sideIcon = compact ? 36.0 : 28.0;
+    final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _RepeatButton(controller: controller),
+        IconButton(
+          iconSize: sideIcon,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          tooltip: '播放模式',
+          icon: Icon(switch (controller.repeat) {
+            PlayMode.sequential => Icons.repeat_rounded,
+            PlayMode.shuffle => Icons.shuffle_rounded,
+            PlayMode.repeatOne => Icons.repeat_one_rounded,
+          }),
+          color: controller.repeat == PlayMode.sequential ? null : cs.primary,
+          onPressed: controller.cycleRepeat,
+        ),
         SizedBox(width: gap),
         IconButton.filledTonal(
           iconSize: navSize,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: const Icon(Icons.skip_previous_rounded),
           onPressed: controller.previous,
         ),
         SizedBox(width: gap),
         IconButton.filled(
           iconSize: playSize,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 60),
           icon: Icon(controller.playing
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded),
@@ -687,14 +705,18 @@ class _Controls extends StatelessWidget {
         SizedBox(width: gap),
         IconButton.filledTonal(
           iconSize: navSize,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: const Icon(Icons.skip_next_rounded),
           onPressed: controller.hasNext ? controller.next : null,
         ),
         SizedBox(width: gap),
         IconButton(
+          iconSize: sideIcon,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           tooltip: '播放列表',
           icon: const Icon(Icons.queue_music_rounded),
-          iconSize: navSize,
           onPressed: onShowQueue,
         ),
       ],
