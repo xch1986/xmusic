@@ -62,7 +62,7 @@ class _PlayerPageState extends State<PlayerPage> {
   // ---- 竖屏：黑胶封面 -> 歌词(右侧按钮栏) -> 歌名歌手 -> 进度 -> 控制 ----
   Widget _portraitView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size.width * 0.42;
+    final size = MediaQuery.of(context).size.width * 0.5;
     return Column(
       children: [
         // 黑胶封面
@@ -538,7 +538,7 @@ class _LyricsViewState extends State<LyricsView> {
               itemCount: lines.length,
               padding: EdgeInsets.symmetric(
                 horizontal: 24,
-                vertical: constraints.maxHeight * 0.4,
+                vertical: constraints.maxHeight * 0.15,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
@@ -548,7 +548,7 @@ class _LyricsViewState extends State<LyricsView> {
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20 * scale),
+                    padding: EdgeInsets.symmetric(vertical: 14 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
@@ -667,12 +667,10 @@ class _Controls extends StatelessWidget {
     final sideIcon = compact ? 40.0 : 36.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         IconButton(
           iconSize: sideIcon,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           tooltip: '播放模式',
           icon: Icon(switch (controller.repeat) {
             PlayMode.sequential => Icons.repeat_rounded,
@@ -682,37 +680,25 @@ class _Controls extends StatelessWidget {
           color: controller.repeat == PlayMode.sequential ? null : cs.primary,
           onPressed: controller.cycleRepeat,
         ),
-        SizedBox(width: gap),
         IconButton.filledTonal(
           iconSize: navSize,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: const Icon(Icons.skip_previous_rounded),
           onPressed: controller.previous,
         ),
-        SizedBox(width: gap),
         IconButton.filled(
           iconSize: playSize,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 60, minHeight: 60),
           icon: Icon(controller.playing
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded),
           onPressed: controller.togglePlay,
         ),
-        SizedBox(width: gap),
         IconButton.filledTonal(
           iconSize: navSize,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: const Icon(Icons.skip_next_rounded),
           onPressed: controller.hasNext ? controller.next : null,
         ),
-        SizedBox(width: gap),
         IconButton(
           iconSize: sideIcon,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           tooltip: '播放列表',
           icon: const Icon(Icons.queue_music_rounded),
           onPressed: onShowQueue,
