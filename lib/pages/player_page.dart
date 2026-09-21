@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -558,7 +558,7 @@ class _LyricsViewState extends State<LyricsView> {
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8 * scale),
+                    padding: EdgeInsets.symmetric(vertical: 14 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
@@ -636,8 +636,8 @@ class _SeekBarState extends State<_SeekBar> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(formatDuration(Duration(milliseconds: value.round())),
-                          style: style?.copyWith(fontSize: 14)),
-                      Text(formatDuration(total), style: style?.copyWith(fontSize: 14)),
+                          style: style?.copyWith(fontSize: 16)),
+                      Text(formatDuration(total), style: style?.copyWith(fontSize: 16)),
                     ],
                   ),
                 ),
@@ -664,9 +664,9 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final gap = compact ? 16.0 : 12.0;
-    final playSize = compact ? 56.0 : 52.0;
-    final navSize = compact ? 42.0 : 36.0;
-    final sideIcon = compact ? 36.0 : 28.0;
+    final playSize = compact ? 64.0 : 64.0;
+    final navSize = compact ? 48.0 : 48.0;
+    final sideIcon = compact ? 40.0 : 36.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -723,3 +723,4 @@ class _Controls extends StatelessWidget {
     );
   }
 }
+
