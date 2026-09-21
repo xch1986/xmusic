@@ -52,10 +52,10 @@ class MyApp extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         final a = (settings.glassOpacity * 255).round();
-        // 自定义背景色优先，否则用默认半透明色
+        // 自定义背景色优先，否则完全透明（通透设置只控制UI元素透明度）
         final custom = settings.bgColor;
-        final lightBg = custom != 0 ? Color(custom) : Color(a << 24 | 0xF5F8FF);
-        final darkBg = custom != 0 ? Color(custom) : Color(a << 24 | 0x2E3440);
+        final lightBg = custom != 0 ? Color(custom) : Colors.transparent;
+        final darkBg = custom != 0 ? Color(custom) : Colors.transparent;
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -71,15 +71,15 @@ class MyApp extends StatelessWidget {
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: lightBg,
+                backgroundColor: Color(a << 24 | 0xFFFFFF),
                 elevation: 0,
                 labelTextStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.light,
-              surface: const Color(0xFFF5F8FF),
-              surfaceContainerHighest: const Color(0xFFE0E8F5),
+              surface: const Color(0xFFFFFFFF),
+              surfaceContainerHighest: const Color(0xFFF0F0F0),
             ),
           ),
           darkTheme: ThemeData(
@@ -89,15 +89,15 @@ class MyApp extends StatelessWidget {
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: darkBg,
+                backgroundColor: Color(a << 24 | 0x1E1E1E),
                 elevation: 0,
                 labelTextStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.dark,
-              surface: const Color(0xFF2E3440),
-              surfaceContainerHighest: const Color(0xFF3B4252),
+              surface: const Color(0xFF1A1A1A),
+              surfaceContainerHighest: const Color(0xFF2A2A2A),
             ),
           ),
           home: Root(settings: settings),
