@@ -158,6 +158,34 @@ class SettingsPage extends StatelessWidget {
                   ],
                 ),
               ),
+              // ---- 玻璃通透度 ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.blur_on_rounded, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('玻璃通透度'),
+                          Text('值越小越通透（当前 ${(settings.glassOpacity * 100).round()}% 不透明）',
+                              style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Slider(
+                value: settings.glassOpacity,
+                min: 0.1,
+                max: 1.0,
+                divisions: 9,
+                label: '${(settings.glassOpacity * 100).round()}%',
+                onChanged: (v) => settings.setGlassOpacity(v),
+              ),
               const Divider(),
 
               // ---- 账号 ----
