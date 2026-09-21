@@ -13,17 +13,22 @@ late MyAudioHandler audioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 初始化系统级音频服务（通知栏播放控制）。
-  audioHandler = await AudioService.init(
-    builder: () => MyAudioHandler(),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-      androidNotificationChannelName: '音乐播放',
-      androidNotificationChannelDescription: '音素音乐播放器',
-      androidNotificationOngoing: true,
-      androidStopForegroundOnPause: true,
-    ),
-  );
+  // 初始化系统级音频服务。包 try-catch+timeout：失败不阻塞启动（避免白屏）。
+  try {
+    audioHandler = await AudioService.init(
+      builder: () => MyAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+        androidNotificationChannelName: '音乐播放',
+        androidNotificationChannelDescription: '音素音乐播放器',
+        androidNotificationOngoing: true,
+        androidStopForegroundOnPause: true,
+      ),
+    ).timeout(const Duration(seconds: 3));
+  } catch (e) {
+    debugPrint('AudioService init failed: $e');
+    audioHandler = MyAudioHandler();
+  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
