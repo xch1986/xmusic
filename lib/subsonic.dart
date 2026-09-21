@@ -101,6 +101,7 @@ class Song {
     this.coverUrl,
     this.streamUrl,
     this.fromExternal = false,
+    this.externalSource,
   });
 
   final String id;
@@ -116,6 +117,7 @@ class Song {
   /// Direct stream URL (external songs). Takes priority over server stream.
   final String? streamUrl;
   final bool fromExternal;
+  final String? externalSource;
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'].toString(),
