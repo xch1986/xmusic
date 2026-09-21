@@ -10,11 +10,16 @@ import 'subsonic.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 初始化系统级 MediaSession：车机/蓝牙耳机/锁屏/通知栏才能识别本应用并支持方向盘按键。
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-    androidNotificationChannelName: '音乐播放',
-    androidNotificationOngoing: true,
-  );
+  // 包 try-catch + timeout：即使初始化失败也不阻塞 App 启动（避免白屏）。
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+      androidNotificationChannelName: '音乐播放',
+      androidNotificationOngoing: true,
+    ).timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('JustAudioBackground init failed: $e');
+  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
