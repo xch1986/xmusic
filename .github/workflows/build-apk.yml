@@ -89,6 +89,11 @@ jobs:
           print('icons generated')
           EOF
 
+      - name: Sync version string
+        run: |
+          echo "const String appVersion = '0.2.${{ github.run_number }}';" > lib/app_version.dart
+          cat lib/app_version.dart
+
       - run: flutter pub get
       - name: Disable release lint fatal
         run: |
