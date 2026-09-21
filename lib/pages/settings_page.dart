@@ -149,7 +149,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.dns_rounded),
             title: const Text('Navidrome 服务器'),
-            subtitle: settings.hasLogin ? '${settings.username}@${settings.serverUrl}' : '未登录',
+            subtitle: Text(settings.hasLogin ? '${settings.username}@${settings.serverUrl}' : '未登录'),
             trailing: settings.hasLogin
                 ? TextButton(onPressed: () => settings.clearLogin(), child: const Text('退出'))
                 : const Icon(Icons.chevron_right),
@@ -198,7 +198,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.cloud_download_outlined),
             title: const Text('WebDAV (NAS)'),
-            subtitle: settings.webdavConfigured ? settings.webdavUrl : '未配置',
+            subtitle: Text(settings.webdavConfigured ? settings.webdavUrl : '未配置'),
             onTap: () => _showWebdavDialog(context),
           ),
           const Divider(),
