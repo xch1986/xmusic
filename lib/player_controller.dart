@@ -31,14 +31,12 @@ class PlayerController extends ChangeNotifier {
       _lastPosTime = DateTime.now();
     });
     _stuckTimer = Timer.periodic(const Duration(seconds: 3), (_) => _checkStuck());
-    // 通知栏/车机的 next/prev 按键回调。
-    audioHandler.onSkipNext = next;
-    audioHandler.onSkipPrevious = previous;
   }
 
   final SubsonicClient client;
   final AppSettings settings;
-  AudioPlayer get player => audioHandler.player;
+  final AudioPlayer _player = AudioPlayer();
+  AudioPlayer get player => _player;
 
   ExternalApi get external => ExternalApi(settings.externalApiUrl);
 
