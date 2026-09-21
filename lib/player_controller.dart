@@ -93,6 +93,10 @@ class PlayerController extends ChangeNotifier {
       index = (m['index'] as int?) ?? 0;
       if (index >= queue.length) index = 0;
       notifyListeners();
+      // 加载当前歌曲到player（不自动播放），这样点播放就能直接播
+      try {
+        await _loadAndPlay(index, autoplay: false);
+      } catch (_) {}
     } catch (_) {}
   }
 
