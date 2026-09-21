@@ -1,3 +1,5 @@
+# 本项目立项源于音流不可调节歌词大小和背景不能跟随系统变化，对于车机使用大大不便，于是就萌生了写一个音乐播放器，用于车机播放的想法。
+
 # My Player
 
 A small Flutter client for Navidrome (or any Subsonic / OpenSubsonic server).
