@@ -2,23 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'player_controller.dart';
 import 'settings.dart';
 import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 通知栏/锁屏播放控制。包 try-catch：失败不阻塞启动。
-  try {
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-      androidNotificationChannelName: '音乐播放',
-      androidNotificationOngoing: true,
-    ).timeout(const Duration(seconds: 3));
-  } catch (e) {
-    debugPrint('JustAudioBackground init failed: $e');
-  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -29,8 +18,8 @@ class MyApp extends StatelessWidget {
 
   final AppSettings settings;
 
-  // 冷蓝色调，去掉灰色感。
-  static const _seed = Color(0xFF4A7CF7);
+  // 清亮蓝色调，不发灰。
+  static const _seed = Color(0xFF5B8DEF);
 
   @override
   Widget build(BuildContext context) {
@@ -46,31 +35,32 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x88E3ECFF),
+            scaffoldBackgroundColor: const Color(0xFFEAF0FA),
             appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
+                backgroundColor: Color(0xFFEAF0FA),
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0x88E3ECFF),
+                backgroundColor: Color(0xFFEAF0FA),
                 elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.light,
-              surface: const Color(0xFFE3ECFF),
-              surfaceContainerHighest: const Color(0xFFD0DCFF),
+              surface: const Color(0xFFEAF0FA),
+              surfaceContainerHighest: const Color(0xFFD5E0F5),
+              surfaceContainerLow: const Color(0xFFF0F4FC),
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x880E1118),
+            scaffoldBackgroundColor: const Color(0xFF141820),
             appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
+                backgroundColor: Color(0xFF141820),
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0x880E1118),
+                backgroundColor: Color(0xFF141820),
                 elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
@@ -78,7 +68,8 @@ class MyApp extends StatelessWidget {
               seedColor: _seed,
               brightness: Brightness.dark,
               surface: const Color(0xFF1A1F2E),
-              surfaceContainerHighest: const Color(0xFF252B3D),
+              surfaceContainerHighest: const Color(0xFF252C40),
+              surfaceContainerLow: const Color(0xFF1E2433),
             ),
           ),
           home: Root(settings: settings),
