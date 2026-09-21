@@ -250,8 +250,15 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: const Text('本地下载路径'),
-            subtitle: const Text('/storage/emulated/0/Music'),
-            onTap: () {},
+            subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music' : settings.downloadPath),
+            onTap: () async {
+              final ctl = TextEditingController(text: settings.downloadPath.isEmpty ? '/storage/emulated/0/Music' : settings.downloadPath);
+              await showDialog(context: context, builder: (ctx) => AlertDialog(
+                title: const Text('本地下载路径'),
+                content: TextField(controller: ctl, decoration: const InputDecoration(hintText: '/storage/emulated/0/Music')),
+                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () { settings.downloadPath = ctl.text.trim(); Navigator.pop(ctx); setState(() {}); }, child: const Text('保存'))],
+              ));
+            },
           ),
           ListTile(
             leading: const Icon(Icons.cloud_download_outlined),
