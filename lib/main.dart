@@ -14,20 +14,16 @@ late MyAudioHandler audioHandler;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 初始化系统级音频服务（通知栏播放控制）。
-  try {
-    audioHandler = await AudioService.init(
-      builder: () => MyAudioHandler(),
-      config: const AudioServiceConfig(
-        androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-        androidNotificationChannelName: '音乐播放',
-        androidNotificationOngoing: true,
-        androidStopForegroundOnPause: true,
-      ),
-    ).timeout(const Duration(seconds: 5));
-  } catch (e) {
-    debugPrint('AudioService init failed: $e, using plain player');
-    audioHandler = MyAudioHandler();
-  }
+  audioHandler = await AudioService.init(
+    builder: () => MyAudioHandler(),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+      androidNotificationChannelName: '音乐播放',
+      androidNotificationChannelDescription: '音素音乐播放器',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+    ),
+  );
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -54,13 +50,13 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xB8EAF0FA),
+            scaffoldBackgroundColor: const Color(0x80EAF0FA),
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0xB8EAF0FA),
+                backgroundColor: Color(0x80EAF0FA),
                 elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
@@ -72,13 +68,13 @@ class MyApp extends StatelessWidget {
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xB8141820),
+            scaffoldBackgroundColor: const Color(0x80141820),
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0xB8141820),
+                backgroundColor: Color(0x80141820),
                 elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
