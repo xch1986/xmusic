@@ -48,28 +48,23 @@ jobs:
 
       - name: Patch audio service
         run: |
-          # Overwrite MainActivity to extend AudioServiceActivity (robust approach)
-          MA=$(find android/app/src/main/kotlin -name "MainActivity.kt" | head -1)
-          echo "MainActivity at: $MA"
-          PK=$(echo "$MA" | sed 's|android/app/src/main/kotlin/||; s|/MainActivity.kt||; s|/|.|g')
-          echo "Package: $PK"
-          cat > "$MA" <<KTEOF
-package $PK
-
-import com.ryanheise.audioservice.AudioServiceActivity
-
-class MainActivity : AudioServiceActivity()
-KTEOF
-          cat "$MA"
-
-          # Patch manifest: add tools namespace, service, receiver
           python3 <<'PYEOF'
+          import glob
+          matches = glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True)
+          ma = matches[0] if matches else None
+          if ma:
+              pk = ma.replace("android/app/src/main/kotlin/", "").replace("/MainActivity.kt", "").replace("/", ".")
+              with open(ma, "w") as f:
+                  f.write("package " + pk + "\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n")
+              print("Wrote " + ma)
+              print(open(ma).read())
+          else:
+              print("WARNING: MainActivity.kt not found!")
+              print(glob.glob("android/app/src/main/**/*.kt", recursive=True))
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p).read()
-          # Add tools namespace if not present
           if 'xmlns:tools' not in s:
               s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
-          # Add service and receiver if not present
           if 'AudioService' not in s:
               svc = "\n      <service android:name=\"com.ryanheise.audioservice.AudioService\" android:foregroundServiceType=\"mediaPlayback\" android:exported=\"true\" tools:ignore=\"Instantiatable\">\n        <intent-filter>\n          <action android:name=\"android.media.browse.MediaBrowserService\" />\n        </intent-filter>\n      </service>\n      <receiver android:name=\"com.ryanheise.audioservice.MediaButtonReceiver\" android:exported=\"true\" tools:ignore=\"Instantiatable\">\n        <intent-filter>\n          <action android:name=\"android.intent.action.MEDIA_BUTTON\" />\n        </intent-filter>\n      </receiver>\n  </application>"
               s = s.replace("</application>", svc)
