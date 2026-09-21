@@ -126,93 +126,59 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // ---- 横屏：左封面+控制，右歌名+歌词(右侧按钮栏) ----
+  // ---- 横屏：左封面+歌名+控制，右歌词(右侧按钮栏) ----
   Widget _landscapeView(BuildContext context, Song song) {
     final theme = Theme.of(context);
     return Row(
       children: [
-        // Left: cover + controls.
         Expanded(
           flex: 5,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(),
               Container(
-                width: 220,
-                height: 220,
+                width: 190, height: 190,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: theme.colorScheme.surfaceContainerHighest,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.shadow.withOpacity(0.3),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
                 ),
                 padding: const EdgeInsets.all(8),
-                child: ClipOval(
-                  child: CoverImage(
-                    client: widget.controller.client,
-                    coverId: song.coverArt,
-                    coverUrl: song.coverUrl,
-                    size: 220,
-                    requestSize: 500,
-                  ),
+                child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 190, requestSize: 500)),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 22)),
+                    const SizedBox(height: 4),
+                    Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15)),
+                  ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 12),
               _SeekBar(player: widget.controller.player),
-              _Controls(
-                controller: widget.controller,
-                compact: false,
-                onShowQueue: () => _openQueue(context),
-              ),
+              _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
               const SizedBox(height: 8),
             ],
           ),
         ),
-        // Right: title + scrolling lyrics + action sidebar.
         Expanded(
           flex: 6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(song.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800, fontSize: 24)),
-                    const SizedBox(height: 4),
-                    Text('${song.artist} · ${song.album}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: _lyricsArea(context, song.id)),
-                    _actionSidebar(context),
-                  ],
-                ),
-              ),
+              Expanded(child: _lyricsArea(context, song.id)),
+              _actionSidebar(context),
             ],
           ),
         ),
       ],
     );
+  }
   }
 
   Widget _lyricsArea(BuildContext context, String songId) {
@@ -558,7 +524,7 @@ class _LyricsViewState extends State<LyricsView> {
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 14 * scale),
+                    padding: EdgeInsets.symmetric(vertical: 20 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
@@ -663,7 +629,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = compact ? 16.0 : 12.0;
+    final gap = compact ? 24.0 : 24.0;
     final playSize = compact ? 64.0 : 64.0;
     final navSize = compact ? 48.0 : 48.0;
     final sideIcon = compact ? 40.0 : 36.0;
@@ -723,4 +689,3 @@ class _Controls extends StatelessWidget {
     );
   }
 }
-
