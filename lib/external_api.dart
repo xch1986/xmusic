@@ -25,7 +25,7 @@ class ExternalApi {
     return jsonDecode(utf8.decode(res.bodyBytes));
   }
 
-  Future<List<Song>> search(String keyword, {String source = 'qq', int limit = 20}) async {
+  Future<List<Song>> search(String keyword, {String source = 'netease', int limit = 20}) async {
     final raw = await _getJson('search', source, {
       'name': keyword, 'count': '$limit', 'pages': '1',
     });
@@ -68,7 +68,7 @@ class ExternalApi {
     return out;
   }
 
-  Future<String?> streamUrlFor(String trackId, {String source = 'qq'}) async {
+  Future<String?> streamUrlFor(String trackId, {String source = 'netease'}) async {
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         final r = await _getJson('url', source, {'id': trackId, 'br': '$_bitrate'});
@@ -82,7 +82,7 @@ class ExternalApi {
     return null;
   }
 
-  Future<Lyrics?> lyricFor(String trackId, {String source = 'qq'}) async {
+  Future<Lyrics?> lyricFor(String trackId, {String source = 'netease'}) async {
     try {
       final r = await _getJson('lyric', source, {'id': trackId});
       if (r is Map && r['lyric'] != null) {
