@@ -3,13 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'subsonic.dart';
 
-/// Theme mode persisted: 0 = system, 1 = light, 2 = dark.
 enum AppThemeMode { system, light, dark }
 
-/// App-wide persisted settings: login info, lyric size scale and theme mode.
-///
-/// The password is never stored. On login we derive a Subsonic salt + token
-/// (md5(password + salt)) and keep only those.
 class AppSettings extends ChangeNotifier {
   static const double minScale = 0.7;
   static const double maxScale = 2.0;
@@ -28,6 +23,11 @@ class AppSettings extends ChangeNotifier {
   static const _kDavPass = 'webdav_pass';
   static const _kDavPath = 'webdav_path';
   static const _kDavName = 'webdav_name';
+  static const _kBgColor = 'bg_color';
+  static const _kLyricActive = 'lyric_active';
+  static const _kLyricPast = 'lyric_past';
+  static const _kLyricFuture = 'lyric_future';
+  static const _kAutoPlay = 'auto_play';
 
   late final SharedPreferences _prefs;
 
@@ -43,20 +43,28 @@ class AppSettings extends ChangeNotifier {
   String webdavName = '';
   double _lyricScale = 1.0;
   double _glassOpacity = 0.35;
+  int _bgColor = 0;
+  int _lyricActive = 0;
+  int _lyricPast = 0;
+  int _lyricFuture = 0;
+  bool _autoPlay = true;
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
   double get glassOpacity => _glassOpacity;
+  int get bgColor => _bgColor;
+  int get lyricActive => _lyricActive;
+  int get lyricPast => _lyricPast;
+  int get lyricFuture => _lyricFuture;
+  bool get autoPlay => _autoPlay;
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
   bool get webdavConfigured => webdavUrl.trim().isNotEmpty;
 
   bool get hasLogin =>
-      serverUrl.isNotEmpty &&
-      username.isNotEmpty &&
-      salt.isNotEmpty &&
-      token.isNotEmpty;
+      serverUrl.isNotEmpty && username.isNotEmpty &&
+      salt.isNotEmpty && token.isNotEmpty;
 
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
@@ -70,60 +78,42 @@ class AppSettings extends ChangeNotifier {
     webdavPass = _prefs.getString(_kDavPass) ?? '';
     webdavPath = _prefs.getString(_kDavPath) ?? '';
     webdavName = _prefs.getString(_kDavName) ?? '';
-    _lyricScale =
-        (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
-    _glassOpacity = (_prefs.getDouble(_kGlass) ?? 0.35).clamp(0.1, 1.0).toDouble();
-    final themeIdx = _prefs.getInt(_kTheme) ?? 0;
-    _themeMode = AppThemeMode.values[themeIdx.clamp(0, 2).toInt()];
+    _lyricScale = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
+    _glassOpacity = (_prefs.getDouble(_kGlass) ?? 0.35).clamp(0.1, 1.0);
+    _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
+    _bgColor = _prefs.getInt(_kBgColor) ?? 0;
+    _lyricActive = _prefs.getInt(_kLyricActive) ?? 0;
+    _lyricPast = _prefs.getInt(_kLyricPast) ?? 0;
+    _lyricFuture = _prefs.getInt(_kLyricFuture) ?? 0;
+    _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
   }
 
-  SubsonicClient buildClient() => SubsonicClient(
-        baseUrl: serverUrl,
-        username: username,
-        salt: salt,
-        token: token,
-      );
-
-  Future<void> saveLogin(SubsonicClient client) async {
-    serverUrl = client.baseUrl;
-    username = client.username;
-    salt = client.salt;
-    token = client.token;
-    await _prefs.setString(_kUrl, serverUrl);
-    await _prefs.setString(_kUser, username);
-    await _prefs.setString(_kSalt, salt);
-    await _prefs.setString(_kToken, token);
+  Future<void> setLyricScale(double v) async {
+    v = v.clamp(minScale, maxScale);
+    if ((v - _lyricScale).abs() < 0.01) return;
+    _lyricScale = v;
     notifyListeners();
-  }
-
-  Future<void> clearLogin() async {
-    salt = '';
-    token = '';
-    await _prefs.remove(_kSalt);
-    await _prefs.remove(_kToken);
-    notifyListeners();
-  }
-
-  Future<void> setLyricScale(double value) async {
-    final next = (value.clamp(minScale, maxScale) * 10).round() / 10;
-    if (next == _lyricScale) return;
-    _lyricScale = next;
-    notifyListeners();
-    await _prefs.setDouble(_kScale, next);
+    await _prefs.setDouble(_kScale, v);
   }
 
   void increaseLyric() => setLyricScale(_lyricScale + scaleStep);
   void decreaseLyric() => setLyricScale(_lyricScale - scaleStep);
 
-  Future<void> setGlassOpacity(double value) async {
-    final v = value.clamp(0.1, 1.0);
+  Future<void> setGlassOpacity(double v) async {
+    v = v.clamp(0.1, 1.0);
     if ((v - _glassOpacity).abs() < 0.01) return;
     _glassOpacity = v;
     notifyListeners();
     await _prefs.setDouble(_kGlass, v);
   }
 
-    Future<void> setLyricColors({int? active, int? past, int? future}) async {
+  Future<void> setBgColor(int v) async {
+    _bgColor = v;
+    notifyListeners();
+    await _prefs.setInt(_kBgColor, v);
+  }
+
+  Future<void> setLyricColors({int? active, int? past, int? future}) async {
     if (active != null) _lyricActive = active;
     if (past != null) _lyricPast = past;
     if (future != null) _lyricFuture = future;
