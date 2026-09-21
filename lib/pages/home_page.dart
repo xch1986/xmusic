@@ -18,9 +18,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<Song>> _neteaseRec;
-  late Future<List<Song>> _jooxRec;
-  late Future<List<Song>> _bilibiliRec;
+  late Future<List<Song>> _hot;
+  late Future<List<Song>> _newMusic;
   late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
@@ -33,18 +32,10 @@ class _HomePageState extends State<HomePage> {
 
   void _load() {
     final ext = widget.controller.external;
-    _neteaseRec = ext
-        .search('热门华语流行', source: 'netease', limit: 24)
-        .timeout(const Duration(seconds: 30))
-        .catchError((_) => <Song>[]);
-    _jooxRec = ext
-        .search('热门华语流行', source: 'joox', limit: 24)
-        .timeout(const Duration(seconds: 30))
-        .catchError((_) => <Song>[]);
-    _bilibiliRec = ext
-        .search('华语流行精选', source: 'bilibili', limit: 24)
-        .timeout(const Duration(seconds: 30))
-        .catchError((_) => <Song>[]);
+    _hot = ext.search('热歌榜 华语流行', source: 'netease', limit: 24)
+        .timeout(const Duration(seconds: 30)).catchError((_) => <Song>[]);
+    _newMusic = ext.search('经典老歌 华语', source: 'netease', limit: 24)
+        .timeout(const Duration(seconds: 30)).catchError((_) => <Song>[]);
     _localRec = _client.randomSongs(size: 20);
   }
 
@@ -54,10 +45,7 @@ class _HomePageState extends State<HomePage> {
     await widget.controller.playQueue(songs, index);
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
+      builder: (_) => PlayerPage(settings: widget.settings, controller: widget.controller),
     ));
     if (mounted) setState(() {});
   }
@@ -72,10 +60,7 @@ class _HomePageState extends State<HomePage> {
             tooltip: '搜索',
             icon: const Icon(Icons.search_rounded),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => SearchPage(
-                settings: widget.settings,
-                controller: widget.controller,
-              ),
+              builder: (_) => SearchPage(settings: widget.settings, controller: widget.controller),
             )),
           ),
         ],
@@ -83,24 +68,18 @@ class _HomePageState extends State<HomePage> {
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
         child: FutureBuilder(
-          future: Future.wait([_neteaseRec, _jooxRec, _bilibiliRec, _localRec]),
+          future: Future.wait([_hot, _newMusic, _localRec]),
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
             }
             final data = snap.data as List;
-            final netease = data[0] as List<Song>;
-            final joox = data[1] as List<Song>;
-            final bilibili = data[2] as List<Song>;
-            final local = data[3] as List<Song>;
-
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                _songSection('网易云推荐', netease),
-                _songSection('JOOX推荐', joox),
-                _songSection('B站音乐', bilibili),
-                _songSection('本地推荐', local),
+                _section('网易云热歌', data[0] as List<Song>),
+                _section('经典华语', data[1] as List<Song>),
+                _section('本地推荐', data[2] as List<Song>),
               ],
             );
           },
@@ -109,7 +88,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _songSection(String title, List<Song> songs) {
+  Widget _section(String title, List<Song> songs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -119,10 +98,7 @@ class _HomePageState extends State<HomePage> {
           onAction: songs.isEmpty ? null : () => _playSongs(songs, 0),
         ),
         if (songs.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('暂无内容'),
-          )
+          const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('加载中...'))
         else
           SizedBox(
             height: 190,
@@ -132,11 +108,7 @@ class _HomePageState extends State<HomePage> {
               itemCount: songs.length > 12 ? 12 : songs.length,
               itemBuilder: (context, i) => Padding(
                 padding: const EdgeInsets.only(right: 12),
-                child: _SongCard(
-                  song: songs[i],
-                  client: _client,
-                  onTap: () => _playSongs(songs, i),
-                ),
+                child: _Card(song: songs[i], client: _client, onTap: () => _playSongs(songs, i)),
               ),
             ),
           ),
@@ -145,13 +117,8 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _SongCard extends StatelessWidget {
-  const _SongCard({
-    required this.song,
-    required this.client,
-    required this.onTap,
-  });
-
+class _Card extends StatelessWidget {
+  const _Card({required this.song, required this.client, required this.onTap});
   final Song song;
   final SubsonicClient client;
   final VoidCallback onTap;
@@ -167,34 +134,13 @@ class _SongCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                CoverImage(
-                  client: client,
-                  coverId: song.coverArt,
-                  coverUrl: song.coverUrl,
-                  size: 130,
-                  radius: 12,
-                  requestSize: 360,
-                ),
-                Positioned(
-                  right: 4,
-                  bottom: 4,
-                  child: Icon(Icons.play_circle_fill_rounded,
-                      size: 28, color: Colors.white.withOpacity(0.9)),
-                ),
-              ],
-            ),
+            Stack(children: [
+              CoverImage(client: client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 130, radius: 12, requestSize: 360),
+              Positioned(right: 4, bottom: 4, child: Icon(Icons.play_circle_fill_rounded, size: 28, color: Colors.white.withOpacity(0.9))),
+            ]),
             const SizedBox(height: 6),
-            Text(song.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall),
-            Text(song.artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall),
+            Text(song.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
       ),
