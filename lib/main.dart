@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -64,6 +64,7 @@ class MyApp extends StatelessWidget {
           },
           theme: ThemeData(
             scaffoldBackgroundColor: lightBg,
+            canvasColor: lightBg,
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -76,12 +77,13 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.light,
-              surface: const Color(0xFFEAF0FA),
-              surfaceContainerHighest: const Color(0xFFD8E2F5),
+              surface: lightBg,
+              surfaceContainerHighest: Color(a << 24 | 0xD8E2F5),
             ),
           ),
           darkTheme: ThemeData(
             scaffoldBackgroundColor: darkBg,
+            canvasColor: darkBg,
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -94,8 +96,8 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.dark,
-              surface: const Color(0xFF1E2433),
-              surfaceContainerHighest: const Color(0xFF2A3145),
+              surface: darkBg,
+              surfaceContainerHighest: Color(a << 24 | 0x2A3145),
             ),
           ),
           home: Root(settings: settings),
@@ -156,5 +158,3 @@ class _RootState extends State<Root> {
     return HomeShell(settings: widget.settings, controller: controller);
   }
 }
-
-
