@@ -53,7 +53,7 @@ class MyApp extends StatelessWidget {
       builder: (context, _) {
         final a = (settings.glassOpacity * 255).round();
         final lightBg = Color(a << 24 | 0xEAF0FA);
-        final darkBg = Color(a << 24 | 0x1e2230);
+        final darkBg = Color(a << 24 | 0x3a3e4a);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -156,3 +156,4 @@ class _RootState extends State<Root> {
     return HomeShell(settings: widget.settings, controller: controller);
   }
 }
+
