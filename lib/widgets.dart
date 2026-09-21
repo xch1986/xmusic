@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'subsonic.dart';
@@ -45,12 +46,13 @@ class CoverImage extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         child: url == null
             ? placeholder
-            : Image.network(
-                url.toString(),
+            : CachedNetworkImage(
+                imageUrl: url.toString(),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => placeholder,
-                loadingBuilder: (_, child, progress) =>
-                    progress == null ? child : placeholder,
+                fadeInDuration: const Duration(milliseconds: 200),
+                fadeOutDuration: const Duration(milliseconds: 200),
+                errorWidget: (_, __, ___) => placeholder,
+                placeholder: (_, __) => placeholder,
               ),
       ),
     );
