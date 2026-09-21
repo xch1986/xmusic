@@ -6,7 +6,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'external_api.dart';
@@ -129,34 +128,13 @@ class PlayerController extends ChangeNotifier {
     return client.streamUrl(s.id).toString();
   }
 
-  Uri? _artUriFor(Song s) {
-    if (s.coverUrl != null && s.coverUrl!.isNotEmpty) {
-      return Uri.tryParse(s.coverUrl!);
-    }
-    return client.coverUrl(s.coverArt, size: 500);
-  }
-
-  /// 装载第 i 首歌并播放。带 MediaItem 元数据，系统 MediaSession 能同步歌名/封面。
+  /// 装载第 i 首歌并播放。用 setUrl（车机兼容，不 hang）。
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
     if (i < 0 || i >= queue.length) return;
     final s = queue[i];
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) throw '无法获取播放地址';
-    await player.setAudioSource(
-      AudioSource.uri(
-        Uri.parse(url),
-        tag: MediaItem(
-          id: s.id,
-          title: s.title,
-          artist: s.artist,
-          album: s.album,
-          duration:
-              s.durationSec != null ? Duration(seconds: s.durationSec!) : null,
-          artUri: _artUriFor(s),
-        ),
-      ),
-      initialPosition: Duration.zero,
-    );
+    await player.setUrl(url);
     index = i;
     notifyListeners();
     _applyLoopMode();
