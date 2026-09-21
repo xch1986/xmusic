@@ -2,12 +2,23 @@ import 'package:flutter/material.dart';
 
 import 'pages/home_shell.dart';
 import 'pages/login_page.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'player_controller.dart';
 import 'settings.dart';
 import 'subsonic.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 通知栏/锁屏播放控制。包 try-catch：失败不阻塞启动。
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+      androidNotificationChannelName: '音乐播放',
+      androidNotificationOngoing: true,
+    ).timeout(const Duration(seconds: 3));
+  } catch (e) {
+    debugPrint('JustAudioBackground init failed: $e');
+  }
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
@@ -18,9 +29,8 @@ class MyApp extends StatelessWidget {
 
   final AppSettings settings;
 
-  // One fixed seed. Light/dark follows the system (or user override);
-  // player colors never come from album art.
-  static const _seed = Color(0xFF3D5AFE);
+  // 冷蓝色调，去掉灰色感。
+  static const _seed = Color(0xFF4A7CF7);
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +38,7 @@ class MyApp extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         return MaterialApp(
-          title: 'xmusic',
+          title: '音素',
           debugShowCheckedModeBanner: false,
           themeMode: switch (settings.themeMode) {
             AppThemeMode.system => ThemeMode.system,
@@ -36,33 +46,39 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x99E8F0FF),
+            scaffoldBackgroundColor: const Color(0x88E3ECFF),
             appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
-            navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: const Color(0x55FFFFFF),
+                backgroundColor: Colors.transparent,
                 elevation: 0,
-                indicatorColor: _seed.withOpacity(0.12),
+                scrolledUnderElevation: 0),
+            navigationBarTheme: const NavigationBarThemeData(
+                backgroundColor: Color(0x88E3ECFF),
+                elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.light,
+              surface: const Color(0xFFE3ECFF),
+              surfaceContainerHighest: const Color(0xFFD0DCFF),
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x990F1218),
+            scaffoldBackgroundColor: const Color(0x880E1118),
             appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
-            navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: const Color(0x221A1F2E),
+                backgroundColor: Colors.transparent,
                 elevation: 0,
-                indicatorColor: _seed.withOpacity(0.2),
+                scrolledUnderElevation: 0),
+            navigationBarTheme: const NavigationBarThemeData(
+                backgroundColor: Color(0x880E1118),
+                elevation: 0,
                 labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.dark,
+              surface: const Color(0xFF1A1F2E),
+              surfaceContainerHighest: const Color(0xFF252B3D),
             ),
           ),
           home: Root(settings: settings),
