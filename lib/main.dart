@@ -52,8 +52,10 @@ class MyApp extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         final a = (settings.glassOpacity * 255).round();
-        final lightBg = Color(a << 24 | 0xEAF0FA);
-        final darkBg = Color(a << 24 | 0x3a3d45);
+        // 自定义背景色优先，否则用默认半透明色
+        final custom = settings.bgColor;
+        final lightBg = custom != 0 ? Color(custom) : Color(a << 24 | 0xEAF0FA);
+        final darkBg = custom != 0 ? Color(custom) : Color(a << 24 | 0x3a3d45);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -64,7 +66,6 @@ class MyApp extends StatelessWidget {
           },
           theme: ThemeData(
             scaffoldBackgroundColor: lightBg,
-            canvasColor: lightBg,
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -77,13 +78,12 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.light,
-              surface: lightBg,
-              surfaceContainerHighest: Color(a << 24 | 0xD8E2F5),
+              surface: const Color(0xFFEAF0FA),
+              surfaceContainerHighest: const Color(0xFFD8E2F5),
             ),
           ),
           darkTheme: ThemeData(
             scaffoldBackgroundColor: darkBg,
-            canvasColor: darkBg,
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -96,8 +96,8 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.dark,
-              surface: darkBg,
-              surfaceContainerHighest: Color(a << 24 | 0x2A3145),
+              surface: const Color(0xFF1E2433),
+              surfaceContainerHighest: const Color(0xFF2A3145),
             ),
           ),
           home: Root(settings: settings),
