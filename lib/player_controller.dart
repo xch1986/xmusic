@@ -22,8 +22,11 @@ enum PlayMode { sequential, shuffle, repeatOne }
 /// Owns the audio player, the play queue and the current song's lyrics.
 class PlayerController extends ChangeNotifier {
   PlayerController(this.client, this.settings) {
-    // 先停止AudioService自动恢复的播放
-    unawaited(player.stop());
+    // 先停止AudioService自动恢复的播放，等待完全停止
+    unawaited(() async {
+      await player.stop();
+      await Future.delayed(const Duration(milliseconds: 500));
+    }());
     _completedSub = player.processingStateStream.listen((s) {
       if (s == ProcessingState.completed) _onCompleted();
     });
@@ -97,7 +100,7 @@ class PlayerController extends ChangeNotifier {
       notifyListeners();
       // 先停止AudioService自动恢复的播放，避免双播
       await player.stop();
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 500));
       try {
         await _loadAndPlay(index, autoplay: settings.autoPlay);
       } catch (_) {}
@@ -126,7 +129,7 @@ class PlayerController extends ChangeNotifier {
   Future<String> _mediaUrlForSong(Song s) async {
     if (s.streamUrl != null) return s.streamUrl!;
     if (s.fromExternal) {
-      return (await external.streamUrlFor(s.id, source: s.externalSource ?? 'qq')) ?? '';
+      return (await external.streamUrlFor(s.id, source: s.externalSource ?? 'netease')) ?? '';
     }
     return client.streamUrl(s.id).toString();
   }
@@ -158,6 +161,7 @@ class PlayerController extends ChangeNotifier {
     if (url.isEmpty) throw '无法获取播放地址';
     _updateMediaItem(s);
     await player.stop();
+    await Future.delayed(const Duration(milliseconds: 100));
     await player.setUrl(url);
     index = i;
     notifyListeners();
@@ -223,9 +227,13 @@ class PlayerController extends ChangeNotifier {
     lyricsLoading = true;
     notifyListeners();
     try {
-      final result = s.fromExternal
-          ? await external.lyricFor(s.id, source: s.externalSource ?? 'qq')
+      var result = s.fromExternal
+          ? await external.lyricFor(s.id, source: s.externalSource ?? 'netease')
           : await client.lyricsFor(s);
+      // 外部源没歌词时回退网易云
+      if (s.fromExternal && (result == null || result.lines.isEmpty)) {
+        result = await external.lyricFor(s.id, source: 'netease');
+      }
       if (token != _loadToken) return;
       lyrics = (result == null || result.lines.isEmpty) ? null : result;
     } catch (e) {
