@@ -20,7 +20,7 @@ class ExternalApi {
       'source': source,
       ...params,
     });
-    final res = await http.get(uri).timeout(const Duration(seconds: 10));
+    final res = await http.get(uri).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) throw SubsonicException('HTTP ${res.statusCode}');
     return jsonDecode(utf8.decode(res.bodyBytes));
   }
@@ -35,6 +35,9 @@ class ExternalApi {
     final coverFutures = items.map((it) async {
       final picId = it['pic_id']?.toString();
       if (picId == null || picId.isEmpty) return null;
+      // bilibili的pic_id本身就是URL
+      if (picId.startsWith('//')) return 'https:$picId';
+      if (picId.startsWith('http')) return picId;
       try {
         final r = await _getJson('pic', source, {'id': picId, 'size': '500'});
         if (r is Map && r['url'] != null) return r['url'].toString();
