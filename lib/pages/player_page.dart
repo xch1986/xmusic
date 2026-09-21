@@ -31,14 +31,19 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.controller,
+      listenable: Listenable.merge([widget.controller, widget.settings]),
       builder: (context, _) {
         final song = widget.controller.current;
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
+        // 不透明背景：自定义色优先，否则用surface
+        final cs = Theme.of(context).colorScheme;
+        final bg = widget.settings.bgColor != 0
+            ? Color(widget.settings.bgColor).withOpacity(1.0)
+            : cs.surface;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
+          backgroundColor: bg,
           body: SafeArea(
             child: song == null
                 ? const Center(child: Text('没有正在播放的歌曲'))
