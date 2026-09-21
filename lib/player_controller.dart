@@ -177,6 +177,7 @@ class PlayerController extends ChangeNotifier {
     if (autoplay) {
       audioHandler.allowPlay = true;
       await player.play();
+      audioHandler.allowPlay = false;
     }
   }
 
