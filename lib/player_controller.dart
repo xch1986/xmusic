@@ -93,6 +93,9 @@ class PlayerController extends ChangeNotifier {
       index = (m['index'] as int?) ?? 0;
       if (index >= queue.length) index = 0;
       notifyListeners();
+      try {
+        await _loadAndPlay(index, autoplay: settings.autoPlay);
+      } catch (_) {}
     } catch (_) {}
   }
 
