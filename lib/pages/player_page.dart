@@ -187,22 +187,38 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   Widget _lyricsArea(BuildContext context, String songId) {
-    if (widget.controller.lyricsLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final lyrics = widget.controller.lyrics;
-    if (lyrics == null) {
-      return Center(
-        child: Text('暂无歌词',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
-    }
-    return LyricsView(
-      key: ValueKey(songId),
-      lyrics: lyrics,
-      player: widget.controller.player,
-      settings: widget.settings,
+    return GestureDetector(
+      onDoubleTap: () {
+        widget.controller.reloadLyrics();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('刷新歌词...'), duration: Duration(milliseconds: 800)),
+        );
+      },
+      child: Builder(
+        builder: (context) {
+          if (widget.controller.lyricsLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final lyrics = widget.controller.lyrics;
+          if (lyrics == null) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('暂无歌词', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  const Text('双击刷新', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            );
+          }
+          return LyricsView(
+            key: ValueKey(songId),
+            lyrics: lyrics,
+            player: widget.controller.player,
+            settings: widget.settings,
+          );
+        },
+      ),
     );
   }
 
