@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
@@ -101,6 +101,7 @@ class Song {
     this.coverUrl,
     this.streamUrl,
     this.fromExternal = false,
+    this.externalSource,
   });
 
   final String id;
