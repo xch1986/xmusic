@@ -18,8 +18,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<Song>> _qqRec;
-  late Future<List<Song>> _wyRec;
+  late Future<List<Song>> _neteaseRec;
+  late Future<List<Song>> _jooxRec;
+  late Future<List<Song>> _bilibiliRec;
   late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
@@ -32,12 +33,16 @@ class _HomePageState extends State<HomePage> {
 
   void _load() {
     final ext = widget.controller.external;
-    _qqRec = ext
-        .search('热门华语流行', source: 'qq', limit: 24)
+    _neteaseRec = ext
+        .search('热门华语流行', source: 'netease', limit: 24)
         .timeout(const Duration(seconds: 30))
         .catchError((_) => <Song>[]);
-    _wyRec = ext
-        .search('热门华语流行', source: 'netease', limit: 24)
+    _jooxRec = ext
+        .search('热门华语流行', source: 'joox', limit: 24)
+        .timeout(const Duration(seconds: 30))
+        .catchError((_) => <Song>[]);
+    _bilibiliRec = ext
+        .search('华语流行精选', source: 'bilibili', limit: 24)
         .timeout(const Duration(seconds: 30))
         .catchError((_) => <Song>[]);
     _localRec = _client.randomSongs(size: 20);
@@ -78,21 +83,23 @@ class _HomePageState extends State<HomePage> {
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
         child: FutureBuilder(
-          future: Future.wait([_qqRec, _wyRec, _localRec]),
+          future: Future.wait([_neteaseRec, _jooxRec, _bilibiliRec, _localRec]),
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
             }
             final data = snap.data as List;
-            final qq = data[0] as List<Song>;
-            final wy = data[1] as List<Song>;
-            final local = data[2] as List<Song>;
+            final netease = data[0] as List<Song>;
+            final joox = data[1] as List<Song>;
+            final bilibili = data[2] as List<Song>;
+            final local = data[3] as List<Song>;
 
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                _songSection('QQ音乐推荐', qq),
-                _songSection('网易云推荐', wy),
+                _songSection('网易云推荐', netease),
+                _songSection('JOOX推荐', joox),
+                _songSection('B站音乐', bilibili),
                 _songSection('本地推荐', local),
               ],
             );
