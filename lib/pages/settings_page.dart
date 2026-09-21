@@ -4,7 +4,6 @@ import '../app_version.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 
-/// Settings page: theme mode, lyric size, server info and logout.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,
@@ -31,52 +30,16 @@ class SettingsPage extends StatelessWidget {
             TextField(
               controller: urlCtl,
               keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                labelText: 'WebDAV 地址',
-                hintText: 'http://nas:5005/remote.php/dav/files/user/Music',
-                isDense: true,
-              ),
+              decoration: const InputDecoration(labelText: 'WebDAV 地址', isDense: true),
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: userCtl,
-              decoration: const InputDecoration(
-                labelText: '用户名（可空）',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: passCtl,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: '密码（可空）',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: pathCtl,
-              decoration: const InputDecoration(
-                labelText: '下载路径（可空，如 /Music/）',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nameCtl,
-              decoration: const InputDecoration(
-                labelText: 'NAS 名称（可空，如 飞牛）',
-                isDense: true,
-              ),
-            ),
+            TextField(controller: userCtl, decoration: const InputDecoration(labelText: '用户名', isDense: true)),
+            TextField(controller: passCtl, obscureText: true, decoration: const InputDecoration(labelText: '密码', isDense: true)),
+            TextField(controller: pathCtl, decoration: const InputDecoration(labelText: '下载路径（如 /Music/）', isDense: true)),
+            TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'NAS 名称（如 飞牛）', isDense: true)),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
           FilledButton(
             onPressed: () {
               settings.setWebdav(urlCtl.text, userCtl.text, passCtl.text, path: pathCtl.text, name: nameCtl.text);
@@ -89,252 +52,223 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
-      body: ListenableBuilder(
-        listenable: settings,
-        builder: (context, _) {
-          return ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+  void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick) {
+    int r = currentColor != 0 ? (currentColor >> 16) & 0xFF : 255;
+    int g = currentColor != 0 ? (currentColor >> 8) & 0xFF : 255;
+    int b = currentColor != 0 ? currentColor & 0xFF : 255;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // ---- 外观 ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('外观',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.brightness_auto_rounded),
-                title: const Text('主题模式'),
-                subtitle: const Text('跟随系统 / 浅色 / 深色'),
-                trailing: DropdownButton<AppThemeMode>(
-                  value: settings.themeMode,
-                  underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(
-                      value: AppThemeMode.system,
-                      child: Text('跟随系统'),
-                    ),
-                    DropdownMenuItem(
-                      value: AppThemeMode.light,
-                      child: Text('浅色'),
-                    ),
-                    DropdownMenuItem(
-                      value: AppThemeMode.dark,
-                      child: Text('深色'),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) settings.setThemeMode(v);
-                  },
+              Container(
+                width: double.infinity, height: 50,
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, r, g, b),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.text_fields_rounded),
-                title: const Text('歌词字号'),
-                subtitle: Text('${(settings.lyricScale * 100).round()}%'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: '减小',
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: settings.canDecreaseLyric
-                          ? settings.decreaseLyric
-                          : null,
-                    ),
-                    IconButton(
-                      tooltip: '增大',
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: settings.canIncreaseLyric
-                          ? settings.increaseLyric
-                          : null,
-                    ),
-                  ],
-                ),
-              ),
-              // ---- 玻璃通透度 ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.blur_on_rounded, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('玻璃通透度'),
-                          Text('值越小越通透（当前 ${(settings.glassOpacity * 100).round()}% 不透明）',
-                              style: Theme.of(context).textTheme.bodySmall),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Slider(
-                value: settings.glassOpacity,
-                min: 0.1,
-                max: 1.0,
-                divisions: 9,
-                label: '${(settings.glassOpacity * 100).round()}%',
-                onChanged: (v) => settings.setGlassOpacity(v),
-              ),
-              SwitchListTile(
-                secondary: const Icon(Icons.play_circle_outline_rounded),
-                title: const Text('启动时自动播放'),
-                value: settings.autoPlay,
-                onChanged: (v) => settings.setAutoPlay(v),
-              ),
-              const Divider(),
-
-              // ---- 账号 ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('账号',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.dns_rounded),
-                title: const Text('服务器'),
-                subtitle: Text(settings.serverUrl.isEmpty
-                    ? '未配置'
-                    : settings.serverUrl),
-              ),
-              ListTile(
-                leading: const Icon(Icons.person_outline_rounded),
-                title: const Text('用户名'),
-                subtitle: Text(settings.username.isEmpty ? '-' : settings.username),
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout_rounded),
-                title: const Text('退出登录'),
-                subtitle: const Text('清除服务器登录信息'),
-                onTap: () => showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('退出登录'),
-                    content: const Text('确定要退出当前账号吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: const Text('取消'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                          settings.clearLogin();
-                        },
-                        child: const Text('退出'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Divider(),
-
-              // ---- 外网搜索 ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('外网搜索',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _ExternalApiField(settings: settings),
-              ),
-              const SizedBox(height: 12),
-              const Divider(),
-
-              // ---- NAS 下载 (WebDAV) ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('NAS 下载',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud_upload_outlined),
-                title: const Text('WebDAV 地址'),
-                subtitle: Text(settings.webdavConfigured
-                    ? '${settings.webdavUrl}（${settings.webdavUser.isEmpty ? "无账号" : settings.webdavUser}）'
-                    : '未配置，下载歌曲时上传到 NAS'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showWebdavDialog(context),
-              ),
-              const SizedBox(height: 12),
-              const Divider(),
-
-              // ---- 关于 ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('关于',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: Theme.of(context).colorScheme.primary)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.info_outline_rounded),
-                title: const Text('音素 xmusic'),
-                subtitle: Text('Navidrome / Subsonic 客户端 · v$appVersion'),
-              ),
+              const SizedBox(height: 8),
+              _rgbSlider('R', r, (v) => setD(() => r = v)),
+              _rgbSlider('G', g, (v) => setD(() => g = v)),
+              _rgbSlider('B', b, (v) => setD(() => b = v)),
             ],
-          );
-        },
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+            FilledButton(
+              onPressed: () {
+                onPick((0xFF << 24) | (r << 16) | (g << 8) | b);
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
 
-/// External search API URL field that keeps its own controller so typing
-/// is not reset when settings change.
-class _ExternalApiField extends StatefulWidget {
-  const _ExternalApiField({required this.settings});
-
-  final AppSettings settings;
-
-  @override
-  State<_ExternalApiField> createState() => _ExternalApiFieldState();
-}
-
-class _ExternalApiFieldState extends State<_ExternalApiField> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.settings.externalApiUrl);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Widget _rgbSlider(String label, int value, ValueChanged<int> onChanged) {
+    return Row(children: [
+      SizedBox(width: 16, child: Text(label, style: const TextStyle(fontSize: 12))),
+      Expanded(child: Slider(value: value.toDouble(), min: 0, max: 255, divisions: 255, onChanged: (v) => onChanged(v.round()))),
+      SizedBox(width: 28, child: Text('$value', style: const TextStyle(fontSize: 11))),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: _controller,
-      keyboardType: TextInputType.url,
-      decoration: const InputDecoration(
-        labelText: '外部搜索 API 地址',
-        hintText: 'https://api.example.com',
-        helperText: 'NeteaseCloudMusicApi 兼容服务（/search、/song/url）',
-        border: OutlineInputBorder(),
-        isDense: true,
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('设置')),
+      body: ListView(
+        children: [
+          // ===== 主题 =====
+          _sectionTitle(theme, '主题'),
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('主题模式'),
+            subtitle: Text(_themeName(settings.themeMode)),
+            onTap: () => _showThemeModeDialog(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.blur_on_rounded),
+            title: const Text('玻璃通透度'),
+            subtitle: Text('${(settings.glassOpacity * 100).round()}% 不透明'),
+            trailing: SizedBox(
+              width: 150,
+              child: Slider(
+                value: settings.glassOpacity,
+                min: 0.1, max: 1.0, divisions: 9,
+                onChanged: (v) => settings.setGlassOpacity(v),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.color_lens_outlined),
+            title: const Text('自定义背景色'),
+            trailing: settings.bgColor != 0
+                ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
+                : const Text('默认'),
+            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c)),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.play_circle_outline_rounded),
+            title: const Text('启动时自动播放'),
+            value: settings.autoPlay,
+            onChanged: (v) => settings.setAutoPlay(v),
+          ),
+          const Divider(),
+
+          // ===== 源 =====
+          _sectionTitle(theme, '源'),
+          ListTile(
+            leading: const Icon(Icons.dns_rounded),
+            title: const Text('Navidrome 服务器'),
+            subtitle: settings.hasLogin ? '${settings.username}@${settings.serverUrl}' : '未登录',
+            trailing: settings.hasLogin
+                ? TextButton(onPressed: () => settings.clearLogin(), child: const Text('退出'))
+                : const Icon(Icons.chevron_right),
+          ),
+          ListTile(
+            leading: const Icon(Icons.api_rounded),
+            title: const Text('外部API地址'),
+            subtitle: Text(settings.externalApiUrl),
+            onTap: () => _showExternalApiDialog(context),
+          ),
+          const Divider(),
+
+          // ===== 歌词 =====
+          _sectionTitle(theme, '歌词'),
+          ListTile(
+            leading: const Icon(Icons.format_size_rounded),
+            title: const Text('歌词大小'),
+            subtitle: Text('${(settings.lyricScale * 100).round()}%'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(icon: const Icon(Icons.remove), onPressed: settings.canDecreaseLyric ? () => settings.decreaseLyric() : null),
+                IconButton(icon: const Icon(Icons.add), onPressed: settings.canIncreaseLyric ? () => settings.increaseLyric() : null),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.volume_up_rounded, color: Colors.amber),
+            title: const Text('当前行颜色'),
+            onTap: () => _showColorPicker(context, '当前行颜色', settings.lyricActive, (c) => settings.setLyricColors(active: c)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+            title: const Text('已唱行颜色'),
+            onTap: () => _showColorPicker(context, '已唱行颜色', settings.lyricPast, (c) => settings.setLyricColors(past: c)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+            title: const Text('未唱行颜色'),
+            onTap: () => _showColorPicker(context, '未唱行颜色', settings.lyricFuture, (c) => settings.setLyricColors(future: c)),
+          ),
+          const Divider(),
+
+          // ===== 下载 =====
+          _sectionTitle(theme, '下载'),
+          ListTile(
+            leading: const Icon(Icons.cloud_download_outlined),
+            title: const Text('WebDAV (NAS)'),
+            subtitle: settings.webdavConfigured ? settings.webdavUrl : '未配置',
+            onTap: () => _showWebdavDialog(context),
+          ),
+          const Divider(),
+
+          // ===== 关于 =====
+          _sectionTitle(theme, '关于'),
+          const ListTile(
+            leading: Icon(Icons.info_outline_rounded),
+            title: Text('音素 xmusic'),
+            subtitle: Text('Navidrome / Subsonic 客户端'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.tag_rounded),
+            title: const Text('版本'),
+            subtitle: const Text(appVersion),
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
-      onSubmitted: (v) => widget.settings.setExternalApiUrl(v),
+    );
+  }
+
+  Widget _sectionTitle(ThemeData theme, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+    );
+  }
+
+  String _themeName(AppThemeMode m) {
+    switch (m) {
+      case AppThemeMode.system: return '跟随系统';
+      case AppThemeMode.light: return '浅色';
+      case AppThemeMode.dark: return '深色';
+    }
+  }
+
+  void _showThemeModeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('主题模式'),
+        children: [
+          for (final m in AppThemeMode.values)
+            RadioListTile<AppThemeMode>(
+              value: m,
+              groupValue: settings.themeMode,
+              title: Text(_themeName(m)),
+              onChanged: (v) {
+                if (v != null) settings.setThemeMode(v);
+                Navigator.of(ctx).pop();
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showExternalApiDialog(BuildContext context) {
+    final ctl = TextEditingController(text: settings.externalApiUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('外部API地址'),
+        content: TextField(controller: ctl, decoration: const InputDecoration(hintText: 'https://music-api.gdstudio.xyz')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          FilledButton(onPressed: () { settings.setExternalApiUrl(ctl.text); Navigator.of(ctx).pop(); }, child: const Text('保存')),
+        ],
+      ),
     );
   }
 }
