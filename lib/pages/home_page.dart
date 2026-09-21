@@ -234,6 +234,9 @@ class _HomePageState extends State<HomePage> {
                 CachedNetworkImage(
                   imageUrl: coverUrl,
                   fit: BoxFit.cover,
+                  httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                  placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                  errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
                 )
               else
                 Container(color: theme.colorScheme.surfaceContainerHighest),
@@ -289,6 +292,15 @@ class _PlaylistDetail extends StatelessWidget {
                   onPressed: () => onPlay(0),
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('播放全部'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    songs.shuffle();
+                    onPlay(0);
+                  },
+                  icon: const Icon(Icons.shuffle_rounded),
+                  label: const Text('随机播放'),
                 ),
                 const SizedBox(width: 12),
                 Text('共 ${songs.length} 首',
