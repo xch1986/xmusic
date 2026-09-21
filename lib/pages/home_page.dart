@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../player_controller.dart';
@@ -18,19 +19,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<Map<String, List<Song>>> _lists;
+  late Future<List<Map<String, dynamic>>> _toplists;
+  late Future<List<Song>> _hotSongs;
+  late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
-
-  // 榜单/歌单定义
-  static const _playlists = [
-    {'name': '每日推荐', 'keyword': '华语流行 热门', 'count': 30, 'color': Color(0xFFE85D4A)},
-    {'name': '热歌榜', 'keyword': '热歌榜 华语流行', 'count': 20, 'color': Color(0xFFF08A3E)},
-    {'name': '新歌榜', 'keyword': '新歌榜 华语', 'count': 20, 'color': Color(0xFF4A9BE8)},
-    {'name': '经典老歌', 'keyword': '经典老歌 华语', 'count': 20, 'color': Color(0xFF8B7EC8)},
-    {'name': '欧美流行', 'keyword': '欧美流行 热门', 'count': 20, 'color': Color(0xFFE84A7A)},
-    {'name': '清新民谣', 'keyword': '民谣 清新', 'count': 20, 'color': Color(0xFF4AC89B)},
-  ];
 
   @override
   void initState() {
@@ -40,15 +33,12 @@ class _HomePageState extends State<HomePage> {
 
   void _load() {
     final ext = widget.controller.external;
-    _lists = Future.wait(
-      _playlists.map((p) => ext
-          .search(p['keyword'] as String, source: 'netease', limit: p['count'] as int)
-          .timeout(const Duration(seconds: 30))
-          .catchError((_) => <Song>[]))
-    ).then((results) => Map.fromIterables(
-          _playlists.map((p) => p['name'] as String),
-          results,
-        ));
+    // 真实排行榜
+    _toplists = ext.getToplists().timeout(const Duration(seconds: 15)).catchError((_) => <Map<String, dynamic>>[]);
+    // 热歌榜歌曲
+    _hotSongs = ext.getPlaylistSongs('3778678').timeout(const Duration(seconds: 20)).catchError((_) => <Song>[]);
+    // 本地推荐
+    _localRec = _client.randomSongs(size: 20);
   }
 
   void _reload() => setState(_load);
@@ -62,8 +52,16 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _openPlaylist(String name, List<Song> songs) async {
-    if (songs.isEmpty) return;
+  Future<void> _openPlaylist(String name, String playlistId) async {
+    final ext = widget.controller.external;
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    final songs = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
+    if (!mounted) return;
+    Navigator.pop(context); // dismiss loading
+    if (songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('加载失败')));
+      return;
+    }
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
         title: name,
@@ -91,74 +89,76 @@ class _HomePageState extends State<HomePage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
-        child: FutureBuilder<Map<String, List<Song>>>(
-          future: _lists,
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final lists = snap.data ?? {};
-            return ListView(
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                // 每日推荐大卡片
-                if (lists['每日推荐']?.isNotEmpty == true)
-                  _dailyCard(lists['每日推荐']!),
-                // 榜单网格
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text('推荐榜单',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                ),
-                GridView.count(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            // 每日推荐/热歌榜大卡片
+            FutureBuilder<List<Song>>(
+              future: _hotSongs,
+              builder: (context, snap) {
+                if (!snap.hasData || snap.data!.isEmpty) return const SizedBox.shrink();
+                return _dailyCard(snap.data!);
+              },
+            ),
+            // 排行榜网格
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('排行榜',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _toplists,
+              builder: (context, snap) {
+                if (!snap.hasData || snap.data!.isEmpty) {
+                  return const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('加载排行榜...')));
+                }
+                // 取前6个排行榜
+                final lists = snap.data!.take(6).toList();
+                return GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: 1.3,
-                  children: _playlists.where((p) => p['name'] != '每日推荐').map((p) {
-                    final name = p['name'] as String;
-                    final songs = lists[name] ?? [];
-                    return _playlistCard(
-                      name,
-                      p['color'] as Color,
-                      songs,
-                    );
-                  }).toList(),
-                ),
-                // 本地推荐
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                  child: Text('本地推荐',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                ),
-                SizedBox(
-                  height: 190,
-                  child: FutureBuilder<List<Song>>(
-                    future: _client.randomSongs(size: 20),
-                    builder: (context, snap) {
-                      if (!snap.hasData || snap.data!.isEmpty) {
-                        return const Center(child: Text('加载中...'));
-                      }
-                      final songs = snap.data!;
-                      return ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: songs.length > 12 ? 12 : songs.length,
-                        itemBuilder: (context, i) => Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: _Card(song: songs[i], client: _client,
-                              onTap: () => _playSongs(songs, i)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
+                  childAspectRatio: 1.5,
+                  children: lists.map((t) => _toplistCard(
+                    t['name'] as String,
+                    t['id'] as String,
+                    t['coverImgUrl'] as String?,
+                  )).toList(),
+                );
+              },
+            ),
+            // 本地推荐
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text('本地推荐',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            SizedBox(
+              height: 190,
+              child: FutureBuilder<List<Song>>(
+                future: _localRec,
+                builder: (context, snap) {
+                  if (!snap.hasData || snap.data!.isEmpty) {
+                    return const Center(child: Text('加载中...'));
+                  }
+                  final songs = snap.data!;
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: songs.length > 12 ? 12 : songs.length,
+                    itemBuilder: (context, i) => Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _Card(song: songs[i], client: _client,
+                          onTap: () => _playSongs(songs, i)),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -173,7 +173,7 @@ class _HomePageState extends State<HomePage> {
         elevation: 2,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _openPlaylist('每日推荐', songs),
+          onTap: () => _openPlaylist('热歌榜', '3778678'),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -192,16 +192,16 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.today_rounded, color: Colors.white, size: 36),
+                  child: const Icon(Icons.trending_up_rounded, color: Colors.white, size: 36),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('每日推荐', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                      Text('热歌榜', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
-                      Text('${songs.length}首精选歌曲', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
+                      Text('${songs.length}首热门歌曲', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -214,35 +214,44 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _playlistCard(String name, Color color, List<Song> songs) {
+  Widget _toplistCard(String name, String id, String? coverUrl) {
     final theme = Theme.of(context);
     return Material(
       borderRadius: BorderRadius.circular(12),
       elevation: 1,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => _openPlaylist(name, songs),
+        onTap: () => _openPlaylist(name, id),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: color.withOpacity(0.15),
           ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
+              if (coverUrl != null && coverUrl.isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl: coverUrl,
+                  fit: BoxFit.cover,
+                )
+              else
+                Container(color: theme.colorScheme.surfaceContainerHighest),
               Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.queue_music_rounded, color: Colors.white, size: 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+                  ),
+                ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                  Text('${songs.length}首', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                ],
+              Positioned(
+                left: 12, bottom: 10,
+                child: Text(name, style: theme.textTheme.titleSmall?.copyWith(
+                  color: Colors.white, fontWeight: FontWeight.w600,
+                  shadows: [const Shadow(blurRadius: 4, color: Colors.black54)],
+                )),
               ),
             ],
           ),
