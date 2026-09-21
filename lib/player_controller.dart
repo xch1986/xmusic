@@ -152,6 +152,7 @@ class PlayerController extends ChangeNotifier {
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) throw '无法获取播放地址';
     _updateMediaItem(s);
+    await player.stop();
     await player.setUrl(url);
     index = i;
     notifyListeners();
