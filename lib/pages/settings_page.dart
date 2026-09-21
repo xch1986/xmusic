@@ -256,7 +256,7 @@ class SettingsPage extends StatelessWidget {
               await showDialog(context: context, builder: (ctx) => AlertDialog(
                 title: const Text('本地下载路径'),
                 content: TextField(controller: ctl, decoration: const InputDecoration(hintText: '/storage/emulated/0/Music')),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () { settings.downloadPath = ctl.text.trim(); Navigator.pop(ctx); setState(() {}); }, child: const Text('保存'))],
+                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () { settings.downloadPath = ctl.text.trim(); Navigator.pop(ctx); }, child: const Text('保存'))],
               ));
             },
           ),
