@@ -27,7 +27,9 @@ Future<void> main() async {
         androidNotificationChannelName: '音乐播放',
         androidNotificationChannelDescription: '音素音乐播放器',
         androidNotificationOngoing: true,
-        androidStopForegroundOnPause: true,
+        androidStopForegroundOnPause: false,
+        androidShowNotificationBadge: true,
+        androidNotificationClickStartsActivity: true,
       ),
     ).timeout(const Duration(seconds: 10));
   } catch (e) {
