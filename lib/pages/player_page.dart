@@ -148,25 +148,29 @@ class _PlayerPageState extends State<PlayerPage> {
 
               Center(
 
-            child: Container(
+                child: Container(
 
-              width: size, height: size,
+                  width: size, height: size,
 
-              decoration: BoxDecoration(
+                  decoration: BoxDecoration(
 
-                shape: BoxShape.circle,
+                    shape: BoxShape.circle,
 
-                color: theme.colorScheme.surfaceContainerHighest,
+                    color: theme.colorScheme.surfaceContainerHighest,
 
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+
+                  ),
+
+                  padding: const EdgeInsets.all(8),
+
+                  child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: size, requestSize: 800)),
+
+                ),
 
               ),
 
-              padding: const EdgeInsets.all(8),
-
-              child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: size, requestSize: 800)),
-
-            ),
+            ],
 
           ),
 
