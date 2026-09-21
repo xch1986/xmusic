@@ -54,8 +54,8 @@ class MyApp extends StatelessWidget {
         final a = (settings.glassOpacity * 255).round();
         // 自定义背景色优先，否则用默认半透明色
         final custom = settings.bgColor;
-        final lightBg = custom != 0 ? Color(custom) : Color(a << 24 | 0xEAF0FA);
-        final darkBg = custom != 0 ? Color(custom) : Color(a << 24 | 0x3a3d45);
+        final lightBg = custom != 0 ? Color(custom) : Color(a << 24 | 0xF5F8FF);
+        final darkBg = custom != 0 ? Color(custom) : Color(a << 24 | 0x2E3440);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -78,8 +78,8 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.light,
-              surface: const Color(0xFFEAF0FA),
-              surfaceContainerHighest: const Color(0xFFD8E2F5),
+              surface: const Color(0xFFF5F8FF),
+              surfaceContainerHighest: const Color(0xFFE0E8F5),
             ),
           ),
           darkTheme: ThemeData(
@@ -96,8 +96,8 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
               brightness: Brightness.dark,
-              surface: const Color(0xFF1E2433),
-              surfaceContainerHighest: const Color(0xFF2A3145),
+              surface: const Color(0xFF2E3440),
+              surfaceContainerHighest: const Color(0xFF3B4252),
             ),
           ),
           home: Root(settings: settings),
