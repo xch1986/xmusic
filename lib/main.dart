@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'audio_handler.dart';
 import 'pages/home_shell.dart';
@@ -13,6 +14,10 @@ late MyAudioHandler audioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 首次启动请求通知权限（Android 13+ 需要运行时申请）。
+  try {
+    await Permission.notification.request();
+  } catch (_) {}
   // 初始化系统级音频服务。包 try-catch+timeout：失败不阻塞启动（避免白屏）。
   try {
     audioHandler = await AudioService.init(
@@ -24,7 +29,7 @@ Future<void> main() async {
         androidNotificationOngoing: true,
         androidStopForegroundOnPause: true,
       ),
-    ).timeout(const Duration(seconds: 3));
+    ).timeout(const Duration(seconds: 10));
   } catch (e) {
     debugPrint('AudioService init failed: $e');
     audioHandler = MyAudioHandler();
@@ -46,6 +51,9 @@ class MyApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
+        final a = (settings.glassOpacity * 255).round();
+        final lightBg = Color(a << 24 | 0xEAF0FA);
+        final darkBg = Color(a << 24 | 0x141820);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -55,15 +63,15 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x80EAF0FA),
+            scaffoldBackgroundColor: lightBg,
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0),
-            navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0x80EAF0FA),
+            navigationBarTheme: NavigationBarThemeData(
+                backgroundColor: lightBg,
                 elevation: 0,
-                labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
+                labelTextStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
@@ -73,15 +81,15 @@ class MyApp extends StatelessWidget {
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x80141820),
+            scaffoldBackgroundColor: darkBg,
             appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0),
-            navigationBarTheme: const NavigationBarThemeData(
-                backgroundColor: Color(0x80141820),
+            navigationBarTheme: NavigationBarThemeData(
+                backgroundColor: darkBg,
                 elevation: 0,
-                labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 12))),
+                labelTextStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12))),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
