@@ -186,6 +186,12 @@ class SettingsPage extends StatelessWidget {
                 label: '${(settings.glassOpacity * 100).round()}%',
                 onChanged: (v) => settings.setGlassOpacity(v),
               ),
+              SwitchListTile(
+                secondary: const Icon(Icons.play_circle_outline_rounded),
+                title: const Text('启动时自动播放'),
+                value: settings.autoPlay,
+                onChanged: (v) => settings.setAutoPlay(v),
+              ),
               const Divider(),
 
               // ---- 账号 ----
