@@ -102,7 +102,7 @@ class PlayerController extends ChangeNotifier {
           (st) => st == ProcessingState.idle,
         ).timeout(const Duration(milliseconds: 800));
       } catch (_) {}
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 1500));
       try {
         await _loadAndPlay(index, autoplay: settings.autoPlay);
       } catch (_) {}
@@ -167,8 +167,9 @@ class PlayerController extends ChangeNotifier {
     try {
       await player.processingStateStream.firstWhere(
         (st) => st == ProcessingState.idle,
-      ).timeout(const Duration(milliseconds: 800));
+      ).timeout(const Duration(milliseconds: 1500));
     } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 200));
     await player.setUrl(url);
     index = i;
     notifyListeners();
