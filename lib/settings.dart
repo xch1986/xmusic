@@ -17,6 +17,7 @@ class AppSettings extends ChangeNotifier {
 
   static const _kScale = 'lyric_scale';
   static const _kGlass = 'glass_opacity';
+  static const _kBgColor = 'bg_color';
   static const _kUrl = 'server_url';
   static const _kUser = 'username';
   static const _kSalt = 'salt';
@@ -43,10 +44,12 @@ class AppSettings extends ChangeNotifier {
   String webdavName = '';
   double _lyricScale = 1.0;
   double _glassOpacity = 0.35;
+  int _bgColor = 0;
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
   double get glassOpacity => _glassOpacity;
+  int get bgColor => _bgColor;
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
@@ -121,6 +124,13 @@ class AppSettings extends ChangeNotifier {
     _glassOpacity = v;
     notifyListeners();
     await _prefs.setDouble(_kGlass, v);
+  }
+
+  Future<void> setBgColor(int value) async {
+    if (value == _bgColor) return;
+    _bgColor = value;
+    notifyListeners();
+    await _prefs.setInt(_kBgColor, value);
   }
 
   Future<void> setThemeMode(AppThemeMode mode) async {
