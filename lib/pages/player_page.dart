@@ -38,7 +38,7 @@ class _PlayerPageState extends State<PlayerPage> {
             MediaQuery.of(context).orientation == Orientation.landscape;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: song == null
                 ? const Center(child: Text('没有正在播放的歌曲'))
@@ -532,8 +532,16 @@ class _LyricsViewState extends State<LyricsView> {
                         height: 1.4,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         color: active
-                            ? cs.onSurface
-                            : cs.onSurface.withOpacity(0.45),
+                            ? (widget.settings.lyricActive != 0
+                                ? Color(widget.settings.lyricActive)
+                                : cs.onSurface)
+                            : (i < _current
+                                ? (widget.settings.lyricPast != 0
+                                    ? Color(widget.settings.lyricPast)
+                                    : cs.onSurface.withOpacity(0.45))
+                                : (widget.settings.lyricFuture != 0
+                                    ? Color(widget.settings.lyricFuture)
+                                    : cs.onSurface.withOpacity(0.45))),
                       ),
                       child: Text(line.text.isEmpty ? '♪' : line.text),
                     ),
