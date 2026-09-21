@@ -20,7 +20,7 @@ class ExternalApi {
 
   final String baseUrl;
 
-  static const String _source = 'netease';
+  static const String _source = 'qq';
   static const int _bitrate = 320;
 
   bool get isConfigured => baseUrl.trim().isNotEmpty;
