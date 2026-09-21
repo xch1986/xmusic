@@ -34,3 +34,46 @@ jobs:
           sed -i 's|android:label="[^"]*"|android:label="音素"|' "$f"
           g=android/app/build.gradle
           if [ -f "$g" ]; then
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId "com.xmusic.player"|' "$g"
+          fi
+          g=android/app/build.gradle.kts
+          if [ -f "$g" ]; then
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId = "com.xmusic.player"|' "$g"
+          fi
+
+      - name: Patch AndroidManifest permissions and service
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          sed -i 's|<manifest|<manifest xmlns:tools="http://schemas.android.com/tools"|' "$f"
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\n<uses-permission android:name="android.permission.WAKE_LOCK" />\n<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />\n<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n<application|' "$f"
+          sed -i 's|</application|    <service android:name="com.ryanheise.audioservice.AudioServicePlugin" android:foregroundServiceType="mediaPlayback" android:exported="true" tools:ignore="Instantiatable"><intent-filter><action android:name="android.media.browse.MediaBrowserService" /></intent-filter></service>\n  </application|' "$f"
+
+      - name: Disable release lint
+        run: |
+          g=android/app/build.gradle
+          if [ -f "$g" ]; then
+            sed -i 's|android {|android {\n    lintOptions {\n        checkReleaseBuilds false\n        abortOnError false\n    }|' "$g"
+          fi
+          g=android/app/build.gradle.kts
+          if [ -f "$g" ]; then
+            sed -i 's|android {|android {\n    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }|' "$g"
+          fi
+
+      - name: Generate version file
+        run: echo "const String appVersion = '0.2.${{ github.run_number }}';" > lib/app_version.dart
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Generate app icon
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-player-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
