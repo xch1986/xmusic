@@ -92,4 +92,51 @@ class ExternalApi {
     } catch (_) {}
     return null;
   }
+
+  /// 获取网易云排行榜列表（直连163）
+  Future<List<Map<String, dynamic>>> getToplists() async {
+    try {
+      final res = await http.get(Uri.parse('https://music.163.com/api/toplist'))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return [];
+      final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final list = (j['list'] as List?) ?? [];
+      return list.cast<Map<String, dynamic>>().map((m) => {
+        'id': m['id'].toString(),
+        'name': m['name']?.toString() ?? '',
+        'coverImgUrl': m['coverImgUrl']?.toString() ?? '',
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// 获取歌单/排行榜歌曲列表（直连163）
+  Future<List<Song>> getPlaylistSongs(String playlistId) async {
+    try {
+      final res = await http.get(Uri.parse('https://music.163.com/api/playlist/detail?id=$playlistId'))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return [];
+      final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final result = j['result'] as Map<String, dynamic>?;
+      final tracks = (result?['tracks'] as List?) ?? [];
+      return tracks.cast<Map<String, dynamic>>().map((t) {
+        final artists = (t['artists'] as List?) ?? [];
+        final artistName = artists.map((a) => (a as Map)['name']?.toString() ?? '').join(' / ');
+        return Song(
+          id: t['id'].toString(),
+          title: t['name']?.toString() ?? '',
+          artist: artistName.isEmpty ? '未知' : artistName,
+          album: (t['album'] as Map?)?['name']?.toString() ?? '',
+          coverArt: null,
+          coverUrl: (t['album'] as Map?)?['picUrl']?.toString(),
+          durationSec: (t['duration'] as num?) != null ? ((t['duration'] as num) / 1000).round() : null,
+          fromExternal: true,
+          externalSource: 'netease',
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }
