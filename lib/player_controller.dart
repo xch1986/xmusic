@@ -3,13 +3,16 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'audio_handler.dart';
 import 'external_api.dart';
 import 'lyrics.dart';
+import 'main.dart';
 import 'settings.dart';
 import 'subsonic.dart';
 
@@ -17,17 +20,8 @@ import 'subsonic.dart';
 enum PlayMode { sequential, shuffle, repeatOne }
 
 /// Owns the audio player, the play queue and the current song's lyrics.
-///
-/// 每首歌用 AudioSource.uri + MediaItem tag 装载（元数据同步到车机/通知栏），
-/// 切歌时重建音源。带卡住自动恢复：playing=true 但位置长时间不动会强制重启播放。
 class PlayerController extends ChangeNotifier {
   PlayerController(this.client, this.settings) {
-    _idxSub = player.currentIndexStream.listen((i) {
-      if (i != null && i != index) {
-        index = i;
-        _loadLyrics();
-      }
-    });
     _completedSub = player.processingStateStream.listen((s) {
       if (s == ProcessingState.completed) _onCompleted();
     });
@@ -37,11 +31,14 @@ class PlayerController extends ChangeNotifier {
       _lastPosTime = DateTime.now();
     });
     _stuckTimer = Timer.periodic(const Duration(seconds: 3), (_) => _checkStuck());
+    // 通知栏/车机的 next/prev 按键回调。
+    audioHandler.onSkipNext = next;
+    audioHandler.onSkipPrevious = previous;
   }
 
   final SubsonicClient client;
   final AppSettings settings;
-  final AudioPlayer player = AudioPlayer();
+  AudioPlayer get player => audioHandler.player;
 
   ExternalApi get external => ExternalApi(settings.externalApiUrl);
 
@@ -52,7 +49,6 @@ class PlayerController extends ChangeNotifier {
   PlayMode _repeat = PlayMode.sequential;
   final Random _rnd = Random();
 
-  late final StreamSubscription<int?> _idxSub;
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<Duration> _positionSub;
@@ -61,7 +57,6 @@ class PlayerController extends ChangeNotifier {
   DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
   String? lastError;
-  /// 上次检查时的位置，用于判断是否卡住。
   Duration _prevStuckPos = Duration.zero;
 
   Future<File> get _stateFile async {
@@ -128,12 +123,32 @@ class PlayerController extends ChangeNotifier {
     return client.streamUrl(s.id).toString();
   }
 
-  /// 装载第 i 首歌并播放。用 setUrl（车机兼容，不 hang）。
+  /// 更新通知栏/锁屏显示的歌曲元数据。
+  void _updateMediaItem(Song s) {
+    try {
+      Uri? art;
+      if (s.coverUrl != null && s.coverUrl!.isNotEmpty) {
+        art = Uri.tryParse(s.coverUrl!);
+      } else if (s.coverArt != null) {
+        art = client.coverUrl(s.coverArt!, size: 500);
+      }
+      audioHandler.setMediaItem(MediaItem(
+        id: s.id,
+        title: s.title,
+        artist: s.artist,
+        album: s.album,
+        duration: s.durationSec != null ? Duration(seconds: s.durationSec!) : null,
+        artUri: art,
+      ));
+    } catch (_) {}
+  }
+
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
     if (i < 0 || i >= queue.length) return;
     final s = queue[i];
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) throw '无法获取播放地址';
+    _updateMediaItem(s);
     await player.setUrl(url);
     index = i;
     notifyListeners();
@@ -142,13 +157,11 @@ class PlayerController extends ChangeNotifier {
     _loadLyrics();
   }
 
-  /// 卡住检测：playing=true 且连续 6 秒位置没动，强制回到开头重放。
   void _checkStuck() {
     if (!player.playing) return;
     if (player.processingState != ProcessingState.ready) return;
     final now = player.position;
     if (now == _prevStuckPos && now.inMilliseconds < 500) {
-      // 位置长时间停在 0，强制 seek+play
       unawaited(player.seek(Duration(milliseconds: 500)));
       unawaited(player.play());
     }
@@ -169,13 +182,11 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
-  /// Append [s] to the end of the play queue (enqueue).
   Future<void> enqueue(Song s) async {
     queue = List.of(queue)..add(s);
     notifyListeners();
   }
 
-  /// Play the queue item at [i] (same queue, new index).
   Future<void> playAt(int i) async {
     if (i < 0 || i >= queue.length) return;
     try {
@@ -331,11 +342,10 @@ class PlayerController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _idxSub.cancel();
     _completedSub.cancel();
     _playingSub.cancel();
+    _positionSub.cancel();
     _stuckTimer.cancel();
-    player.dispose();
     super.dispose();
   }
 }
