@@ -19,10 +19,8 @@ enum PlayMode { sequential, shuffle, repeatOne }
 
 /// Owns the audio player, the play queue and the current song's lyrics.
 ///
-/// The queue is handed to just_audio as a [ConcatenatingAudioSource], so the
-/// system media notification and lock-screen controls work natively, playback
-/// continues in the background, and next/prev buttons are handled by the
-/// platform itself.
+/// 每首歌用 AudioSource.uri + MediaItem tag 装载（元数据同步到车机/通知栏），
+/// 切歌时重建音源。带卡住自动恢复：playing=true 但位置长时间不动会强制重启播放。
 class PlayerController extends ChangeNotifier {
   PlayerController(this.client, this.settings) {
     _idxSub = player.currentIndexStream.listen((i) {
@@ -39,6 +37,7 @@ class PlayerController extends ChangeNotifier {
       _lastPos = pos;
       _lastPosTime = DateTime.now();
     });
+    _stuckTimer = Timer.periodic(const Duration(seconds: 3), (_) => _checkStuck());
   }
 
   final SubsonicClient client;
@@ -58,13 +57,13 @@ class PlayerController extends ChangeNotifier {
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<Duration> _positionSub;
+  late final Timer _stuckTimer;
   Duration _lastPos = Duration.zero;
   DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
   String? lastError;
-  /// 是否已经把当前 queue 装载成 ConcatenatingAudioSource。
-  /// 装载后 next/prev/跳曲直接走 player.seek*，不再重建音源。
-  bool _sourceLoaded = false;
+  /// 上次检查时的位置，用于判断是否卡住。
+  Duration _prevStuckPos = Duration.zero;
 
   Future<File> get _stateFile async {
     final dir = await getApplicationDocumentsDirectory();
@@ -137,14 +136,14 @@ class PlayerController extends ChangeNotifier {
     return client.coverUrl(s.coverArt, size: 500);
   }
 
-  /// 把 queue 里的歌逐首解析成带 MediaItem 元数据的音源，整体装载进播放器。
-  /// 元数据（歌名/歌手/专辑/封面）会被系统 MediaSession 同步到车机、通知栏和锁屏。
+  /// 装载第 i 首歌并播放。带 MediaItem 元数据，系统 MediaSession 能同步歌名/封面。
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
-    final sources = <AudioSource>[];
-    for (final s in queue) {
-      final url = await _mediaUrlForSong(s);
-      if (url.isEmpty) continue;
-      sources.add(AudioSource.uri(
+    if (i < 0 || i >= queue.length) return;
+    final s = queue[i];
+    final url = await _mediaUrlForSong(s);
+    if (url.isEmpty) throw '无法获取播放地址';
+    await player.setAudioSource(
+      AudioSource.uri(
         Uri.parse(url),
         tag: MediaItem(
           id: s.id,
@@ -155,20 +154,27 @@ class PlayerController extends ChangeNotifier {
               s.durationSec != null ? Duration(seconds: s.durationSec!) : null,
           artUri: _artUriFor(s),
         ),
-      ));
-    }
-    if (sources.isEmpty) throw '无法获取播放地址';
-    await player.setAudioSource(
-      ConcatenatingAudioSource(children: sources),
-      initialIndex: i,
+      ),
       initialPosition: Duration.zero,
     );
-    _sourceLoaded = true;
     index = i;
     notifyListeners();
     _applyLoopMode();
     if (autoplay) await player.play();
     _loadLyrics();
+  }
+
+  /// 卡住检测：playing=true 且连续 6 秒位置没动，强制回到开头重放。
+  void _checkStuck() {
+    if (!player.playing) return;
+    if (player.processingState != ProcessingState.ready) return;
+    final now = player.position;
+    if (now == _prevStuckPos && now.inMilliseconds < 500) {
+      // 位置长时间停在 0，强制 seek+play
+      unawaited(player.seek(Duration(milliseconds: 500)));
+      unawaited(player.play());
+    }
+    _prevStuckPos = now;
   }
 
   Future<void> playQueue(List<Song> songs, int startIndex) async {
@@ -195,11 +201,7 @@ class PlayerController extends ChangeNotifier {
   Future<void> playAt(int i) async {
     if (i < 0 || i >= queue.length) return;
     try {
-      if (_sourceLoaded) {
-        await player.seek(Duration.zero, index: i);
-      } else {
-        await _loadAndPlay(i);
-      }
+      await _loadAndPlay(i);
     } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
@@ -212,11 +214,7 @@ class PlayerController extends ChangeNotifier {
     if (queue.length <= 1) return;
     var ni = index;
     while (ni == index) { ni = _rnd.nextInt(queue.length); }
-    if (_sourceLoaded) {
-      unawaited(player.seek(Duration.zero, index: ni));
-    } else {
-      unawaited(_loadAndPlay(ni));
-    }
+    unawaited(_loadAndPlay(ni));
   }
 
   Future<void> _loadLyrics() async {
@@ -298,15 +296,7 @@ class PlayerController extends ChangeNotifier {
     if (_repeat == PlayMode.shuffle) { _playRandom(); return; }
     if (queue.isEmpty) return;
     try {
-      if (_sourceLoaded) {
-        if (player.hasNext) {
-          await player.seekToNext();
-        } else {
-          await player.seek(Duration.zero, index: 0);
-        }
-      } else {
-        await _loadAndPlay((index + 1) % queue.length);
-      }
+      await _loadAndPlay((index + 1) % queue.length);
     } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
@@ -317,15 +307,7 @@ class PlayerController extends ChangeNotifier {
     }
     if (queue.isEmpty) return;
     try {
-      if (_sourceLoaded) {
-        if (player.hasPrevious) {
-          await player.seekToPrevious();
-        } else {
-          await player.seek(Duration.zero, index: queue.length - 1);
-        }
-      } else {
-        await _loadAndPlay(index <= 0 ? queue.length - 1 : index - 1);
-      }
+      await _loadAndPlay(index <= 0 ? queue.length - 1 : index - 1);
     } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
@@ -374,6 +356,7 @@ class PlayerController extends ChangeNotifier {
     _idxSub.cancel();
     _completedSub.cancel();
     _playingSub.cancel();
+    _stuckTimer.cancel();
     player.dispose();
     super.dispose();
   }
