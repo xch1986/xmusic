@@ -68,6 +68,9 @@ jobs:
       - name: Generate app icon
         run: flutter pub run flutter_launcher_icons
 
+      - name: Generate app icon
+        run: flutter pub run flutter_launcher_icons
+
       - name: Build APK
         run: flutter build apk --release
 
