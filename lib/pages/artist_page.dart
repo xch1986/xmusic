@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../player_controller.dart';
 import '../settings.dart';
@@ -92,4 +92,3 @@ class _ArtistPageState extends State<ArtistPage> {
     );
   }
 }
-

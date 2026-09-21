@@ -68,7 +68,11 @@ class _PlayerPageState extends State<PlayerPage> {
         // 黑胶封面
         Expanded(
           flex: 3,
-          child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
+              Center(
             child: Container(
               width: size, height: size,
               decoration: BoxDecoration(
