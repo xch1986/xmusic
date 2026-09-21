@@ -16,6 +16,7 @@ class AppSettings extends ChangeNotifier {
   static const double scaleStep = 0.1;
 
   static const _kScale = 'lyric_scale';
+  static const _kGlass = 'glass_opacity';
   static const _kUrl = 'server_url';
   static const _kUser = 'username';
   static const _kSalt = 'salt';
@@ -41,9 +42,11 @@ class AppSettings extends ChangeNotifier {
   String webdavPath = '';
   String webdavName = '';
   double _lyricScale = 1.0;
+  double _glassOpacity = 0.35;
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
+  double get glassOpacity => _glassOpacity;
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
@@ -69,6 +72,7 @@ class AppSettings extends ChangeNotifier {
     webdavName = _prefs.getString(_kDavName) ?? '';
     _lyricScale =
         (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale).toDouble();
+    _glassOpacity = (_prefs.getDouble(_kGlass) ?? 0.35).clamp(0.1, 1.0).toDouble();
     final themeIdx = _prefs.getInt(_kTheme) ?? 0;
     _themeMode = AppThemeMode.values[themeIdx.clamp(0, 2).toInt()];
   }
@@ -110,6 +114,14 @@ class AppSettings extends ChangeNotifier {
 
   void increaseLyric() => setLyricScale(_lyricScale + scaleStep);
   void decreaseLyric() => setLyricScale(_lyricScale - scaleStep);
+
+  Future<void> setGlassOpacity(double value) async {
+    final v = value.clamp(0.1, 1.0);
+    if ((v - _glassOpacity).abs() < 0.01) return;
+    _glassOpacity = v;
+    notifyListeners();
+    await _prefs.setDouble(_kGlass, v);
+  }
 
   Future<void> setThemeMode(AppThemeMode mode) async {
     if (mode == _themeMode) return;
