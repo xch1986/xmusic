@@ -38,7 +38,7 @@ class _PlayerPageState extends State<PlayerPage> {
             MediaQuery.of(context).orientation == Orientation.landscape;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           body: SafeArea(
             child: song == null
                 ? const Center(child: Text('没有正在播放的歌曲'))
