@@ -49,7 +49,7 @@ jobs:
       - name: Patch audio service
         run: |
           f=android/app/src/main/AndroidManifest.xml
-          sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioServicePlugin" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n  </application>|' "$f"
+          sed -i 's|</application>|    <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">\n      <intent-filter>\n        <action android:name="android.media.browse.MediaBrowserService" />\n      </intent-filter>\n    </service>\n  </application>|' "$f"
           grep -n "AudioServicePlugin" "$f"
           python3 - <<'PYEOF'
           p="android/app/src/main/AndroidManifest.xml"
