@@ -97,16 +97,11 @@ class AppSettings extends ChangeNotifier {
     );
   }
 
-  Future<void> saveLogin({
-    required String url,
-    required String user,
-    required String salt,
-    required String token,
-  }) async {
-    serverUrl = url.trim();
-    username = user.trim();
-    this.salt = salt;
-    this.token = token;
+  Future<void> saveLogin(SubsonicClient client) async {
+    serverUrl = client.baseUrl.trim();
+    username = client.username.trim();
+    salt = client.salt;
+    token = client.token;
     notifyListeners();
     await _prefs.setString(_kUrl, serverUrl);
     await _prefs.setString(_kUser, username);
