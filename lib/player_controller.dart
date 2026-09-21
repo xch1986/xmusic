@@ -22,11 +22,8 @@ enum PlayMode { sequential, shuffle, repeatOne }
 /// Owns the audio player, the play queue and the current song's lyrics.
 class PlayerController extends ChangeNotifier {
   PlayerController(this.client, this.settings) {
-    // 先停止AudioService自动恢复的播放，等待完全停止
-    unawaited(() async {
-      await player.stop();
-      await Future.delayed(const Duration(milliseconds: 500));
-    }());
+    // 先停止AudioService自动恢复的播放
+    unawaited(player.stop());
     _completedSub = player.processingStateStream.listen((s) {
       if (s == ProcessingState.completed) _onCompleted();
     });
@@ -176,8 +173,8 @@ class PlayerController extends ChangeNotifier {
     index = i;
     notifyListeners();
     _applyLoopMode();
-    if (autoplay) await player.play();
     _loadLyrics();
+    if (autoplay) await player.play();
   }
 
   void _checkStuck() {
@@ -237,8 +234,10 @@ class PlayerController extends ChangeNotifier {
     lyricsLoading = true;
     notifyListeners();
     try {
+      final src = (s.fromExternal && s.externalSource != null && s.externalSource != 'qq')
+          ? s.externalSource! : 'netease';
       var result = s.fromExternal
-          ? await external.lyricFor(s.id, source: s.externalSource ?? 'netease')
+          ? await external.lyricFor(s.id, source: src)
           : await client.lyricsFor(s);
       // 外部源没歌词时回退网易云
       if (s.fromExternal && (result == null || result.lines.isEmpty)) {
