@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -53,7 +53,7 @@ class MyApp extends StatelessWidget {
       builder: (context, _) {
         final a = (settings.glassOpacity * 255).round();
         final lightBg = Color(a << 24 | 0xEAF0FA);
-        final darkBg = Color(a << 24 | 0x141820);
+        final darkBg = Color(a << 24 | 0x1e2230);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
