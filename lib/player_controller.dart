@@ -148,26 +148,19 @@ class PlayerController extends ChangeNotifier {
     } catch (_) {}
   }
 
-  bool _loading = false;
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
     if (i < 0 || i >= queue.length) return;
-    if (_loading) return;
-    _loading = true;
-    try {
-      final s = queue[i];
-      final url = await _mediaUrlForSong(s);
-      if (url.isEmpty) throw '无法获取播放地址';
-      _updateMediaItem(s);
-      await player.stop();
-      await player.setUrl(url);
-      index = i;
-      notifyListeners();
-      _applyLoopMode();
-      if (autoplay) await player.play();
-      _loadLyrics();
-    } finally {
-      _loading = false;
-    }
+    final s = queue[i];
+    final url = await _mediaUrlForSong(s);
+    if (url.isEmpty) throw '无法获取播放地址';
+    _updateMediaItem(s);
+    await player.stop();
+    await player.setUrl(url);
+    index = i;
+    notifyListeners();
+    _applyLoopMode();
+    if (autoplay) await player.play();
+    _loadLyrics();
   }
 
   void _checkStuck() {
