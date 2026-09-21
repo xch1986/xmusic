@@ -9,7 +9,7 @@ import 'library_page.dart';
 import 'player_page.dart';
 import 'search_page.dart';
 
-/// Home page: newest albums, daily mix and recent albums.
+/// Home page: daily mix cards, newest albums, recent albums.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.settings, required this.controller});
 
@@ -22,7 +22,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Album>> _newest;
-  late Future<List<Song>> _random;
+  late Future<List<Song>> _dailyMix;
   late Future<List<Album>> _recent;
   late Future<List<Album>> _frequent;
 
@@ -36,9 +36,17 @@ class _HomePageState extends State<HomePage> {
 
   void _load() {
     _newest = _client.newestAlbums();
-    _random = _client.randomSongs(size: 20);
     _recent = _client.recentAlbums(size: 20);
     _frequent = _client.frequentAlbums(size: 20);
+    // 每日推荐：优先外部 API（网易云），失败回退本地随机。
+    final ext = widget.controller.external;
+    if (ext.isConfigured) {
+      _dailyMix = ext.search('华语流行', limit: 20).catchError((_) async {
+        return _client.randomSongs(size: 20);
+      });
+    } else {
+      _dailyMix = _client.randomSongs(size: 20);
+    }
   }
 
   void _reload() => setState(_load);
@@ -51,7 +59,7 @@ class _HomePageState extends State<HomePage> {
         album: a,
       ),
     ));
-    if (mounted) setState(() {}); // mini player state refresh
+    if (mounted) setState(() {});
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
@@ -70,7 +78,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('音乐'),
+        title: const Text('音素'),
         actions: [
           IconButton(
             tooltip: '搜索',
@@ -87,7 +95,7 @@ class _HomePageState extends State<HomePage> {
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
         child: FutureBuilder(
-          future: Future.wait([_newest, _random, _recent, _frequent]),
+          future: Future.wait([_newest, _dailyMix, _recent, _frequent]),
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -106,33 +114,41 @@ class _HomePageState extends State<HomePage> {
             }
             final data = snap.data as List;
             final newest = data[0] as List<Album>;
-            final random = data[1] as List<Song>;
+            final daily = data[1] as List<Song>;
             final recent = data[2] as List<Album>;
             final frequent = data[3] as List<Album>;
 
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                // ---- 每日推荐 ----
+                // ---- 每日推荐（横滑卡片）----
                 SectionHeader(
                   title: '每日推荐',
-                  actionLabel: random.isEmpty ? null : '播放全部',
-                  onAction: random.isEmpty
+                  actionLabel: daily.isEmpty ? null : '播放全部',
+                  onAction: daily.isEmpty
                       ? null
-                      : () => _playSongs(random, 0),
+                      : () => _playSongs(daily, 0),
                 ),
-                if (random.isEmpty)
+                if (daily.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Text('暂无推荐歌曲'),
                   )
                 else
-                  ...List.generate(
-                    random.length > 8 ? 8 : random.length,
-                    (i) => SongTile(
-                      song: random[i],
-                      client: _client,
-                      onTap: () => _playSongs(random, i),
+                  SizedBox(
+                    height: 190,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: daily.length > 12 ? 12 : daily.length,
+                      itemBuilder: (context, i) => Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _SongCard(
+                          song: daily[i],
+                          client: _client,
+                          onTap: () => _playSongs(daily, i),
+                        ),
+                      ),
                     ),
                   ),
 
@@ -200,6 +216,64 @@ class _HomePageState extends State<HomePage> {
             width: 130,
             onTap: () => _openAlbum(albums[i]),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 歌曲卡片：封面 + 歌名/歌手叠加，类似网易云每日推荐。
+class _SongCard extends StatelessWidget {
+  const _SongCard({
+    required this.song,
+    required this.client,
+    required this.onTap,
+  });
+
+  final Song song;
+  final SubsonicClient client;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 130,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                CoverImage(
+                  client: client,
+                  coverId: song.coverArt,
+                  coverUrl: song.coverUrl,
+                  size: 130,
+                  radius: 12,
+                  requestSize: 360,
+                ),
+                Positioned(
+                  right: 4,
+                  bottom: 4,
+                  child: Icon(Icons.play_circle_fill_rounded,
+                      size: 28, color: Colors.white.withOpacity(0.9)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(song.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall),
+            Text(song.artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
         ),
       ),
     );
