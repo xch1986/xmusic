@@ -54,8 +54,8 @@ class MyApp extends StatelessWidget {
         final a = (settings.glassOpacity * 255).round();
         // 自定义背景色优先，否则完全透明（通透设置只控制UI元素透明度）
         final custom = settings.bgColor;
-        final lightBg = custom != 0 ? Color(custom) : Colors.transparent;
-        final darkBg = custom != 0 ? Color(custom) : Colors.transparent;
+        final lightBg = custom != 0 ? Color(custom) : Color(a << 24 | 0xEAF0FA);
+        final darkBg = custom != 0 ? Color(custom) : Color(a << 24 | 0x1E2433);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -66,8 +66,8 @@ class MyApp extends StatelessWidget {
           },
           theme: ThemeData(
             scaffoldBackgroundColor: lightBg,
-            appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
+            appBarTheme: AppBarTheme(
+                backgroundColor: lightBg,
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: NavigationBarThemeData(
@@ -84,8 +84,8 @@ class MyApp extends StatelessWidget {
           ),
           darkTheme: ThemeData(
             scaffoldBackgroundColor: darkBg,
-            appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
+            appBarTheme: AppBarTheme(
+                backgroundColor: lightBg,
                 elevation: 0,
                 scrolledUnderElevation: 0),
             navigationBarTheme: NavigationBarThemeData(
