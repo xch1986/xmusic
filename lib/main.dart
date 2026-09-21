@@ -152,21 +152,7 @@ class _RootState extends State<Root> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    // 渐变底色做玻璃效果：半透明 Scaffold 透过来有内容，不发灰。
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF1a1f35), const Color(0xFF0d1117)]
-              : [const Color(0xFFcfe0ff), const Color(0xFFe8edff)],
-        ),
-      ),
-      child: controller == null
-          ? LoginPage(settings: widget.settings)
-          : HomeShell(settings: widget.settings, controller: controller),
-    );
+    if (controller == null) return LoginPage(settings: widget.settings);
+    return HomeShell(settings: widget.settings, controller: controller);
   }
 }
