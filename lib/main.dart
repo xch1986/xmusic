@@ -48,9 +48,13 @@ class MyApp extends StatelessWidget {
             AppThemeMode.dark => ThemeMode.dark,
           },
           theme: ThemeData(
-          scaffoldBackgroundColor: const Color(0x66FFFFFF),
-            appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
-            navigationBarTheme: const NavigationBarThemeData(backgroundColor: Color(0x66FFFFFF), elevation: 0),
+            scaffoldBackgroundColor: const Color(0xCCF0F4FF),
+            appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
+            navigationBarTheme: NavigationBarThemeData(
+                backgroundColor: const Color(0x88FFFFFF),
+                elevation: 0,
+                indicatorColor: _seed.withOpacity(0.15)),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
@@ -58,7 +62,13 @@ class MyApp extends StatelessWidget {
             ),
           ),
           darkTheme: ThemeData(
-            scaffoldBackgroundColor: const Color(0x661A1A1A),
+            scaffoldBackgroundColor: const Color(0xCC141820),
+            appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
+            navigationBarTheme: NavigationBarThemeData(
+                backgroundColor: const Color(0x331A1F2E),
+                elevation: 0,
+                indicatorColor: _seed.withOpacity(0.25)),
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(
               seedColor: _seed,
