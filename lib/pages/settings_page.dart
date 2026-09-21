@@ -55,7 +55,7 @@ class SettingsPage extends StatelessWidget {
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
-    final hexCtl = TextEditingController(text: currentColor != 0 ? '#${(currentColor & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}' : '');
+    final hexCtl = TextEditingController(text: currentColor != 0 ? '#${(currentColor & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0').toUpperCase()}' : '');
 
     final presets = [
       Colors.white, Colors.black, Colors.red, Colors.pink, Colors.purple, Colors.deepPurple,
@@ -86,7 +86,10 @@ class SettingsPage extends StatelessWidget {
                         decoration: const InputDecoration(labelText: '十六进制', isDense: true),
                         onChanged: (v) {
                           final hex = v.replaceAll('#', '').trim();
-                          if (hex.length == 6) {
+                          if (hex.length == 8) {
+                            final val = int.tryParse(hex, radix: 16);
+                            if (val != null) setD(() { alpha = (val >> 24) / 255.0; hsv = HSVColor.fromColor(Color(val)); });
+                          } else if (hex.length == 6) {
                             final val = int.tryParse(hex, radix: 16);
                             if (val != null) setD(() => hsv = HSVColor.fromColor(Color(0xFF000000 | val)));
                           }
@@ -244,6 +247,12 @@ class SettingsPage extends StatelessWidget {
 
           // ===== 下载 =====
           _sectionTitle(theme, '下载'),
+          ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: const Text('本地下载路径'),
+            subtitle: const Text('/storage/emulated/0/Music'),
+            onTap: () {},
+          ),
           ListTile(
             leading: const Icon(Icons.cloud_download_outlined),
             title: const Text('WebDAV (NAS)'),
