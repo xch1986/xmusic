@@ -573,7 +573,8 @@ class _LyricsViewState extends State<LyricsView> {
                                     ? Color(widget.settings.lyricFuture)
                                     : cs.onSurface.withOpacity(0.45))),
                       ),
-                      child: Text(line.text.isEmpty ? '♪' : line.text),
+                      child: Text(line.text.isEmpty ? '♪' : line.text,
+                        textAlign: widget.alignRight ? TextAlign.right : TextAlign.center),
                     ),
                   ),
                 );
