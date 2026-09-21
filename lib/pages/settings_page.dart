@@ -52,20 +52,38 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick) {
+  void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
     final hexCtl = TextEditingController(text: currentColor != 0 ? '#${(currentColor & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0').toUpperCase()}' : '');
 
-    final presets = [
-      const Color(0xFF99B8B0), const Color(0xFF8FA8B8), const Color(0xFF9DB0C4),
-      const Color(0xFFA8B89D), const Color(0xFFB8B89D), const Color(0xFFC4B89D),
-      const Color(0xFFC4A89D), const Color(0xFFB89D9D), const Color(0xFFC49DB0),
-      const Color(0xFFB09DB8), const Color(0xFF9DA8C4), const Color(0xFF9DC4B8),
-      const Color(0xFFD4D4D4), const Color(0xFF8C8C8C), const Color(0xFFB8B8B8),
-      const Color(0xFF7A8B9C), const Color(0xFF8B9C7A), const Color(0xFF9C8B7A),
-      const Color(0xFF7A7A8B), const Color(0xFF8B7A8B), const Color(0xFF6B6B6B),
+    // 主题色：低饱和、精简（参考QQ/网易云播放器配色）
+    final themePresets = [
+      const Color(0xFF6B8CC4), // QQ蓝
+      const Color(0xFFC46B6B), // 网易红
+      const Color(0xFF6BB88C), // 清新绿
+      const Color(0xFF9B7EC4), // 优雅紫
+      const Color(0xFFC4A86B), // 暖橙
+      const Color(0xFFC46B9B), // 樱粉
+      const Color(0xFF6BB8B8), // 青碧
+      const Color(0xFF8C8C9E), // 雾灰
+      const Color(0xFF5C6B8C), // 深蓝灰
+      const Color(0xFF8C7A6B), // 暖棕
     ];
+    // 歌词色：鲜艳高对比
+    final lyricPresets = [
+      const Color(0xFFFFFFFF), // 白
+      const Color(0xFFFFFF00), // 亮黄
+      const Color(0xFF00FFFF), // 青
+      const Color(0xFF00FF88), // 绿
+      const Color(0xFFFF6B9B), // 粉
+      const Color(0xFFFF8C42), // 橙
+      const Color(0xFFB366FF), // 紫
+      const Color(0xFF8899AA), // 灰蓝（已唱）
+      const Color(0xFF666677), // 深灰（未唱）
+      const Color(0xFFCCDDFF), // 淡蓝白
+    ];
+    final presets = isTheme ? themePresets : lyricPresets;
 
     showDialog(
       context: context,
@@ -193,7 +211,7 @@ class SettingsPage extends StatelessWidget {
             trailing: settings.bgColor != 0
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
                 : const Text('默认'),
-            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c)),
+            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: true),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.play_circle_outline_rounded),
