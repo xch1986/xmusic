@@ -323,6 +323,8 @@ class _PlayerPageState extends State<PlayerPage> {
 class _CurrentLyricLine extends StatefulWidget {
   const _CurrentLyricLine({required this.controller, required this.settings});
 
+  final PlayerController controller;
+  final AppSettings settings;
   @override
   State<_CurrentLyricLine> createState() => _CurrentLyricLineState();
 }
@@ -431,7 +433,7 @@ class _RepeatButton extends StatelessWidget {
 class LyricSizeControls extends StatelessWidget {
   const LyricSizeControls({super.key, required this.settings});
 
-  final int? visibleLines;
+  final AppSettings settings;
 
   @override
   Widget build(BuildContext context) {
