@@ -21,14 +21,21 @@ class MiniPlayer extends StatelessWidget {
         final cs = Theme.of(context).colorScheme;
 
         // 注意：不用 BackdropFilter 毛玻璃——透明窗口/车机上会渲染成拉伸色块；
-        // 用半透明纯色 + 顶部细边，兼顾质感与车机兼容。
+        // 用半透明纯色 + 顶部细边 + 柔和阴影，兼顾质感与车机兼容。
         return Container(
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHigh.withValues(alpha: 0.85),
+            color: cs.surfaceContainerHigh.withValues(alpha: 0.88),
+            boxShadow: [
+              BoxShadow(
+                color: cs.shadow.withValues(alpha: 0.10),
+                blurRadius: 14,
+                offset: const Offset(0, -3),
+              ),
+            ],
             border: Border(
               top: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.5),
-                width: 0.6,
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+                width: 0.5,
               ),
             ),
           ),

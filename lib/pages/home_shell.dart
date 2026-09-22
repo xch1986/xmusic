@@ -40,10 +40,18 @@ class _HomeShellState extends State<HomeShell> {
           MiniPlayer(settings: widget.settings, controller: widget.controller),
           DecoratedBox(
             decoration: BoxDecoration(
+              // 柔和上投光 + 细边：导航栏浮在壁纸上的玻璃质感（不遮挡壁纸）
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.12),
+                  blurRadius: 18,
+                  offset: const Offset(0, -4),
+                ),
+              ],
               border: Border(
                 top: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
-                  width: 0.6,
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.35),
+                  width: 0.5,
                 ),
               ),
             ),

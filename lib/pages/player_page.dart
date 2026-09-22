@@ -95,16 +95,17 @@ class _PlayerPageState extends State<PlayerPage> {
         return Scaffold(
           backgroundColor: bg,
           body: Container(
-            // 高级质感：主题色轻微渐变叠加在透明玻璃之上
+            // 高级质感：主题色轻微渐变叠加在透明玻璃之上（模拟迪友卡片的环境光晕）
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.13),
                   Colors.transparent,
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.09),
                 ],
+                stops: const [0.0, 0.55, 1.0],
               ),
             ),
             child: SafeArea(
@@ -137,14 +138,30 @@ class _PlayerPageState extends State<PlayerPage> {
                 children: [
                   Center(
                     child: Container(
-                      width: s, height: s,
+                      width: s * 1.16,
+                      height: s * 1.16,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+                        // 环境光晕：主题色低透明度大光斑，让黑胶浮在玻璃上
+                        gradient: RadialGradient(
+                          colors: [
+                            theme.colorScheme.primary.withValues(alpha: 0.14),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.75],
+                        ),
                       ),
-                      padding: const EdgeInsets.all(8),
-                      child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: s, height: s,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                      ),
                     ),
                   ),
                 ],
@@ -236,15 +253,31 @@ class _PlayerPageState extends State<PlayerPage> {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // 左：大黑胶（带环境光晕，浮在玻璃上）+ 歌曲信息
                   Container(
-                    width: s, height: s,
+                    width: s * 1.14,
+                    height: s * 1.14,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.3), blurRadius: 24, offset: const Offset(0, 8))],
+                      gradient: RadialGradient(
+                        colors: [
+                          theme.colorScheme.primary.withValues(alpha: 0.15),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.78],
+                      ),
                     ),
-                    padding: const EdgeInsets.all(10),
-                    child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: s, height: s,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.35), blurRadius: 26, offset: const Offset(0, 8))],
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Padding(
@@ -669,11 +702,35 @@ class _LyricsViewState extends State<LyricsView> {
                 final line = lines[i];
                 final active = !synced || i == _current;
 
+                final text = Text(line.text.isEmpty ? '♪' : line.text,
+                  textAlign: widget.alignRight ? TextAlign.right : TextAlign.center);
+
+                // 当前行：玻璃高亮条（圆角半透明背景），迪友卡片式聚焦质感
+                final content = active
+                    ? Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: cs.primary.withValues(alpha: 0.10),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: text,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        child: text,
+                      );
+
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 9 * scale),
+                    // 非激活行高度 = 2×(9×scale)；激活行外补白少 10 再叠加容器 20px，总高一致，滚动不跳动
+                    padding: EdgeInsets.symmetric(vertical: active ? (9 * scale - 10).clamp(0.0, 60.0).toDouble() : 9 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
@@ -692,8 +749,7 @@ class _LyricsViewState extends State<LyricsView> {
                                     ? Color(widget.settings.lyricFuture)
                                     : cs.onSurface.withOpacity(0.45))),
                       ),
-                      child: Text(line.text.isEmpty ? '♪' : line.text,
-                        textAlign: widget.alignRight ? TextAlign.right : TextAlign.center),
+                      child: content,
                     ),
                   ),
                 );
@@ -808,11 +864,22 @@ class _Controls extends StatelessWidget {
         ),
         IconButton.filledTonal(
           iconSize: navSize,
+          style: IconButton.styleFrom(
+            // 玻璃质感：半透明圆钮，浮在壁纸上
+            backgroundColor: cs.primary.withValues(alpha: 0.16),
+            foregroundColor: cs.onSurface,
+            side: BorderSide(color: cs.primary.withValues(alpha: 0.10), width: 0.5),
+          ),
           icon: const Icon(Icons.skip_previous_rounded),
           onPressed: controller.previous,
         ),
         IconButton.filled(
           iconSize: playSize,
+          style: IconButton.styleFrom(
+            backgroundColor: cs.primary,
+            shadowColor: cs.shadow.withValues(alpha: 0.35),
+            elevation: 4,
+          ),
           icon: Icon(controller.playing
               ? Icons.pause_rounded
               : Icons.play_arrow_rounded),
@@ -820,6 +887,11 @@ class _Controls extends StatelessWidget {
         ),
         IconButton.filledTonal(
           iconSize: navSize,
+          style: IconButton.styleFrom(
+            backgroundColor: cs.primary.withValues(alpha: 0.16),
+            foregroundColor: cs.onSurface,
+            side: BorderSide(color: cs.primary.withValues(alpha: 0.10), width: 0.5),
+          ),
           icon: const Icon(Icons.skip_next_rounded),
           onPressed: controller.hasNext ? controller.next : null,
         ),
