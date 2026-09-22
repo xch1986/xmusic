@@ -1,9 +1,7 @@
 name: Build APK
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
+  workflow_dispatch:  # 仅手动触发（保留文件不删，避免误传的重复工作流自动构建）
 
 jobs:
   build:
