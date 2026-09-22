@@ -227,13 +227,14 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(settings.externalApiUrl),
             onTap: () => _showExternalApiDialog(context),
           ),
-          // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源）
-          const ListTile(
-            leading: Icon(Icons.public_rounded),
-            title: Text('外网搜索源'),
-            subtitle: Text('搜索外网时自动聚合：网易云 / B站 / QQ / 聚合API\n'
-                'QQ 播放受版权/VIP 限制，其余均可直接播放'),
+          // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源），
+          // 点进去展示具体地址，只读不可改。
+          ListTile(
+            leading: const Icon(Icons.public_rounded),
+            title: const Text('外网搜索源'),
+            subtitle: const Text('自动聚合：网易云 / B站 / QQ / 聚合API\nQQ 播放受版权/VIP 限制，点击查看详情'),
             isThreeLine: true,
+            onTap: () => _showSourcesInfo(context),
           ),
           const Divider(),
 
@@ -378,6 +379,61 @@ class SettingsPage extends StatelessWidget {
         );
       }
     }
+  }
+
+  /// 外网搜索源详情：只读展示各源具体地址，不可更改。
+  void _showSourcesInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('外网搜索源'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _srcRow('聚合API（当前）', settings.externalApiUrl),
+              _srcRow('网易云直连', 'https://music.163.com'),
+              _srcRow('B站直连', 'https://api.bilibili.com'),
+              _srcRow('QQ音乐', 'https://c.y.qq.com（播放受版权/VIP限制）'),
+              const SizedBox(height: 8),
+              Text('搜索外网时自动聚合以上全部源，播放按歌曲来源分发；'
+                  '聚合API地址可在上方“外部API地址”填写修改。',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _srcRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontSize: 13),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showExternalApiDialog(BuildContext context) {

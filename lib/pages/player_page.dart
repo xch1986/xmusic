@@ -36,14 +36,24 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void initState() {
     super.initState();
-    // 默认跟随系统自动旋转（不锁定任何方向）
-    SystemChrome.setPreferredOrientations([]);
+    // 显式允许所有四个方向（空列表在某些版本不生效/反而锁方向），跟随系统自动旋转
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
 
   @override
   void dispose() {
     // 离开播放页时还原系统方向（允许所有方向），避免把其他页面锁住
-    SystemChrome.setPreferredOrientations([]);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
@@ -53,12 +63,17 @@ class _PlayerPageState extends State<PlayerPage> {
     final next =
         _OrientMode.values[(_orient.index + 1) % _OrientMode.values.length];
     await SystemChrome.setPreferredOrientations(switch (next) {
-      _OrientMode.auto => <DeviceOrientation>[],
-      _OrientMode.landscape => [
+      _OrientMode.auto => const [
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ],
-      _OrientMode.portrait => [DeviceOrientation.portraitUp],
+      _OrientMode.landscape => const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+      _OrientMode.portrait => const [DeviceOrientation.portraitUp],
     });
     if (mounted) setState(() => _orient = next);
   }
