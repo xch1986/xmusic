@@ -51,32 +51,48 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _openPlaylist(String name, String playlistId, {String? coverUrl}) async {
+  Future<void> _openPlaylist(String name, String playlistId,
+      {String? coverUrl, List<Song>? songs}) async {
+    // 已有数据（如热歌榜大卡片首页已加载）：直接进详情页，秒开不转圈、不再二次请求
+    if (songs != null) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => _PlaylistDetail(
+          title: name,
+          songs: songs,
+          client: _client,
+          settings: widget.settings,
+          controller: widget.controller,
+          coverUrl: coverUrl,
+          onPlay: (i) => _playSongs(songs, i),
+        ),
+      ));
+      return;
+    }
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
-    List<Song> songs;
+    List<Song> fetched;
     String? error;
     try {
-      songs = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
+      fetched = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
     } catch (e) {
-      songs = const [];
+      fetched = const [];
       error = '加载失败（$e）';
     }
-    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (fetched.isEmpty && error == null) error = '没有歌曲数据';
     if (!mounted) return;
     Navigator.pop(context); // dismiss loading
     // 无论成败都进入详情页：失败显示原因+重试，绝不空白页或无声返回
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
         title: name,
-        songs: songs,
+        songs: fetched,
         client: _client,
         settings: widget.settings,
         controller: widget.controller,
         coverUrl: coverUrl,
         error: error,
         onRetry: () => _openPlaylist(name, playlistId, coverUrl: coverUrl),
-        onPlay: (i) => _playSongs(songs, i),
+        onPlay: (i) => _playSongs(fetched, i),
       ),
     ));
   }
@@ -225,7 +241,7 @@ class _HomePageState extends State<HomePage> {
         elevation: 2,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _openPlaylist('热歌榜', '3778678'),
+          onTap: () => _openPlaylist('热歌榜', '3778678', songs: songs),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
