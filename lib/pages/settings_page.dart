@@ -55,6 +55,16 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+
+  /// 取色弹窗文字细描边：弹窗内白字在浅色/自定义背景上可读（不压字）
+  static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle()).copyWith(
+        shadows: const [
+          Shadow(color: Colors.black45, blurRadius: 0, offset: Offset(1, 1)),
+          Shadow(color: Colors.black45, blurRadius: 0, offset: Offset(-1, -1)),
+          Shadow(color: Colors.black26, blurRadius: 3),
+        ],
+      );
+
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
@@ -94,7 +104,7 @@ class SettingsPage extends StatelessWidget {
         builder: (ctx, setD) {
           final c = hsv.toColor().withOpacity(alpha);
           return AlertDialog(
-            title: Text(title),
+            title: Text(title, style: _stroke(null)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -107,7 +117,12 @@ class SettingsPage extends StatelessWidget {
                     Expanded(
                       child: TextField(
                         controller: hexCtl,
-                        decoration: const InputDecoration(labelText: '十六进制', isDense: true),
+                        style: _stroke(Theme.of(ctx).textTheme.bodyLarge),
+                        decoration: InputDecoration(
+                          labelText: '十六进制',
+                          isDense: true,
+                          labelStyle: _stroke(null),
+                        ),
                         onChanged: (v) {
                           final hex = v.replaceAll('#', '').trim();
                           if (hex.length == 8) {
@@ -123,7 +138,7 @@ class SettingsPage extends StatelessWidget {
                   ]),
                   const SizedBox(height: 16),
                   // 调色板
-                  const Text('调色板', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('调色板', style: _stroke(const TextStyle(fontWeight: FontWeight.bold))),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 12, runSpacing: 12,
@@ -145,7 +160,7 @@ class SettingsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   // 精细调整
-                  const Text('精细调整', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('精细调整', style: _stroke(const TextStyle(fontWeight: FontWeight.bold))),
                   _slider('透明度', alpha, 0, 1, (v) => setD(() => alpha = v)),
                   _slider('色相', hsv.hue, 0, 360, (v) => setD(() => hsv = HSVColor.fromAHSV(alpha, v / 360.0, hsv.saturation, hsv.value))),
                   _slider('饱和度', hsv.saturation, 0, 1, (v) => setD(() => hsv = HSVColor.fromAHSV(alpha, hsv.hue / 360.0, v, hsv.value))),
@@ -154,10 +169,10 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text('取消', style: _stroke(null))),
               TextButton(
                 onPressed: () { onPick(0); Navigator.of(ctx).pop(); },
-                child: const Text('跟随默认'),
+                child: Text('跟随默认', style: _stroke(null)),
               ),
               FilledButton(
                 onPressed: () {
@@ -178,9 +193,9 @@ class SettingsPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
-        SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 13))),
+        SizedBox(width: 60, child: Text(label, style: _stroke(const TextStyle(fontSize: 13)))),
         Expanded(child: Slider(value: val, min: min, max: max, onChanged: onChanged)),
-        SizedBox(width: 40, child: Text(val.toStringAsFixed(2), style: const TextStyle(fontSize: 12))),
+        SizedBox(width: 40, child: Text(val.toStringAsFixed(2), style: _stroke(const TextStyle(fontSize: 12)))),
       ]),
     );
   }

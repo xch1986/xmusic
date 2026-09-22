@@ -54,13 +54,15 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openPlaylist(String name, String playlistId, {String? coverUrl}) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
-    final songs = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
+    List<Song> songs;
+    try {
+      songs = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
+    } catch (_) {
+      songs = const [];
+    }
     if (!mounted) return;
     Navigator.pop(context); // dismiss loading
-    if (songs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('加载失败')));
-      return;
-    }
+    // 空数据也进入详情页：显示页面结构+“暂无歌曲”，绝不无声无息返回
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
         title: name,

@@ -187,20 +187,11 @@ class _PlayerPageState extends State<PlayerPage> {
             children: [
               Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2,
-                  shadows: const [
-                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
-                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
-                    Shadow(color: Colors.black26, blurRadius: 6),
-                  ])),
+                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2)),
               const SizedBox(height: 4),
               Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16,
-                  shadows: const [
-                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
-                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
-                  ])),
+                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
             ],
           ),
         ),
@@ -294,19 +285,10 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: Column(
                       children: [
                         Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 24,
-                            shadows: const [
-                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
-                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
-                              Shadow(color: Colors.black26, blurRadius: 6),
-                            ])),
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 24)),
                         const SizedBox(height: 6),
                         Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15,
-                            shadows: const [
-                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
-                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
-                            ])),
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15)),
                       ],
                     ),
                   ),
