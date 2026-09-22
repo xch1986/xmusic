@@ -145,13 +145,17 @@ class PlayerController extends ChangeNotifier {
     if (s.streamUrl != null) return s.streamUrl!;
     if (s.fromExternal) {
       final src = s.externalSource ?? 'netease';
-      // B站/QQ走直连；网易云走GDStudio聚合（稳定）
+      // B站/QQ/酷我走直连；网易云走GDStudio聚合（稳定）
       if (src == 'bilibili') {
         final url = await external.biliStreamUrl(s.id);
         return url ?? '';
       }
       if (src == 'qq') {
         final url = await external.qqStreamUrl(s.id);
+        return url ?? '';
+      }
+      if (src == 'kuwo') {
+        final url = await external.kuwoStreamUrl(s.id);
         return url ?? '';
       }
       return (await external.streamUrlFor(s.id, source: 'netease')) ?? '';

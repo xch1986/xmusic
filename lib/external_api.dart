@@ -312,6 +312,76 @@ class ExternalApi {
     }
   }
 
+  // ==================== 酷我音乐直连 ====================
+
+  /// 酷我音乐搜索（返回 rid 数字部分作为 id）。
+  /// 2026-09 实测：搜索接口可用；播放走 antiserver（见 kuwoStreamUrl）。
+  Future<List<Song>> searchKuwo(String keyword, {int limit = 20}) async {
+    final uri = Uri.parse('http://search.kuwo.cn/r.s').replace(queryParameters: {
+      'all': keyword,
+      'ft': 'music',
+      'itemset': 'web_2013',
+      'client': 'kt',
+      'pn': '0',
+      'rn': '$limit',
+      'rformat': 'json',
+      'encoding': 'utf8',
+      'vipver': 'MUSIC_8.7.7.0_WX',
+      'mobi': '1',
+    });
+    try {
+      final j = await _getRaw(uri, const {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      }) as Map<String, dynamic>;
+      final abslist = (j['abslist'] as List?) ?? const [];
+      final out = <Song>[];
+      for (final t in abslist.cast<Map<String, dynamic>>()) {
+        final rid = (t['MUSICRID'] ?? '').toString().replaceFirst('MUSIC_', '');
+        if (rid.isEmpty) continue;
+        final pic = (t['pic'] ?? t['web_albumpic_short'] ?? '').toString();
+        out.add(Song(
+          id: rid,
+          title: (t['SONGNAME'] ?? '').toString().replaceAll('&nbsp;', ' '),
+          artist: (t['ARTIST'] ?? '未知').toString().replaceAll('\\u0026', '&'),
+          album: (t['ALBUM'] ?? '').toString(),
+          coverArt: null,
+          coverUrl: pic.isEmpty
+              ? null
+              : (pic.startsWith('http') ? pic : 'https:$pic'),
+          durationSec: null,
+          fromExternal: true,
+          externalSource: 'kuwo',
+        ));
+      }
+      return out;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 酷我音乐播放地址（antiserver anti.s，2026-09 实测可用，返回纯文本 URL）。
+  Future<String?> kuwoStreamUrl(String rid) async {
+    if (rid.isEmpty) return null;
+    final uri = Uri.parse('http://antiserver.kuwo.cn/anti.s').replace(queryParameters: {
+      'format': 'mp3',
+      'rid': 'MUSIC_$rid',
+      'response': 'url',
+      'type': 'convert_url3',
+    });
+    try {
+      final res = await http.get(uri, headers: const {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'http://www.kuwo.cn/',
+      }).timeout(const Duration(seconds: 20));
+      if (res.statusCode != 200) return null;
+      final url = utf8.decode(res.bodyBytes).trim();
+      if (url.isEmpty || !url.startsWith('http')) return null;
+      return url;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ==================== B站直连 ====================
 
   /// B站视频音轨直连：view 拿 cid → playurl 拿音频流（选最高码率）。

@@ -92,7 +92,7 @@ class _SearchPageState extends State<SearchPage> {
       _error = null;
     });
     final api = _externalApi;
-    // 聚合全部可用源：网易云直连 / B站(经聚合或官方) / QQ / 聚合API。
+    // 聚合全部可用源：网易云直连 / B站(经聚合或官方) / QQ / 酷我 / 聚合API。
     // 每个源独立 try，单个失败不影响其它源。
     final futures = <Future<List<Song>>>[
       api.searchNeteaseDirect(q),
@@ -101,6 +101,7 @@ class _SearchPageState extends State<SearchPage> {
         api.search(q, source: 'bilibili'),
       ],
       api.searchQq(q),
+      api.searchKuwo(q),
     ];
     final lists = await Future.wait(
         futures.map((f) => f.catchError((_) => const <Song>[])));
@@ -146,13 +147,16 @@ class _SearchPageState extends State<SearchPage> {
       try {
         final url = switch (src) {
           'qq' => await api.qqStreamUrl(song.id),
+          'kuwo' => await api.kuwoStreamUrl(song.id),
           'bilibili' => await api.biliStreamUrl(song.id),
           _ => await api.streamUrlFor(song.id, source: src),
         };
         if (url == null || url.isEmpty) {
-          _showSnack(src == 'qq'
-              ? 'QQ音乐暂时无法获取播放地址（受版权/VIP限制）'
-              : '无法获取播放地址（可能需 VIP 或已下架）');
+          _showSnack(switch (src) {
+            'qq' => 'QQ音乐暂时无法获取播放地址（受版权/VIP限制）',
+            'kuwo' => '酷我暂时无法获取播放地址',
+            _ => '无法获取播放地址（可能需 VIP 或已下架）',
+          });
           return;
         }
         copy[index] = Song(
@@ -433,6 +437,7 @@ class _SearchPageState extends State<SearchPage> {
   String _srcLabel(String? src) => switch (src) {
         'bilibili' => 'B站',
         'qq' => 'QQ',
+        'kuwo' => '酷我',
         'netease' => '网易云',
         _ => '外网',
       };
