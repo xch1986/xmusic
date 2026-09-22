@@ -21,17 +21,33 @@ class AppTheme {
   static const Color _darkPrimary = Color(0xFF93A0FF); // 亮靛蓝
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
-  // 浅色模式：背景更实（暖白底），避免透出深色壁纸后像黑灰；深色模式：保持透明玻璃。
-  static const double _lightBgAlpha = 0.62;
-  static const double _darkBgAlpha = 0.34;
+  // 背景通透度：浅色稍实（暖白底保证可读），深色保持玻璃但更沉稳（避免发灰发脏）。
+  static const double _lightBgAlpha = 0.70;
+  static const double _darkBgAlpha = 0.42;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
-  static const double _lightPanelAlpha = 0.93;
-  static const double _lightSheetAlpha = 0.96;
-  static const double _darkPanelAlpha = 0.86;
-  static const double _darkSheetAlpha = 0.93;
+  static const double _lightPanelAlpha = 0.94;
+  static const double _lightSheetAlpha = 0.97;
+  static const double _darkPanelAlpha = 0.88;
+  static const double _darkSheetAlpha = 0.94;
 
   static Color withAlpha255(Color c, double alpha) =>
       c.withValues(alpha: alpha.clamp(0.0, 1.0));
+
+  /// 玻璃高光：卡片/面板顶部的 1px 反光渐变（浅色下白、深色下微白），
+  /// 模拟毛玻璃边缘反光，替代被车机禁用的 BackdropFilter。
+  static BoxDecoration glassHighlight(ColorScheme scheme, {double strength = 1.0}) {
+    final isDark = scheme.brightness == Brightness.dark;
+    final top = Colors.white.withValues(alpha: (isDark ? 0.07 : 0.18) * strength);
+    final bottom = Colors.transparent;
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [top, bottom],
+        stops: const [0.0, 0.35],
+      ),
+    );
+  }
 
   static ThemeData light(AppSettings settings) {
     final scheme = const ColorScheme.light(
@@ -139,7 +155,7 @@ class AppTheme {
     );
 
     return base.copyWith(
-      // ---- AppBar：玻璃透明条 ----
+      // ---- AppBar：玻璃透明条（顶部高光边，模拟毛玻璃边缘反光） ----
       appBarTheme: AppBarTheme(
         backgroundColor: panelLow.withValues(alpha: 0.32),
         surfaceTintColor: Colors.transparent,
@@ -151,7 +167,8 @@ class AppTheme {
         titleTextStyle: TextStyle(
           color: onSurface,
           fontSize: 20,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
+          shadows: [Shadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 8)],
         ),
       ),
       // ---- 导航栏：雾面玻璃 ----
@@ -163,7 +180,12 @@ class AppTheme {
         height: 62,
         indicatorColor: primary.withValues(alpha: 0.16),
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontSize: 12, color: onSurface, fontWeight: FontWeight.w600),
+          TextStyle(
+            fontSize: 12,
+            color: onSurface,
+            fontWeight: FontWeight.w600,
+            shadows: [Shadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 6)],
+          ),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final sel = states.contains(WidgetState.selected);
@@ -172,15 +194,15 @@ class AppTheme {
           );
         }),
       ),
-      // ---- 卡片/面板：雾面玻璃 + 细描边 ----
+      // ---- 卡片/面板：雾面玻璃 + 细描边 + 柔和投影（车机桌面卡片质感） ----
       cardTheme: CardThemeData(
         color: card,
         surfaceTintColor: Colors.transparent,
-        elevation: 2,
-        shadowColor: scheme.shadow.withValues(alpha: 0.22),
+        elevation: 3,
+        shadowColor: scheme.shadow.withValues(alpha: 0.30),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: border, width: 0.6),
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: border, width: 0.5),
         ),
       ),
       dialogTheme: DialogThemeData(
