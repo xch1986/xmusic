@@ -74,6 +74,20 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
+  /// B站热门：点卡片先进歌单列表页（像榜单一样），再点歌曲播放整张歌单
+  Future<void> _openBiliHot(List<Song> songs) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _PlaylistDetail(
+        title: 'B站热门',
+        songs: songs,
+        client: _client,
+        settings: widget.settings,
+        controller: widget.controller,
+        onPlay: (i) => _playSongs(songs, i),
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,14 +130,15 @@ class _HomePageState extends State<HomePage> {
                 }
                 // 取前6个排行榜
                 final lists = snap.data!.take(12).toList();
+                // 车机上卡片太大会占满一行，改一行三个
                 return GridView.count(
-                  crossAxisCount: 2,
+                  crossAxisCount: 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.5,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1.1,
                   children: lists.map((t) => _toplistCard(
                     t['name'] as String,
                     t['id'] as String,
@@ -154,7 +169,7 @@ class _HomePageState extends State<HomePage> {
                     itemBuilder: (context, i) => Padding(
                       padding: const EdgeInsets.only(right: 12),
                       child: _Card(song: songs[i], client: _client,
-                          onTap: () => _playSongs(songs, i)),
+                          onTap: () => _openBiliHot(songs)),
                     ),
                   );
                 },

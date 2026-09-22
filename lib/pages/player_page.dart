@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -125,31 +126,35 @@ class _PlayerPageState extends State<PlayerPage> {
     final size = MediaQuery.of(context).size.width * 0.5;
     return Column(
       children: [
-        // 黑胶封面
+        // 黑胶封面（占4份，黑胶尺寸自适应区域高度，绝不溢出到歌词区）
         Expanded(
-          flex: 3,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
-              Center(
-                child: Container(
-                  width: size, height: size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+          flex: 4,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final s = math.min(size, box.maxHeight * 0.92);
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(
+                    child: Container(
+                      width: s, height: s,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                    ),
                   ),
-                  padding: const EdgeInsets.all(8),
-                  child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: size, requestSize: 800)),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
-        // 歌词区 + 右侧按钮栏（缩放/收藏/下载）
+        // 歌词区 + 右侧按钮栏（缩放/收藏/下载），与黑胶互不重叠
         Expanded(
-          flex: 6,
+          flex: 5,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -217,53 +222,75 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // ---- 横屏：左封面+歌名+控制，右歌词(右侧按钮栏) ----
+  // ---- 横屏（车机）：左=大黑胶+歌曲信息栏；右=五行歌词+下方播放控制栏 ----
   Widget _landscapeView(BuildContext context, Song song) {
     final theme = Theme.of(context);
     return Row(
       children: [
+        // 左侧：大黑胶 + 歌曲信息（自适应尺寸，不溢出）
         Expanded(
           flex: 5,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final s = math.min(box.maxWidth * 0.62, box.maxHeight * 0.62);
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: s, height: s,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.3), blurRadius: 24, offset: const Offset(0, 8))],
+                    ),
+                    padding: const EdgeInsets.all(10),
+                    child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 24)),
+                        const SizedBox(height: 6),
+                        Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15)),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        // 右侧：五行歌词（右按钮栏） + 下方进度条+播放控制栏
+        Expanded(
+          flex: 6,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 140, height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
-                ),
-                padding: const EdgeInsets.all(8),
-                child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: 190, requestSize: 500)),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 22)),
-                    const SizedBox(height: 4),
-                    Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15)),
+                    Expanded(
+                      child: Center(
+                        child: _lyricsAreaFixed(context, song.id, visibleLines: 5),
+                      ),
+                    ),
+                    _actionSidebar(context),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              _SeekBar(player: widget.controller.player),
-              _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 6,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _lyricsArea(context, song.id)),
-              _actionSidebar(context),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 2, 20, 14),
+                child: Column(
+                  children: [
+                    _SeekBar(player: widget.controller.player),
+                    _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -271,7 +298,7 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  Widget _lyricsArea(BuildContext context, String songId) {
+  Widget _lyricsArea(BuildContext context, String songId, {int? visibleLines}) {
     return GestureDetector(
       onDoubleTap: () {
         widget.controller.reloadLyrics();
@@ -301,9 +328,21 @@ class _PlayerPageState extends State<PlayerPage> {
             lyrics: lyrics,
             player: widget.controller.player,
             settings: widget.settings,
+            visibleLines: visibleLines,
           );
         },
       ),
+    );
+  }
+
+  // 五行歌词：限制歌词视口高度（行高=字号22×1.4 + 行距9×2，按歌词缩放系数计算）
+  Widget _lyricsAreaFixed(BuildContext context, String songId, {int? visibleLines}) {
+    final area = _lyricsArea(context, songId, visibleLines: visibleLines);
+    if (visibleLines == null) return area;
+    final scale = widget.settings.lyricScale;
+    return SizedBox(
+      height: visibleLines * (22 * 1.4 + 9 * 2) * scale + 10,
+      child: area,
     );
   }
 
@@ -634,7 +673,7 @@ class _LyricsViewState extends State<LyricsView> {
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 14 * scale),
+                    padding: EdgeInsets.symmetric(vertical: 9 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
