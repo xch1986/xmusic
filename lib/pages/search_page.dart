@@ -87,39 +87,37 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _searchExternal(String q) async {
-    final src = widget.settings.externalSource;
-    // 直连源不依赖 GDStudio 地址；仅 GDStudio 聚合需要配置地址。
-    if (src == 'gdstudio' && !_externalApi.isConfigured) {
-      setState(() {
-        _external = null;
-        _error = '未配置外部搜索 API，请到 设置 -> 外部API地址 填写地址';
-      });
-      return;
-    }
     setState(() {
       _externalLoading = true;
       _error = null;
     });
-    try {
-      // 按设置的外网搜索源分发
-      final songs = switch (src) {
-        'netease' => await _externalApi.searchNeteaseDirect(q),
-        'bilibili' => await _externalApi.search(q, source: 'bilibili'),
-        'qq' => await _externalApi.searchQq(q),
-        _ => await _externalApi.search(q),
-      };
-      if (!mounted) return;
-      setState(() {
-        _external = songs;
-        _externalLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _externalLoading = false;
-        _error = '外网搜索失败：$e';
-      });
+    final api = _externalApi;
+    // 聚合全部可用源：网易云直连 / B站(经聚合或官方) / QQ / 聚合API。
+    // 每个源独立 try，单个失败不影响其它源。
+    final futures = <Future<List<Song>>>[
+      api.searchNeteaseDirect(q),
+      if (api.isConfigured) ...[
+        api.search(q),
+        api.search(q, source: 'bilibili'),
+      ],
+      api.searchQq(q),
+    ];
+    final lists = await Future.wait(
+        futures.map((f) => f.catchError((_) => const <Song>[])));
+    if (!mounted) return;
+    // 合并去重：同歌名+歌手只保留一条（源优先：聚合 > 网易云 > B站 > QQ）
+    final seen = <String>{};
+    final merged = <Song>[];
+    for (final list in lists) {
+      for (final s in list) {
+        final key = '${s.title}|${s.artist}'.toLowerCase();
+        if (seen.add(key)) merged.add(s);
+      }
     }
+    setState(() {
+      _external = merged;
+      _externalLoading = false;
+    });
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
@@ -140,10 +138,6 @@ class _SearchPageState extends State<SearchPage> {
   /// Play an external song: resolve the stream URL first if needed.
   Future<void> _playExternal(List<Song> songs, int index) async {
     final api = _externalApi;
-    if (widget.settings.externalSource == 'gdstudio' && !api.isConfigured) {
-      _showSnack('未配置外部搜索 API');
-      return;
-    }
     // Clone the list so we can fill in stream URLs without mutating UI state.
     final copy = List<Song>.of(songs);
     final song = copy[index];
@@ -157,7 +151,7 @@ class _SearchPageState extends State<SearchPage> {
         };
         if (url == null || url.isEmpty) {
           _showSnack(src == 'qq'
-              ? 'QQ音乐暂时无法获取播放地址（受版权/VIP限制），可切换到其他搜索源'
+              ? 'QQ音乐暂时无法获取播放地址（受版权/VIP限制）'
               : '无法获取播放地址（可能需 VIP 或已下架）');
           return;
         }
@@ -409,7 +403,8 @@ class _SearchPageState extends State<SearchPage> {
         return ListTile(
           leading: CoverImage(client: _client, coverId: s.coverArt, coverUrl: s.coverUrl, size: 48, radius: 8, requestSize: 200),
           title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text('${s.artist}  ·  ${_srcLabel(s.externalSource)}',
+              maxLines: 1, overflow: TextOverflow.ellipsis),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -434,4 +429,11 @@ class _SearchPageState extends State<SearchPage> {
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
       );
+
+  String _srcLabel(String? src) => switch (src) {
+        'bilibili' => 'B站',
+        'qq' => 'QQ',
+        'netease' => '网易云',
+        _ => '外网',
+      };
 }

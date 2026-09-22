@@ -227,11 +227,13 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(settings.externalApiUrl),
             onTap: () => _showExternalApiDialog(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.public_rounded),
-            title: const Text('外网搜索源'),
-            subtitle: Text(settings.externalSourceName),
-            onTap: () => _showExternalSourceDialog(context),
+          // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源）
+          const ListTile(
+            leading: Icon(Icons.public_rounded),
+            title: Text('外网搜索源'),
+            subtitle: Text('搜索外网时自动聚合：网易云 / B站 / QQ / 聚合API\n'
+                'QQ 播放受版权/VIP 限制，其余均可直接播放'),
+            isThreeLine: true,
           ),
           const Divider(),
 
@@ -388,33 +390,6 @@ class SettingsPage extends StatelessWidget {
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
           FilledButton(onPressed: () { settings.setExternalApiUrl(ctl.text); Navigator.of(ctx).pop(); }, child: const Text('保存')),
-        ],
-      ),
-    );
-  }
-
-  void _showExternalSourceDialog(BuildContext context) {
-    const sources = <(String, String)>[
-      ('gdstudio', 'GDStudio 聚合（推荐，网易云/B站可播）'),
-      ('netease', '网易云直连（搜索/歌词直连，播放走聚合）'),
-      ('bilibili', 'B站直连（B站视频音轨直连播放）'),
-      ('qq', 'QQ音乐直连（搜索/歌词可用，播放受VIP限制）'),
-    ];
-    showDialog(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('外网搜索源'),
-        children: [
-          for (final (v, label) in sources)
-            RadioListTile<String>(
-              value: v,
-              groupValue: settings.externalSource,
-              title: Text(label),
-              onChanged: (nv) {
-                if (nv != null) settings.setExternalSource(nv);
-                Navigator.of(ctx).pop();
-              },
-            ),
         ],
       ),
     );

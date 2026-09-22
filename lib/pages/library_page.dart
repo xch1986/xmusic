@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../local_library.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
+import 'player_page.dart';
 import 'playlist_page.dart';
 
-/// Library page with tabs: 专辑 / 歌手 / 歌单.
+/// Library page with tabs: 歌单 / 专辑 / 歌手 / 本地(真本地扫描).
 class LibraryPage extends StatefulWidget {
   const LibraryPage({
     super.key,
@@ -34,7 +36,7 @@ class _LibraryPageState extends State<LibraryPage>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this, initialIndex: widget.initialTab);
+    _tab = TabController(length: 4, vsync: this, initialIndex: widget.initialTab);
   }
 
   @override
@@ -65,6 +67,7 @@ class _LibraryPageState extends State<LibraryPage>
             Tab(text: '歌单'),
             Tab(text: '专辑'),
             Tab(text: '歌手'),
+            Tab(text: '本地'),
           ],
         ),
       ),
@@ -79,6 +82,10 @@ class _LibraryPageState extends State<LibraryPage>
           _AlbumTab(client: _client, onOpenAlbum: _openAlbum),
           _ArtistTab(
             client: _client,
+            settings: widget.settings,
+            controller: widget.controller,
+          ),
+          _LocalTab(
             settings: widget.settings,
             controller: widget.controller,
           ),
@@ -325,6 +332,181 @@ class _PlaylistTabState extends State<_PlaylistTab> {
           },
         );
       },
+    );
+  }
+}
+
+// ---------------- 本地 tab（真本地扫描） ----------------
+/// 扫描“设置里配置的本地下载路径”下的音频文件，直接本地播放（file://）。
+class _LocalTab extends StatefulWidget {
+  const _LocalTab({required this.settings, required this.controller});
+
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  State<_LocalTab> createState() => _LocalTabState();
+}
+
+class _LocalTabState extends State<_LocalTab> {
+  List<Song> _songs = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final cached = await LocalLibrary.load();
+    if (!mounted) return;
+    setState(() {
+      _songs = cached;
+      _loading = false;
+    });
+  }
+
+  Future<void> _scan() async {
+    final path = widget.settings.downloadPath.trim();
+    if (path.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先到 设置 -> 本地下载路径 选择要扫描的目录')),
+      );
+      return;
+    }
+    final progress = ValueNotifier<int>(0);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('扫描本地音乐'),
+        content: ValueListenableBuilder<int>(
+          valueListenable: progress,
+          builder: (_, n, __) => Row(
+            children: [
+              const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 3)),
+              const SizedBox(width: 16),
+              Expanded(child: Text('正在扫描 $path\n已发现 $n 首...')),
+            ],
+          ),
+        ),
+      ),
+    );
+    try {
+      final songs = await LocalLibrary.scan(path, onFile: (n) => progress.value = n);
+      await LocalLibrary.save(songs);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      setState(() => _songs = songs);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('扫描完成：共 ${songs.length} 首本地歌曲')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('扫描失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _play(int i) async {
+    await widget.controller.playQueue(_songs, i);
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PlayerPage(
+        settings: widget.settings,
+        controller: widget.controller,
+      ),
+    ));
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final path = widget.settings.downloadPath.trim();
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (path.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('尚未设置本地下载路径\n请到 设置 -> 本地下载路径 选择要扫描的目录',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+        ),
+      );
+    }
+    if (_songs.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('目录里还没扫描到歌曲',
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _scan,
+              icon: const Icon(Icons.manage_search_rounded),
+              label: const Text('扫描本地目录'),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        // 顶部信息 + 重新扫描
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text('${_songs.length} 首本地歌曲 · $path',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _scan,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('重新扫描'),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 8),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _songs.length,
+            itemBuilder: (context, i) {
+              final s = _songs[i];
+              return ListTile(
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.audio_file_rounded,
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
+                title: Text(s.title,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text('${s.artist} · ${s.album}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: () => _play(i),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

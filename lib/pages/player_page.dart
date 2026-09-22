@@ -28,8 +28,17 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
+enum _OrientMode { auto, landscape, portrait }
+
 class _PlayerPageState extends State<PlayerPage> {
-  bool _forceLandscape = false;
+  _OrientMode _orient = _OrientMode.auto;
+
+  @override
+  void initState() {
+    super.initState();
+    // 默认跟随系统自动旋转（不锁定任何方向）
+    SystemChrome.setPreferredOrientations([]);
+  }
 
   @override
   void dispose() {
@@ -38,17 +47,20 @@ class _PlayerPageState extends State<PlayerPage> {
     super.dispose();
   }
 
-  /// 手动强制横/竖屏：不依赖手机“自动旋转”开关，车机场景更可控。
+  /// 三态循环：自动（跟随系统旋转）→ 强制横屏 → 强制竖屏 → 自动。
+  /// 设备没开“自动旋转”时，也能用手动按钮切到想要的朝向。
   Future<void> _toggleRotation() async {
-    final wantLandscape = !_forceLandscape;
-    await SystemChrome.setPreferredOrientations(
-      wantLandscape
-          ? [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
-          : [DeviceOrientation.portraitUp],
-    );
-    if (mounted) {
-      setState(() => _forceLandscape = wantLandscape);
-    }
+    final next =
+        _OrientMode.values[(_orient.index + 1) % _OrientMode.values.length];
+    await SystemChrome.setPreferredOrientations(switch (next) {
+      _OrientMode.auto => <DeviceOrientation>[],
+      _OrientMode.landscape => [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+      _OrientMode.portrait => [DeviceOrientation.portraitUp],
+    });
+    if (mounted) setState(() => _orient = next);
   }
 
   @override
@@ -162,11 +174,17 @@ class _PlayerPageState extends State<PlayerPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            tooltip: '横竖屏切换（强制，不依赖系统自动旋转）',
+            tooltip: switch (_orient) {
+              _OrientMode.auto => '方向：自动（跟随系统旋转），点按可强制横屏',
+              _OrientMode.landscape => '方向：强制横屏，点按可强制竖屏',
+              _OrientMode.portrait => '方向：强制竖屏，点按恢复自动',
+            },
             icon: Icon(
-              _forceLandscape
-                  ? Icons.screen_rotation_rounded
-                  : Icons.screen_rotation_alt_rounded,
+              switch (_orient) {
+                _OrientMode.auto => Icons.screen_rotation_alt_rounded,
+                _OrientMode.landscape => Icons.landscape_rounded,
+                _OrientMode.portrait => Icons.portrait_rounded,
+              },
               size: 22,
             ),
             onPressed: _toggleRotation,
