@@ -106,67 +106,136 @@ class _AlbumTab extends StatefulWidget {
 }
 
 class _AlbumTabState extends State<_AlbumTab> {
-  late Future<List<Album>> _future;
+  // 分页加载全部专辑：Navidrome getAlbumList2 按名称字母序全量分页，
+  // 修复"音乐库专辑没扫描完"（旧实现只取最新40张，超过的看不到）。
+  static const int _pageSize = 50;
+  final List<Album> _albums = [];
+  final ScrollController _scroll = ScrollController();
+  bool _initLoading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  String? _error;
+  int _offset = 0;
 
   SubsonicClient get _client => widget.client;
 
   @override
   void initState() {
     super.initState();
-    _future = _client.newestAlbums(size: 40);
+    _loadFirst();
+    _scroll.addListener(() {
+      if (_scroll.position.pixels >=
+          _scroll.position.maxScrollExtent - 400) {
+        _loadMore();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFirst() async {
+    setState(() {
+      _initLoading = true;
+      _error = null;
+    });
+    try {
+      final page = await _client.albumList(
+          type: 'alphabeticalByName', size: _pageSize, offset: 0);
+      if (!mounted) return;
+      setState(() {
+        _albums
+          ..clear()
+          ..addAll(page);
+        _offset = page.length;
+        _hasMore = page.length == _pageSize;
+        _initLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _initLoading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _initLoading) return;
+    setState(() => _loadingMore = true);
+    try {
+      final page = await _client.albumList(
+          type: 'alphabeticalByName', size: _pageSize, offset: _offset);
+      if (!mounted) return;
+      setState(() {
+        _albums.addAll(page);
+        _offset += page.length;
+        _hasMore = page.length == _pageSize;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Album>>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snap.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('加载失败：${snap.error}'),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () =>
-                      setState(() => _future = _client.newestAlbums(size: 40)),
-                  child: const Text('重试'),
-                ),
-              ],
+    if (_initLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null && _albums.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('加载失败：$_error'),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _loadFirst, child: const Text('重试')),
+          ],
+        ),
+      );
+    }
+    if (_albums.isEmpty) return const Center(child: Text('暂无专辑'));
+    // 专辑栏用列表形式（与歌手/歌单一致）：封面 + 专辑名 + 歌手 + 歌曲数
+    return ListView.builder(
+      controller: _scroll,
+      itemCount: _albums.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, i) {
+        if (i >= _albums.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
             ),
           );
         }
-        final albums = snap.data!;
-        if (albums.isEmpty) return const Center(child: Text('暂无专辑'));
-        // 专辑栏用列表形式（与歌手/歌单一致）：封面 + 专辑名 + 歌手 + 歌曲数
-        return ListView.builder(
-          itemCount: albums.length,
-          itemBuilder: (context, i) {
-            final a = albums[i];
-            return ListTile(
-              leading: CoverImage(
-                client: _client,
-                coverId: a.coverArt,
-                size: 44,
-                radius: 8,
-                requestSize: 120,
-              ),
-              title: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text(
-                [a.artist, if (a.songCount != null) '${a.songCount} 首']
-                    .where((s) => s.isNotEmpty)
-                    .join(' · '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => widget.onOpenAlbum(a),
-            );
-          },
+        final a = _albums[i];
+        return ListTile(
+          leading: CoverImage(
+            client: _client,
+            coverId: a.coverArt,
+            size: 44,
+            radius: 8,
+            requestSize: 120,
+          ),
+          title: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            [a.artist, if (a.songCount != null) '${a.songCount} 首']
+                .where((s) => s.isNotEmpty)
+                .join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => widget.onOpenAlbum(a),
         );
       },
     );
