@@ -48,7 +48,8 @@ class PlayerController extends ChangeNotifier {
   int index = -1;
   Lyrics? lyrics;
   bool lyricsLoading = false;
-  PlayMode _repeat = PlayMode.sequential;
+  // 默认随机播放（用户要求：播放界面控制栏默认随机）
+  PlayMode _repeat = PlayMode.shuffle;
   final Random _rnd = Random();
 
   late final StreamSubscription<ProcessingState> _completedSub;
