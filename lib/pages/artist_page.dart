@@ -44,43 +44,43 @@ class _ArtistPageState extends State<ArtistPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(widget.artist.name)),
-      // 全局播放栏位：点击歌曲列表开始播放后，底部立即显示迷你播放条
-      bottomNavigationBar: MiniPlayer(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-      body: FutureBuilder<List<Song>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('加载失败：${snap.error}'),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () => setState(() =>
-                        _future = _client.artistSongs(widget.artist.name)),
-                    child: const Text('重试'),
+      body: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<List<Song>>(
+              future: _future,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snap.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('加载失败：${snap.error}'),
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () => setState(() =>
+                              _future = _client.artistSongs(widget.artist.name)),
+                          child: const Text('重试'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final songs = snap.data!;
+                if (songs.isEmpty) {
+                  return const Center(child: Text('暂无该歌手的歌曲'));
+                }
+                return ListView(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.paddingOf(context).bottom + 16,
                   ),
-                ],
-              ),
-            );
-          }
-          final songs = snap.data!;
-          if (songs.isEmpty) {
-            return const Center(child: Text('暂无该歌手的歌曲'));
-          }
-          return ListView(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.paddingOf(context).bottom + 16,
-            ),
-            children: [
+                  children: [
               // 歌手头部 + 播放按钮
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -125,7 +125,15 @@ class _ArtistPageState extends State<ArtistPage> {
               ),
             ],
           );
-        },
+              },
+            ),
+          ),
+          // 迷你播放条放 body 底部而非 bottomNavigationBar（0.2.x 修复回归）
+          MiniPlayer(
+            settings: widget.settings,
+            controller: widget.controller,
+          ),
+        ],
       ),
     );
   }

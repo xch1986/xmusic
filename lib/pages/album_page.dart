@@ -46,18 +46,30 @@ class _AlbumPageState extends State<AlbumPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(album.name)),
-      bottomNavigationBar: MiniPlayer(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-      body: FutureBuilder<List<Song>>(
-        future: _future,
-        builder: (context, snap) {
+      body: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<List<Song>>(
+              future: _future,
+              builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return Center(child: Text('加载失败：${snap.error}'));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('加载失败：${snap.error}'),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () => setState(
+                        () => _future = _client.albumSongs(widget.album.id)),
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
+            );
           }
           final songs = snap.data!;
           // 底部留白 = 系统手势条/车机底栏 inset + MiniPlayer 高度 + 余量。
@@ -150,7 +162,15 @@ class _AlbumPageState extends State<AlbumPage> {
                 ),
             ],
           );
-        },
+              },
+            ),
+          ),
+          // 迷你播放条放 body 底部而非 bottomNavigationBar（0.2.x 修复回归）
+          MiniPlayer(
+            settings: widget.settings,
+            controller: widget.controller,
+          ),
+        ],
       ),
     );
   }

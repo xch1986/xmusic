@@ -353,11 +353,15 @@ class _PlaylistDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 不透明背景：避免半透明主题透出下层页面导致列表区域视觉混乱（0.2.x 修复回归）
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(title)),
-      bottomNavigationBar: MiniPlayer(settings: settings, controller: controller),
       body: Column(
         children: [
-          if (coverUrl != null && coverUrl!.isNotEmpty)
+          Expanded(
+            child: Column(
+              children: [
+                if (coverUrl != null && coverUrl!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -435,8 +439,14 @@ class _PlaylistDetail extends StatelessWidget {
                       onTap: () => onPlay(i),
                     ),
                   ),
+              ),
+            ],
           ),
-        ],
+        ),
+        // 迷你播放条放 body 底部而不是 bottomNavigationBar：
+        // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
+        MiniPlayer(settings: settings, controller: controller),
+      ],
       ),
     );
   }
