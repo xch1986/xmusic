@@ -41,7 +41,6 @@ class _HomeShellState extends State<HomeShell> {
           NavigationBar(
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),

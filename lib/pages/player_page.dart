@@ -36,14 +36,8 @@ class _PlayerPageState extends State<PlayerPage> {
         final song = widget.controller.current;
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
-        // 不透明背景：自定义色优先，否则按明暗用不透明色
-        final cs = Theme.of(context).colorScheme;
-        final brightness = cs.brightness;
-        final bg = widget.settings.bgColor != 0
-            ? Color(widget.settings.bgColor).withOpacity(1.0)
-            : (brightness == Brightness.dark
-                ? const Color(0xFF1E2433)
-                : const Color(0xFFEAF0FA));
+        // 背景跟随主题：自定义背景色优先，否则透明玻璃（通透度由主题统一处理）
+        final bg = Theme.of(context).scaffoldBackgroundColor;
 
         return Scaffold(
           backgroundColor: bg,
