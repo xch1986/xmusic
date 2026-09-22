@@ -281,6 +281,21 @@ class SubsonicClient {
     return SearchResults(songs: songs, albums: albums, artists: artists);
   }
 
+  /// 歌手页：按歌手名直接查该歌手的歌曲（歌单优先于专辑列表）。
+  Future<List<Song>> artistSongs(String artistName, {int count = 500}) async {
+    if (artistName.trim().isEmpty) return const [];
+    final root = await _get('search3', {
+      'query': artistName.trim(),
+      'songCount': '$count',
+      'albumCount': '0',
+      'artistCount': '0',
+    });
+    final sr = (root['searchResult3'] as Map<String, dynamic>?) ?? const {};
+    return ((sr['song'] as List?) ?? const [])
+        .map((e) => Song.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // ---- 随机/收藏 ----
   Future<List<Song>> randomSongs({int size = 50}) async {
     final root = await _get('getRandomSongs', {'size': '$size'});

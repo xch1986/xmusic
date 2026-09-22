@@ -1,312 +1,317 @@
 import 'package:flutter/material.dart';
+
 import 'settings.dart';
 
-/// 高级主题：浅色 / 深色 + 玻璃通透。
-/// 目标：车机可用（高透明、高对比、跟随系统深浅）、质感高级。
-/// 通透度语义：glassOpacity = 1 完全不透明；= 0 完全透明（透出系统壁纸/桌面）。
-/// 卡片/弹层/抽屉设置最低不透明度下限，保证高透明时文字依然可读（雾面玻璃）。
+/// 高级浅/深主题：透明加深、雾面玻璃、车机友好。
+///
+/// 设计要点：
+/// - 移除可调“玻璃通透度”滑块：通透度由主题内置（浅色更透、深色更沉），
+///   设置里不再有重复的拖动条。
+/// - 背景色带 alpha：车窗桌面壁纸透出（配合 Android 透明窗口），
+///   文字所在的面板/卡片设有不透明度下限，保证任何背景下可读。
+/// - 跟随车机深浅：ThemeMode.system（设置-主题模式-跟随系统）。
 class AppTheme {
-  /// 主色：精炼靛蓝（替代原亮蓝，更沉稳高级）
-  static const Color accent = Color(0xFF4A6CF7);
+  const AppTheme._();
 
-  static ThemeData light(AppSettings s) => _build(s, Brightness.light);
-  static ThemeData dark(AppSettings s) => _build(s, Brightness.dark);
+  static const Color _lightSurface = Color(0xFFF5F2EA); // 暖白象牙
+  static const Color _lightPrimary = Color(0xFF4452C7); // 精炼靛蓝
+  static const Color _lightOnSurface = Color(0xFF1C2130);
 
-  static Color _withAlpha(Color c, int alpha) {
-    final argb = c.toARGB32();
-    return Color((alpha << 24) | (argb & 0x00FFFFFF));
-  }
+  static const Color _darkSurface = Color(0xFF0E121B); // 深蓝炭黑
+  static const Color _darkPrimary = Color(0xFF93A0FF); // 亮靛蓝
+  static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
-  // ---- 浅色色板：暖白象牙 + 精炼靛蓝 ----
-  static ColorScheme _lightScheme() {
-    return const ColorScheme.light(
-      primary: Color(0xFF4452C7),
-      onPrimary: Color(0xFFFFFFFF),
-      primaryContainer: Color(0xFFE0E2FF),
-      onPrimaryContainer: Color(0xFF101458),
-      secondary: Color(0xFF5A6077),
-      onSecondary: Color(0xFFFFFFFF),
-      secondaryContainer: Color(0xFFE0E3F4),
-      onSecondaryContainer: Color(0xFF171D31),
-      tertiary: Color(0xFF9A5B33),
-      onTertiary: Color(0xFFFFFFFF),
-      tertiaryContainer: Color(0xFFFFDCC4),
-      onTertiaryContainer: Color(0xFF351B04),
-      error: Color(0xFFBA1A1A),
-      onError: Color(0xFFFFFFFF),
-      errorContainer: Color(0xFFFFDAD6),
-      onErrorContainer: Color(0xFF410002),
-      surface: Color(0xFFFFFFFF),
-      onSurface: Color(0xFF1B1E23),
-      surfaceDim: Color(0xFFDEDCD6),
-      surfaceBright: Color(0xFFFFFFFF),
-      surfaceContainerLowest: Color(0xFFFFFFFF),
-      surfaceContainerLow: Color(0xFFFAF8F4),
-      surfaceContainer: Color(0xFFF3F1EC),
-      surfaceContainerHigh: Color(0xFFEDEBE5),
-      surfaceContainerHighest: Color(0xFFE7E5DF),
-      onSurfaceVariant: Color(0xFF636874),
-      outline: Color(0xFFD8D6CF),
-      outlineVariant: Color(0xFFE9E7E1),
-      shadow: Color(0xFF000000),
-      scrim: Color(0xFF000000),
-      inverseSurface: Color(0xFF31363D),
-      onInverseSurface: Color(0xFFF0F0F4),
-      inversePrimary: Color(0xFFBFC3FF),
-      surfaceTint: Color(0xFF4452C7),
+  // 背景透明度：浅色更透（让白天的桌面透出来），深色更深沉。
+  static const double _lightBgAlpha = 0.58;
+  static const double _darkBgAlpha = 0.72;
+  // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
+  static const double _panelAlpha = 0.92;
+  static const double _sheetAlpha = 0.97;
+
+  static Color withAlpha255(Color c, double alpha) =>
+      c.withValues(alpha: alpha.clamp(0.0, 1.0));
+
+  static ThemeData light(AppSettings settings) {
+    final scheme = const ColorScheme.light(
+      primary: _lightPrimary,
+      onPrimary: Colors.white,
+      secondary: Color(0xFF6E7BD9),
+      onSecondary: Colors.white,
+      error: Color(0xFFB3261E),
+      onError: Colors.white,
+      surface: _lightSurface,
+      onSurface: _lightOnSurface,
+      surfaceContainerLowest: Color(0xFFFFFDF7),
+      surfaceContainerLow: Color(0xFFFBF8F0),
+      surfaceContainer: Color(0xFFF3EFE4),
+      surfaceContainerHigh: Color(0xFFEAE5D7),
+      surfaceContainerHighest: Color(0xFFE0DAC9),
+      outline: Color(0xFF7A746A),
+      outlineVariant: Color(0xFFD5CFC0),
+      shadow: Color(0xFF2A2A33),
+      scrim: Color(0xFF141414),
+      inverseSurface: Color(0xFF32363F),
+      onInverseSurface: Color(0xFFF2F0EB),
+      inversePrimary: Color(0xFFBEC4FF),
+      surfaceTint: _lightPrimary,
+    );
+    return _build(
+      scheme,
+      _lightBgAlpha,
+      _panelAlpha,
+      _sheetAlpha,
+      _lightSurface,
+      _lightPrimary,
+      _lightOnSurface,
     );
   }
 
-  // ---- 深色色板：深蓝炭黑 + 亮靛蓝 ----
-  static ColorScheme _darkScheme() {
-    return const ColorScheme.dark(
-      primary: Color(0xFF9DB0FF),
-      onPrimary: Color(0xFF16205C),
-      primaryContainer: Color(0xFF2A3763),
-      onPrimaryContainer: Color(0xFFDDE3FF),
-      secondary: Color(0xFFB4BAC9),
-      onSecondary: Color(0xFF272D40),
-      secondaryContainer: Color(0xFF3A4157),
-      onSecondaryContainer: Color(0xFFD8DCF0),
-      tertiary: Color(0xFFE2A576),
-      onTertiary: Color(0xFF45270D),
-      tertiaryContainer: Color(0xFF663C1C),
-      onTertiaryContainer: Color(0xFFFFDCC4),
+  static ThemeData dark(AppSettings settings) {
+    final scheme = const ColorScheme.dark(
+      primary: _darkPrimary,
+      onPrimary: Color(0xFF10142E),
+      secondary: Color(0xFF7A86E8),
+      onSecondary: Color(0xFF10142E),
       error: Color(0xFFFFB4AB),
       onError: Color(0xFF690005),
-      errorContainer: Color(0xFF93000A),
-      onErrorContainer: Color(0xFFFFDAD6),
-      surface: Color(0xFF12161F),
-      onSurface: Color(0xFFE7E9EF),
-      surfaceDim: Color(0xFF12161F),
-      surfaceBright: Color(0xFF383D48),
-      surfaceContainerLowest: Color(0xFF0D1017),
-      surfaceContainerLow: Color(0xFF1A1F2A),
-      surfaceContainer: Color(0xFF1E2430),
-      surfaceContainerHigh: Color(0xFF292F3C),
-      surfaceContainerHighest: Color(0xFF343A48),
-      onSurfaceVariant: Color(0xFFA0A7B5),
-      outline: Color(0xFF4A5262),
-      outlineVariant: Color(0xFF262D3A),
+      surface: _darkSurface,
+      onSurface: _darkOnSurface,
+      surfaceContainerLowest: Color(0xFF0A0D14),
+      surfaceContainerLow: Color(0xFF121722),
+      surfaceContainer: Color(0xFF171C29),
+      surfaceContainerHigh: Color(0xFF1D2333),
+      surfaceContainerHighest: Color(0xFF252C40),
+      outline: Color(0xFF8A90A2),
+      outlineVariant: Color(0xFF3A4155),
       shadow: Color(0xFF000000),
       scrim: Color(0xFF000000),
-      inverseSurface: Color(0xFFE7E9EF),
-      onInverseSurface: Color(0xFF31363D),
+      inverseSurface: Color(0xFFE8EBF2),
+      onInverseSurface: Color(0xFF1C2130),
       inversePrimary: Color(0xFF4452C7),
-      surfaceTint: Color(0xFF9DB0FF),
+      surfaceTint: _darkPrimary,
+    );
+    return _build(
+      scheme,
+      _darkBgAlpha,
+      _panelAlpha,
+      _sheetAlpha,
+      _darkSurface,
+      _darkPrimary,
+      _darkOnSurface,
     );
   }
 
-  static ThemeData _build(AppSettings s, Brightness b) {
-    final dark = b == Brightness.dark;
-    final op = s.glassOpacity.clamp(0.0, 1.0);
-    final int a = (op * 255).round();
-    final custom = s.bgColor;
-
-    final scheme = dark ? _darkScheme() : _lightScheme();
-
-    // 背景：自定义背景色优先（实心）；否则按通透度叠加 alpha
-    final scaffoldBg = custom != 0
-        ? Color(custom)
-        : _withAlpha(dark ? const Color(0xFF0B0E14) : const Color(0xFFF4F3F0), a);
-    // 卡片/面板：比背景亮一档，并设不透明度下限（雾面玻璃）
-    final panelAlpha = dark ? 226 : 232;
-    final panel = _withAlpha(scheme.surface, a < panelAlpha ? panelAlpha : a);
-    // 弹层/抽屉：更实一些，保证内容可读
-    final sheetAlpha = dark ? 238 : 244;
-    final sheet = _withAlpha(scheme.surface, a < sheetAlpha ? sheetAlpha : a);
+  static ThemeData _build(
+    ColorScheme scheme,
+    double bgAlpha,
+    double panelAlpha,
+    double sheetAlpha,
+    Color surface,
+    Color primary,
+    Color onSurface,
+  ) {
+    // 背景：透明加深。文字所在组件统一用不透明度下限。
+    final scaffoldBg = withAlpha255(surface, bgAlpha);
+    final panel = withAlpha255(surface, panelAlpha);
+    final sheet = withAlpha255(surface, sheetAlpha);
+    final panelLow = withAlpha255(surface, panelAlpha - 0.08);
+    final border = scheme.outlineVariant.withValues(alpha: 0.65);
 
     final base = ThemeData(
-      useMaterial3: true,
-      brightness: b,
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffoldBg,
+      canvasColor: panel,
+      cardColor: panel,
+      dialogBackgroundColor: sheet,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: sheet,
+        modalBackgroundColor: sheet,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      dividerColor: scheme.outlineVariant.withValues(alpha: 0.4),
     );
 
     return base.copyWith(
+      // ---- AppBar：玻璃透明条 ----
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: panelLow.withValues(alpha: 0.55),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        foregroundColor: onSurface,
+        iconTheme: IconThemeData(color: onSurface),
         titleTextStyle: TextStyle(
-          color: scheme.onSurface,
+          color: onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
         ),
-        iconTheme: IconThemeData(color: scheme.onSurface, size: 22),
       ),
+      // ---- 导航栏：雾面玻璃 ----
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: _withAlpha(scheme.surfaceContainer, a < 236 ? 236 : a),
+        backgroundColor: panelLow.withValues(alpha: 0.62),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         height: 68,
-        indicatorColor: _withAlpha(scheme.primaryContainer, 210),
+        indicatorColor: primary.withValues(alpha: 0.16),
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontSize: 12, color: onSurface, fontWeight: FontWeight.w600),
+        ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final sel = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: sel ? scheme.primary : scheme.onSurfaceVariant,
-            size: 24,
-          );
-        }),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          final sel = states.contains(WidgetState.selected);
-          return TextStyle(
-            fontSize: 12,
-            fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-            color: sel ? scheme.primary : scheme.onSurfaceVariant,
+            color: sel ? primary : onSurface.withValues(alpha: 0.65),
           );
         }),
       ),
+      // ---- 卡片/面板：雾面玻璃 + 细描边 ----
       cardTheme: CardThemeData(
-        elevation: dark ? 0 : 1,
-        shadowColor: dark ? Colors.transparent : _withAlpha(Colors.black, 14),
         color: panel,
         surfaceTintColor: Colors.transparent,
-        margin: EdgeInsets.zero,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: dark
-              ? BorderSide(color: scheme.outlineVariant, width: 1)
-              : BorderSide.none,
-        ),
-      ),
-      listTileTheme: ListTileThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        iconColor: scheme.onSurfaceVariant,
-        titleTextStyle: TextStyle(
-          color: scheme.onSurface,
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-        ),
-        subtitleTextStyle: TextStyle(
-          color: scheme.onSurfaceVariant,
-          fontSize: 12.5,
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: border, width: 0.6),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: sheet,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: sheet,
-        surfaceTintColor: Colors.transparent,
-        modalBackgroundColor: sheet,
-        showDragHandle: true,
-        dragHandleColor: scheme.outlineVariant,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        titleTextStyle: TextStyle(
+          color: onSurface,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
         ),
       ),
-      dividerTheme: DividerThemeData(
-        color: _withAlpha(scheme.outlineVariant, 160),
-        thickness: 0.6,
-        space: 0.6,
+      // ---- 列表/条目 ----
+      listTileTheme: ListTileThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        iconColor: onSurface.withValues(alpha: 0.75),
+        textColor: onSurface,
+        titleTextStyle: TextStyle(color: onSurface, fontSize: 15),
+        subtitleTextStyle: TextStyle(
+          color: onSurface.withValues(alpha: 0.6),
+          fontSize: 12.5,
+        ),
       ),
+      // ---- 按钮：大、圆润、车机友好 ----
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          minimumSize: const Size(48, 46),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 46)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          textStyle: WidgetStatePropertyAll(
+            TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: scheme.onPrimary),
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: panel,
-          foregroundColor: scheme.onSurface,
-          minimumSize: const Size(48, 46),
-          elevation: 0,
-          side: BorderSide(color: scheme.outlineVariant, width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 46)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          backgroundColor: WidgetStatePropertyAll(panel),
+          foregroundColor: WidgetStatePropertyAll(primary),
+          elevation: const WidgetStatePropertyAll(0),
+          side: WidgetStatePropertyAll(BorderSide(color: border)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: scheme.primary,
-          minimumSize: const Size(48, 44),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: scheme.onSurface,
-          minimumSize: const Size(48, 46),
-          side: BorderSide(color: scheme.outline, width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-      ),
-      segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(44, 42)),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: scheme.outlineVariant, width: 1),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(
+          iconSize: const WidgetStatePropertyAll(26),
+          minimumSize: const WidgetStatePropertyAll(Size(46, 46)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          textStyle: WidgetStatePropertyAll(
-            const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-          ),
+          foregroundColor: WidgetStatePropertyAll(onSurface),
+        ),
+      ),
+      // ---- 输入框/开关/滑块/分段 ----
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.38)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return scheme.primary;
-          return scheme.surfaceContainerHighest;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return _withAlpha(scheme.primary, 120);
-          }
-          return scheme.surfaceContainerHighest;
-        }),
-        trackOutlineColor: WidgetStatePropertyAll(Colors.transparent),
+        thumbColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected) ? scheme.onPrimary : onSurface.withValues(alpha: 0.7)),
+        trackColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected) ? primary : scheme.surfaceContainerHighest),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: scheme.primary,
-        inactiveTrackColor: _withAlpha(scheme.onSurfaceVariant, 60),
-        thumbColor: scheme.primary,
-        overlayColor: _withAlpha(scheme.primary, 28),
+        activeTrackColor: primary,
+        inactiveTrackColor: scheme.surfaceContainerHighest,
+        thumbColor: primary,
+        overlayColor: primary.withValues(alpha: 0.15),
         trackHeight: 4,
       ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: dark ? const Color(0xFF2A3140) : const Color(0xFF2B2F36),
-        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 4,
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith((s) =>
+              s.contains(WidgetState.selected) ? primary : onSurface.withValues(alpha: 0.65)),
+          backgroundColor: WidgetStateProperty.resolveWith((s) =>
+              s.contains(WidgetState.selected)
+                  ? primary.withValues(alpha: 0.14)
+                  : Colors.transparent),
+          side: WidgetStatePropertyAll(BorderSide(color: border)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: primary,
+        unselectedLabelColor: onSurface.withValues(alpha: 0.55),
+        indicatorColor: primary,
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: primary,
+        linearTrackColor: scheme.surfaceContainerHighest,
+        circularTrackColor: scheme.surfaceContainerHighest,
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: sheet,
         surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        textStyle: TextStyle(color: onSurface, fontSize: 14),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.inverseSurface,
+        contentTextStyle: TextStyle(color: scheme.onInverseSurface, fontSize: 14),
+        behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: _withAlpha(scheme.surfaceContainerHighest, 120),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: scheme.primary, width: 1.5),
-        ),
+      // ---- 全局文字 ----
+      textTheme: const TextTheme().apply(
+        bodyColor: onSurface,
+        displayColor: onSurface,
       ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
-      textSelectionTheme: TextSelectionThemeData(
-        cursorColor: scheme.primary,
-        selectionColor: _withAlpha(scheme.primary, 80),
-        selectionHandleColor: scheme.primary,
-      ),
-      iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
     );
   }
 }

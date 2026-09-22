@@ -135,7 +135,17 @@ class PlayerController extends ChangeNotifier {
   Future<String> _mediaUrlForSong(Song s) async {
     if (s.streamUrl != null) return s.streamUrl!;
     if (s.fromExternal) {
-      return (await external.streamUrlFor(s.id, source: s.externalSource ?? 'netease')) ?? '';
+      final src = s.externalSource ?? 'netease';
+      // B站/QQ走直连；网易云走GDStudio聚合（稳定）
+      if (src == 'bilibili') {
+        final url = await external.biliStreamUrl(s.id);
+        return url ?? '';
+      }
+      if (src == 'qq') {
+        final url = await external.qqStreamUrl(s.id);
+        return url ?? '';
+      }
+      return (await external.streamUrlFor(s.id, source: 'netease')) ?? '';
     }
     return client.streamUrl(s.id).toString();
   }
@@ -248,15 +258,20 @@ class PlayerController extends ChangeNotifier {
     lyricsLoading = true;
     notifyListeners();
     try {
-      // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
-      // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）
-      var result = s.fromExternal
-          ? await external.lyricFor(s.id, source: s.externalSource ?? 'netease')
-          : await client.lyricsFor(s);
-      if (s.fromExternal &&
-          s.externalSource == 'netease' &&
-          (result == null || result.lines.isEmpty)) {
-        result = await external.lyricFor(s.id, source: 'netease');
+      var result;
+      final src = s.externalSource;
+      if (src == 'qq') {
+        // QQ直连歌词；无歌词时不再回退网易云（ID体系不同）
+        result = await external.qqLyric(s.id);
+      } else if (s.fromExternal) {
+        // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
+        // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）
+        result = await external.lyricFor(s.id, source: src ?? 'netease');
+        if (src == 'netease' && (result == null || result.lines.isEmpty)) {
+          result = await external.lyricFor(s.id, source: 'netease');
+        }
+      } else {
+        result = await client.lyricsFor(s);
       }
       if (token != _loadToken) return;
       lyrics = (result == null || result.lines.isEmpty) ? null : result;

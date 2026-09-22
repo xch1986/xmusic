@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -15,6 +16,11 @@ late MyAudioHandler audioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 允许所有屏幕方向（默认即如此，显式声明以防任何历史锁定残留），
+  // 播放页支持横竖屏切换（车机/手机）。
+  try {
+    await SystemChrome.setPreferredOrientations([]);
+  } catch (_) {}
   // 首次启动请求通知权限（Android 13+ 需要运行时申请）。
   try {
     await Permission.notification.request();

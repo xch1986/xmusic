@@ -11,13 +11,13 @@ class AppSettings extends ChangeNotifier {
   static const double scaleStep = 0.1;
 
   static const _kScale = 'lyric_scale';
-  static const _kGlass = 'glass_opacity';
   static const _kUrl = 'server_url';
   static const _kUser = 'username';
   static const _kSalt = 'salt';
   static const _kToken = 'token';
   static const _kTheme = 'theme_mode';
   static const _kExternal = 'external_api_url';
+  static const _kExternalSource = 'external_source';
   static const _kDavUrl = 'webdav_url';
   static const _kDavUser = 'webdav_user';
   static const _kDavPass = 'webdav_pass';
@@ -43,7 +43,6 @@ class AppSettings extends ChangeNotifier {
   String webdavPath = '';
   String webdavName = '';
   double _lyricScale = 1.0;
-  double _glassOpacity = 0.15;
   int _bgColor = 0;
   int _lyricActive = 0;
   int _lyricPast = 0;
@@ -53,7 +52,6 @@ class AppSettings extends ChangeNotifier {
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
-  double get glassOpacity => _glassOpacity;
   int get bgColor => _bgColor;
   int get lyricActive => _lyricActive;
   int get lyricPast => _lyricPast;
@@ -63,6 +61,14 @@ class AppSettings extends ChangeNotifier {
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
   bool get webdavConfigured => webdavUrl.trim().isNotEmpty;
+  /// 外网搜索源：gdstudio / netease / bilibili / qq
+  String externalSource = 'gdstudio';
+  String get externalSourceName => switch (externalSource) {
+        'netease' => '网易云直连',
+        'bilibili' => 'B站直连',
+        'qq' => 'QQ音乐直连',
+        _ => 'GDStudio 聚合',
+      };
 
   bool get hasLogin =>
       serverUrl.isNotEmpty && username.isNotEmpty &&
@@ -81,8 +87,8 @@ class AppSettings extends ChangeNotifier {
     webdavPath = _prefs.getString(_kDavPath) ?? '';
     webdavName = _prefs.getString(_kDavName) ?? '';
     _lyricScale = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
-    _glassOpacity = (_prefs.getDouble(_kGlass) ?? 0.15).clamp(0.0, 1.0);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
+    externalSource = _prefs.getString(_kExternalSource) ?? 'gdstudio';
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
     _lyricActive = _prefs.getInt(_kLyricActive) ?? 0;
     _lyricPast = _prefs.getInt(_kLyricPast) ?? 0;
@@ -135,12 +141,12 @@ class AppSettings extends ChangeNotifier {
   void increaseLyric() => setLyricScale(_lyricScale + scaleStep);
   void decreaseLyric() => setLyricScale(_lyricScale - scaleStep);
 
-  Future<void> setGlassOpacity(double v) async {
-    v = v.clamp(0.0, 1.0);
-    if ((v - _glassOpacity).abs() < 0.01) return;
-    _glassOpacity = v;
+  Future<void> setExternalSource(String v) async {
+    final valid = {'gdstudio', 'netease', 'bilibili', 'qq'}.contains(v);
+    if (!valid || v == externalSource) return;
+    externalSource = v;
     notifyListeners();
-    await _prefs.setDouble(_kGlass, v);
+    await _prefs.setString(_kExternalSource, v);
   }
 
   Future<void> setBgColor(int v) async {
