@@ -209,6 +209,23 @@ class _HomePageState extends State<HomePage> {
               child: FutureBuilder<List<Song>>(
                 future: _localRec,
                 builder: (context, snap) {
+                  if (snap.hasError) {
+                    // 本地推荐(Navidrome随机)失败：明确提示+重试，避免永远停在"加载中..."
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('本地推荐加载失败',
+                              style: Theme.of(context).textTheme.bodyMedium),
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () => setState(_load),
+                            child: const Text('重试'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                   if (!snap.hasData || snap.data!.isEmpty) {
                     return const Center(child: Text('加载中...'));
                   }
@@ -482,4 +499,3 @@ class _Card extends StatelessWidget {
     );
   }
 }
-home_page
