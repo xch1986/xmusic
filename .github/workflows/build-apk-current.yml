@@ -103,7 +103,7 @@ jobs:
 
       - name: Sync version string
         run: |
-          echo "const String appVersion = '0.2.${{ github.run_number }}';" > lib/app_version.dart
+          echo "const String appVersion = '0.3.${{ github.run_number }}';" > lib/app_version.dart
           cat lib/app_version.dart
 
       - name: Transparent window background
@@ -138,7 +138,7 @@ jobs:
             sed -i 's|android {|android {\n    lintOptions { checkReleaseBuilds false; abortOnError false }|' "$f"
           fi
           grep -n lint "$f"
-      - run: flutter build apk --release --build-number=${{ github.run_number }} --build-name=0.2.${{ github.run_number }}
+      - run: flutter build apk --release --build-number=${{ github.run_number }} --build-name=0.3.${{ github.run_number }}
 
       - uses: actions/upload-artifact@v4
         with:
