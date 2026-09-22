@@ -8,6 +8,7 @@ import 'pages/login_page.dart';
 import 'player_controller.dart';
 import 'settings.dart';
 import 'subsonic.dart';
+import 'theme.dart';
 
 /// 全局 audio handler（通知栏/车机/锁屏控制）。
 late MyAudioHandler audioHandler;
@@ -46,18 +47,11 @@ class MyApp extends StatelessWidget {
 
   final AppSettings settings;
 
-  static const _seed = Color(0xFF4A7CF7);
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
-        final a = (settings.glassOpacity * 255).round();
-        // 自定义背景色优先，否则完全透明（通透设置只控制UI元素透明度）
-        final custom = settings.bgColor;
-        final lightBg = custom != 0 ? Color(custom) : Color(a << 24 | 0xEAF0FA);
-        final darkBg = custom != 0 ? Color(custom) : Color(a << 24 | 0x1E2433);
         return MaterialApp(
           title: '音素',
           debugShowCheckedModeBanner: false,
@@ -66,42 +60,8 @@ class MyApp extends StatelessWidget {
             AppThemeMode.light => ThemeMode.light,
             AppThemeMode.dark => ThemeMode.dark,
           },
-          theme: ThemeData(
-            scaffoldBackgroundColor: lightBg,
-            appBarTheme: AppBarTheme(
-                backgroundColor: lightBg,
-                elevation: 0,
-                scrolledUnderElevation: 0),
-            navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: Color(a << 24 | 0xFFFFFF),
-                elevation: 0,
-                labelTextStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12))),
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: _seed,
-              brightness: Brightness.light,
-              surface: const Color(0xFFFFFFFF),
-              surfaceContainerHighest: const Color(0xFFF0F0F0),
-            ),
-          ),
-          darkTheme: ThemeData(
-            scaffoldBackgroundColor: darkBg,
-            appBarTheme: AppBarTheme(
-                backgroundColor: lightBg,
-                elevation: 0,
-                scrolledUnderElevation: 0),
-            navigationBarTheme: NavigationBarThemeData(
-                backgroundColor: Color(a << 24 | 0x1E1E1E),
-                elevation: 0,
-                labelTextStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12))),
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: _seed,
-              brightness: Brightness.dark,
-              surface: const Color(0xFF1A1A1A),
-              surfaceContainerHighest: const Color(0xFF2A2A2A),
-            ),
-          ),
+          theme: AppTheme.light(settings),
+          darkTheme: AppTheme.dark(settings),
           home: Root(settings: settings),
         );
       },
