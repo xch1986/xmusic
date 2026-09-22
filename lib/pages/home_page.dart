@@ -332,7 +332,10 @@ class _PlaylistDetail extends StatelessWidget {
         settings: settings,
         controller: controller,
       ),
-      body: Column(
+      // 单 ListView 直出（头部+按钮+歌曲列表滚动一体），不依赖 Expanded，
+      // 任何情况下歌曲列表都必定渲染，杜绝“空白页+拉伸播放栏”。
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
         children: [
           // 歌单封面头部
           if (coverUrl != null && coverUrl!.isNotEmpty)
@@ -362,16 +365,19 @@ class _PlaylistDetail extends StatelessWidget {
                 ],
               ),
             ),
+          // 播放按钮行（Wrap 防窄屏溢出）
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 ElevatedButton.icon(
                   onPressed: () => onPlay(0),
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('播放全部'),
                 ),
-                const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: () {
                     songs.shuffle();
@@ -380,22 +386,26 @@ class _PlaylistDetail extends StatelessWidget {
                   icon: const Icon(Icons.shuffle_rounded),
                   label: const Text('随机播放'),
                 ),
-                const SizedBox(width: 12),
                 Text('共 ${songs.length} 首',
                     style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: songs.length,
-              itemBuilder: (context, i) => SongTile(
+          const Divider(height: 8),
+          if (songs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: Text('暂无歌曲')),
+            )
+          else
+            ...List.generate(
+              songs.length,
+              (i) => SongTile(
                 song: songs[i],
                 client: client,
                 onTap: () => onPlay(i),
               ),
             ),
-          ),
         ],
       ),
     );

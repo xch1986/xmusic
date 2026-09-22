@@ -187,11 +187,20 @@ class _PlayerPageState extends State<PlayerPage> {
             children: [
               Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2)),
+                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2,
+                  shadows: const [
+                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
+                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
+                    Shadow(color: Colors.black26, blurRadius: 6),
+                  ])),
               const SizedBox(height: 4),
               Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
+                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16,
+                  shadows: const [
+                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
+                    Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
+                  ])),
             ],
           ),
         ),
@@ -285,10 +294,19 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: Column(
                       children: [
                         Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 24)),
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 24,
+                            shadows: const [
+                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
+                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
+                              Shadow(color: Colors.black26, blurRadius: 6),
+                            ])),
                         const SizedBox(height: 6),
                         Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15)),
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15,
+                            shadows: const [
+                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(1, 1)),
+                              Shadow(color: Colors.black38, blurRadius: 0, offset: Offset(-1, -1)),
+                            ])),
                       ],
                     ),
                   ),
@@ -701,13 +719,11 @@ class _LyricsViewState extends State<LyricsView> {
               itemBuilder: (context, i) {
                 final line = lines[i];
                 final active = !synced || i == _current;
-                // 歌词描边：永远与主题背景相反（浅色底用黑边、深色底用亮灰边），
-                // 保证白色/自定义浅色歌词在任何背景下都清晰。
+                // 歌词细描边：浅色底黑边/深色底亮边（轻量，保证白色歌词可读又不压字）
                 final isDark = Theme.of(context).brightness == Brightness.dark;
                 final stroke = isDark
-                    ? Colors.white.withValues(alpha: 0.20)
-                    : Colors.black.withValues(alpha: 0.55);
-                const glow = Shadow(color: Colors.black45, blurRadius: 10);
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.28);
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
@@ -721,11 +737,9 @@ class _LyricsViewState extends State<LyricsView> {
                         height: 1.4,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         shadows: [
-                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(1.6, 1.6)),
-                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(-1.6, -1.6)),
-                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(1.6, -1.6)),
-                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(-1.6, 1.6)),
-                          glow,
+                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(1.0, 1.0)),
+                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(-1.0, -1.0)),
+                          const Shadow(color: Colors.black26, blurRadius: 4),
                         ],
                         color: active
                             ? (widget.settings.lyricActive != 0
