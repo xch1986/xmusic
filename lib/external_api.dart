@@ -133,7 +133,7 @@ class ExternalApi {
   /// 获取网易云排行榜列表（直连163）
   Future<List<Map<String, dynamic>>> getToplists() async {
     try {
-      final res = await http.get(Uri.parse('https://music.163.com/api/toplist'))
+      final res = await http.get(Uri.parse('https://music.163.com/api/toplist'), headers: _h163)
           .timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) return [];
       final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -151,7 +151,7 @@ class ExternalApi {
   /// 获取歌单/排行榜歌曲列表（直连163）
   Future<List<Song>> getPlaylistSongs(String playlistId) async {
     try {
-      final res = await http.get(Uri.parse('https://music.163.com/api/playlist/detail?id=$playlistId'))
+      final res = await http.get(Uri.parse('https://music.163.com/api/playlist/detail?id=$playlistId'), headers: _h163)
           .timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) return [];
       final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
