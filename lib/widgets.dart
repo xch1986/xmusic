@@ -144,9 +144,12 @@ class SongTile extends StatelessWidget {
             radius: 8,
             requestSize: 120,
           ),
-      title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // 空安全：任何字段为 null 都不抛异常（异常会让整页渲染空白）
+      title: Text(song.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        showAlbum ? '${song.artist} · ${song.album}' : song.artist,
+        showAlbum
+            ? '${song.artist ?? ''} · ${song.album ?? ''}'
+            : (song.artist ?? '未知'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
