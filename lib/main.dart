@@ -99,15 +99,26 @@ class Root extends StatefulWidget {
   State<Root> createState() => _RootState();
 }
 
-class _RootState extends State<Root> {
+class _RootState extends State<Root> with WidgetsBindingObserver {
   PlayerController? _controller;
   SubsonicClient? _client;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
     _sync();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 切后台/退出/强制清后台前，保存最新播放状态（曲目+进度+队列），
+    // 避免重启后恢复的是最初点开的那首歌而不是退出时正在播的。
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _controller?.saveLastState();
+    }
   }
 
   void _sync() {
@@ -129,6 +140,7 @@ class _RootState extends State<Root> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.settings.removeListener(_onSettings);
     _controller?.dispose();
     super.dispose();

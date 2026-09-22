@@ -75,6 +75,7 @@ class PlayerController extends ChangeNotifier {
       final f = await _stateFile;
       await f.writeAsString(jsonEncode({
         'index': index,
+        'position': player.position.inMilliseconds,
         'queue': queue.map((s) => {
           'id': s.id, 'title': s.title, 'artist': s.artist, 'album': s.album,
           'coverArt': s.coverArt, 'coverUrl': s.coverUrl, 'streamUrl': s.streamUrl,
@@ -110,6 +111,13 @@ class PlayerController extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 1500));
       try {
         await _loadAndPlay(index, autoplay: settings.autoPlay);
+        // 恢复上次退出/切后台时的播放进度（>3秒才跳转，避免从头几秒还跳一下）
+        final savedPos = (m['position'] as num?)?.toInt() ?? 0;
+        if (savedPos > 3000) {
+          try {
+            await player.seek(Duration(milliseconds: savedPos));
+          } catch (_) {}
+        }
       } catch (_) {}
     } catch (_) {}
   }
@@ -205,6 +213,9 @@ class PlayerController extends ChangeNotifier {
       await player.play();
       audioHandler.allowPlay = false;
     }
+    // 每次切歌/开始播放都保存最新状态（曲目+进度），
+    // 退出或清后台后恢复的就是退出时正在播的歌，而不是停留在最初点开的那首。
+    unawaited(saveLastState());
   }
 
   void _checkStuck() {
@@ -224,7 +235,6 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
     try {
       await _loadAndPlay(startIndex, autoplay: true);
-      saveLastState();
     } catch (e) {
       debugPrint('playQueue failed: $e');
       lastError = e.toString();
