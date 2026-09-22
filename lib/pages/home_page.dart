@@ -41,7 +41,7 @@ class _HomePageState extends State<HomePage> {
     _hotSongs = ext.getPlaylistSongs('3778678').timeout(const Duration(seconds: 20)).catchError((_) => <Song>[]);
     // 本地推荐
     _localRec = _client.randomSongs(size: 20);
-    _biliHot = ext.search('热门', source: 'bilibili', count: 15).timeout(const Duration(seconds: 15)).catchError((_) => <Song>[]);
+    _biliHot = ext.search('热门', source: 'bilibili', limit: 15).timeout(const Duration(seconds: 15)).catchError((_) => <Song>[]);
   }
 
   void _reload() => setState(_load);
