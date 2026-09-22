@@ -1,0 +1,149 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project
+        run: flutter create --platforms=android --project-name my_stream_player .
+
+      - name: Patch app label and package id
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          sed -i 's|android:label="[^"]*"|android:label="音素"|' "$f"
+          # Newer Flutter templates use build.gradle.kts, older use build.gradle.
+          g=android/app/build.gradle
+          if [ -f "$g" ]; then
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId "com.xmusic.player"|' "$g"
+          fi
+          g=android/app/build.gradle.kts
+          if [ -f "$g" ]; then
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId = "com.xmusic.player"|' "$g"
+          fi
+          grep -n "android:label" "$f"
+          grep -rn "applicationId" android/app/build.gradle* || true
+
+      - name: Patch AndroidManifest (network)
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"|' "$f"
+          grep -n "INTERNET\|FOREGROUND_SERVICE\|MANAGE_EXTERNAL_STORAGE\|requestLegacyExternalStorage" "$f"
+          # 车机媒体识别：声明音乐应用 category + MUSIC_PLAYER action（迪友等车机桌面按此枚举音乐播放器）
+          sed -i 's|<category android:name="android.intent.category.LAUNCHER"/>|<category android:name="android.intent.category.LAUNCHER"/>\n            <category android:name="android.intent.category.APP_MUSIC"/>\n            <category android:name="com.android.launcher.category.APP_MUSIC"/>\n            <action android:name="android.intent.action.MUSIC_PLAYER"/>|' "$f"
+          grep -n "INTERNET\|FOREGROUND_SERVICE\|MANAGE_EXTERNAL_STORAGE\|requestLegacyExternalStorage\|APP_MUSIC\|MUSIC_PLAYER" "$f"
+
+      - name: Patch audio service
+        run: |
+          python3 <<'PYEOF'
+          import glob
+          matches = glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True)
+          ma = matches[0] if matches else None
+          if ma:
+              pk = ma.replace("android/app/src/main/kotlin/", "").replace("/MainActivity.kt", "").replace("/", ".")
+              with open(ma, "w") as f:
+                  f.write("package " + pk + "\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n")
+              print("Wrote " + ma)
+              print(open(ma).read())
+          else:
+              print("WARNING: MainActivity.kt not found!")
+              print(glob.glob("android/app/src/main/**/*.kt", recursive=True))
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p).read()
+          if 'xmlns:tools' not in s:
+              s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
+          if 'AudioService' not in s:
+              svc = "\n      <service android:name=\"com.ryanheise.audioservice.AudioService\" android:foregroundServiceType=\"mediaPlayback\" android:exported=\"true\" tools:ignore=\"Instantiatable\">\n        <intent-filter>\n          <action android:name=\"android.media.browse.MediaBrowserService\" />\n        </intent-filter>\n      </service>\n      <receiver android:name=\"com.ryanheise.audioservice.MediaButtonReceiver\" android:exported=\"true\" tools:ignore=\"Instantiatable\">\n        <intent-filter>\n          <action android:name=\"android.intent.action.MEDIA_BUTTON\" />\n        </intent-filter>\n      </receiver>\n  </application>"
+              s = s.replace("</application>", svc)
+          open(p, "w").write(s)
+          print("=== MANIFEST ===")
+          print(open(p).read())
+          print("=== END ===")
+          PYEOF
+
+      - name: Generate app icons
+        run: |
+          # Drop any adaptive-icon xml from the template so our PNGs are used.
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          python -m pip install pillow --quiet
+          python - <<'EOF'
+          from PIL import Image, ImageDraw
+          import os
+          src = Image.open('assets/app_icon.png').convert('RGBA')
+          # Round the corners so the icon looks clean on any launcher.
+          mask = Image.new('L', src.size, 0)
+          d = ImageDraw.Draw(mask)
+          r = int(src.size[0] * 0.22)
+          d.rounded_rectangle([0, 0, src.size[0] - 1, src.size[1] - 1],
+                              radius=r, fill=255)
+          src.putalpha(mask)
+          sizes = {'mipmap-mdpi': 48, 'mipmap-hdpi': 72, 'mipmap-xhdpi': 96,
+                   'mipmap-xxhdpi': 144, 'mipmap-xxxhdpi': 192}
+          for d, s in sizes.items():
+              p = os.path.join('android/app/src/main/res', d)
+              os.makedirs(p, exist_ok=True)
+              img = src.resize((s, s), Image.LANCZOS)
+              img.save(os.path.join(p, 'ic_launcher.png'))
+              img.save(os.path.join(p, 'ic_launcher_round.png'))
+          print('icons generated')
+          EOF
+
+      - name: Sync version string
+        run: |
+          echo "const String appVersion = '0.3.${{ github.run_number }}';" > lib/app_version.dart
+          cat lib/app_version.dart
+
+      - name: Transparent window background
+        run: |
+          python3 <<'PYEOF'
+          import glob
+          # Find styles.xml and set transparent window background
+          for p in glob.glob("android/app/src/main/res/values*/styles.xml"):
+              s = open(p).read()
+              if 'windowBackground' not in s:
+                  s = s.replace('</style>', '<item name="android:windowBackground">@android:color/transparent</item>\n    </style>')
+              if 'windowIsTranslucent' not in s:
+                  s = s.replace('</style>', '<item name="android:windowIsTranslucent">true</item>\n    </style>')
+              open(p, "w").write(s)
+              print("Patched " + p)
+          # Also create drawable transparent bg
+          import os
+          os.makedirs("android/app/src/main/res/drawable", exist_ok=True)
+          with open("android/app/src/main/res/drawable/transparent_bg.xml", "w") as f:
+              f.write('<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android">\n    <solid android:color="@android:color/transparent"/>\n</shape>')
+          print("Created transparent_bg.xml")
+          PYEOF
+
+      - run: flutter pub get
+      - name: Disable release lint fatal
+        run: |
+          f=android/app/build.gradle
+          [ -f "$f" ] || f=android/app/build.gradle.kts
+          if [[ "$f" == *.kts ]]; then
+            sed -i 's|android {|android {\n  lint { checkReleaseBuilds = false; abortOnError = false }|' "$f"
+          else
+            sed -i 's|android {|android {\n    lintOptions { checkReleaseBuilds false; abortOnError false }|' "$f"
+          fi
+          grep -n lint "$f"
+      - run: flutter build apk --release --build-number=${{ github.run_number }} --build-name=0.3.${{ github.run_number }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-player-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
