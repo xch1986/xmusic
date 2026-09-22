@@ -26,7 +26,8 @@ class MiniPlayer extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
             child: Container(
-              color: cs.surfaceContainerHigh.withOpacity(0.3),
+              // 比背景更实一些，保证任何壁纸下都清晰可读
+              color: cs.surfaceContainerHigh.withValues(alpha: 0.72),
               child: SafeArea(
                 top: false,
                 child: InkWell(
@@ -42,6 +43,7 @@ class MiniPlayer extends StatelessWidget {
                         CoverImage(
                           client: controller.client,
                           coverId: song.coverArt,
+                          coverUrl: song.coverUrl,
                           size: 44,
                           radius: 8,
                           requestSize: 120,

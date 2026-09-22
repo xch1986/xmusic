@@ -136,20 +136,28 @@ class _AlbumTabState extends State<_AlbumTab> {
         }
         final albums = snap.data!;
         if (albums.isEmpty) return const Center(child: Text('暂无专辑'));
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 180,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.74,
-          ),
+        // 专辑栏用列表形式（与歌手/歌单一致）：封面 + 专辑名 + 歌手 + 歌曲数
+        return ListView.builder(
           itemCount: albums.length,
           itemBuilder: (context, i) {
             final a = albums[i];
-            return AlbumCard(
-              album: a,
-              client: _client,
+            return ListTile(
+              leading: CoverImage(
+                client: _client,
+                coverId: a.coverArt,
+                size: 44,
+                radius: 8,
+                requestSize: 120,
+              ),
+              title: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                [a.artist, if (a.songCount != null) '${a.songCount} 首']
+                    .where((s) => s.isNotEmpty)
+                    .join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => widget.onOpenAlbum(a),
             );
           },

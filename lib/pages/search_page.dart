@@ -87,10 +87,12 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _searchExternal(String q) async {
-    if (!_externalApi.isConfigured) {
+    final src = widget.settings.externalSource;
+    // 直连源不依赖 GDStudio 地址；仅 GDStudio 聚合需要配置地址。
+    if (src == 'gdstudio' && !_externalApi.isConfigured) {
       setState(() {
         _external = null;
-        _error = '未配置外部搜索 API，请到 设置 -> 外部搜索 API 填写地址';
+        _error = '未配置外部搜索 API，请到 设置 -> 外部API地址 填写地址';
       });
       return;
     }
@@ -99,7 +101,13 @@ class _SearchPageState extends State<SearchPage> {
       _error = null;
     });
     try {
-      final songs = await _externalApi.search(q);
+      // 按设置的外网搜索源分发
+      final songs = switch (src) {
+        'netease' => await _externalApi.searchNeteaseDirect(q),
+        'bilibili' => await _externalApi.search(q, source: 'bilibili'),
+        'qq' => await _externalApi.searchQq(q),
+        _ => await _externalApi.search(q),
+      };
       if (!mounted) return;
       setState(() {
         _external = songs;
@@ -132,18 +140,25 @@ class _SearchPageState extends State<SearchPage> {
   /// Play an external song: resolve the stream URL first if needed.
   Future<void> _playExternal(List<Song> songs, int index) async {
     final api = _externalApi;
-    if (!api.isConfigured) {
+    if (widget.settings.externalSource == 'gdstudio' && !api.isConfigured) {
       _showSnack('未配置外部搜索 API');
       return;
     }
     // Clone the list so we can fill in stream URLs without mutating UI state.
     final copy = List<Song>.of(songs);
     final song = copy[index];
+    final src = song.externalSource ?? 'netease';
     if (song.streamUrl == null) {
       try {
-        final url = await api.streamUrlFor(song.id);
-        if (url == null) {
-          _showSnack('无法获取播放地址（可能需 VIP 或已下架）');
+        final url = switch (src) {
+          'qq' => await api.qqStreamUrl(song.id),
+          'bilibili' => await api.biliStreamUrl(song.id),
+          _ => await api.streamUrlFor(song.id, source: src),
+        };
+        if (url == null || url.isEmpty) {
+          _showSnack(src == 'qq'
+              ? 'QQ音乐暂时无法获取播放地址（受版权/VIP限制），可切换到其他搜索源'
+              : '无法获取播放地址（可能需 VIP 或已下架）');
           return;
         }
         copy[index] = Song(
@@ -155,6 +170,7 @@ class _SearchPageState extends State<SearchPage> {
           coverUrl: song.coverUrl,
           durationSec: song.durationSec,
           fromExternal: true,
+          externalSource: src,
           streamUrl: url,
         );
       } catch (e) {

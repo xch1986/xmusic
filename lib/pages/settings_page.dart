@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../app_version.dart';
 import '../player_controller.dart';
@@ -193,19 +196,6 @@ class SettingsPage extends StatelessWidget {
             onTap: () => _showThemeModeDialog(context),
           ),
           ListTile(
-            leading: const Icon(Icons.blur_on_rounded),
-            title: const Text('玻璃通透度'),
-            subtitle: Text('${(settings.glassOpacity * 100).round()}% 不透明'),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: settings.glassOpacity,
-                min: 0.0, max: 1.0, divisions: 10,
-                onChanged: (v) => settings.setGlassOpacity(v),
-              ),
-            ),
-          ),
-          ListTile(
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
             trailing: settings.bgColor != 0
@@ -236,6 +226,12 @@ class SettingsPage extends StatelessWidget {
             title: const Text('外部API地址'),
             subtitle: Text(settings.externalApiUrl),
             onTap: () => _showExternalApiDialog(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.public_rounded),
+            title: const Text('外网搜索源'),
+            subtitle: Text(settings.externalSourceName),
+            onTap: () => _showExternalSourceDialog(context),
           ),
           const Divider(),
 
@@ -284,14 +280,20 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: const Text('本地下载路径'),
-            subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music' : settings.downloadPath),
+            subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music（默认）' : settings.downloadPath),
+            onTap: () => _pickDownloadDirectory(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder_open_rounded),
+            title: const Text('申请存储权限'),
+            subtitle: const Text('Android 11+ 写入公共目录需要（如 /Music）'),
             onTap: () async {
-              final ctl = TextEditingController(text: settings.downloadPath.isEmpty ? '/storage/emulated/0/Music' : settings.downloadPath);
-              await showDialog(context: context, builder: (ctx) => AlertDialog(
-                title: const Text('本地下载路径'),
-                content: TextField(controller: ctl, decoration: const InputDecoration(hintText: '/storage/emulated/0/Music')),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () { settings.downloadPath = ctl.text.trim(); Navigator.pop(ctx); }, child: const Text('保存'))],
-              ));
+              final status = await Permission.manageExternalStorage.request();
+              if (!context.mounted) return;
+              final msg = status.isGranted
+                  ? '已授予存储权限'
+                  : '未授予，请在系统设置-应用-音素-权限中手动开启"所有文件访问"';
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
             },
           ),
           ListTile(
@@ -356,6 +358,26 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  /// 目录选择器：从 /storage/emulated/0 开始逐层浏览，选中后保存。
+  Future<void> _pickDownloadDirectory(BuildContext context) async {
+    final start = settings.downloadPath.isNotEmpty
+        ? settings.downloadPath
+        : '/storage/emulated/0';
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _DirectoryPickerSheet(initialPath: start),
+    );
+    if (picked != null && picked.isNotEmpty) {
+      settings.setDownloadPath(picked);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('下载目录已设为 $picked')),
+        );
+      }
+    }
+  }
+
   void _showExternalApiDialog(BuildContext context) {
     final ctl = TextEditingController(text: settings.externalApiUrl);
     showDialog(
@@ -367,6 +389,217 @@ class SettingsPage extends StatelessWidget {
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
           FilledButton(onPressed: () { settings.setExternalApiUrl(ctl.text); Navigator.of(ctx).pop(); }, child: const Text('保存')),
         ],
+      ),
+    );
+  }
+
+  void _showExternalSourceDialog(BuildContext context) {
+    const sources = <(String, String)>[
+      ('gdstudio', 'GDStudio 聚合（推荐，网易云/B站可播）'),
+      ('netease', '网易云直连（搜索/歌词直连，播放走聚合）'),
+      ('bilibili', 'B站直连（B站视频音轨直连播放）'),
+      ('qq', 'QQ音乐直连（搜索/歌词可用，播放受VIP限制）'),
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('外网搜索源'),
+        children: [
+          for (final (v, label) in sources)
+            RadioListTile<String>(
+              value: v,
+              groupValue: settings.externalSource,
+              title: Text(label),
+              onChanged: (nv) {
+                if (nv != null) settings.setExternalSource(nv);
+                Navigator.of(ctx).pop();
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 纯 Dart 目录浏览器：无需额外插件，配合“所有文件访问”权限使用。
+class _DirectoryPickerSheet extends StatefulWidget {
+  const _DirectoryPickerSheet({required this.initialPath});
+
+  final String initialPath;
+
+  @override
+  State<_DirectoryPickerSheet> createState() => _DirectoryPickerSheetState();
+}
+
+class _DirectoryPickerSheetState extends State<_DirectoryPickerSheet> {
+  late String _path = widget.initialPath;
+  List<Directory> _dirs = const [];
+  bool _loading = true;
+  String? _error;
+
+  static const _shortcuts = [
+    '/storage/emulated/0',
+    '/storage/emulated/0/Music',
+    '/storage/emulated/0/Download',
+    '/storage/emulated/0/Movies',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _enter(_path);
+  }
+
+  Future<void> _enter(String p) async {
+    setState(() {
+      _path = p;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final entries = await Directory(p)
+          .list(followLinks: false)
+          .where((e) => e is Directory)
+          .where((e) => !e.path.split('/').last.startsWith('.'))
+          .toList();
+      final dirs = entries.cast<Directory>().toList()
+        ..sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
+      if (!mounted) return;
+      setState(() {
+        _dirs = dirs;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '无法读取目录：$e';
+      });
+    }
+  }
+
+  void _goUp() {
+    if (_path == '/' || _path.isEmpty) return;
+    final parent = _path.substring(0, _path.lastIndexOf('/'));
+    _enter(parent.isEmpty ? '/' : parent);
+  }
+
+  Future<void> _createFolder() async {
+    final ctl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('新建文件夹'),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '文件夹名称'),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctl.text.trim()),
+            child: const Text('创建'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    try {
+      await Directory('$_path/$name').create(recursive: false);
+      _enter(_path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('创建失败：$e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final canGoUp = _path != '/' && _path.isNotEmpty;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.72,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_upward_rounded),
+                    tooltip: '上一级',
+                    onPressed: canGoUp ? _goUp : null,
+                  ),
+                  Expanded(
+                    child: Text(_path,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.create_new_folder_outlined),
+                    tooltip: '新建文件夹',
+                    onPressed: _createFolder,
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(_path),
+                    child: const Text('选择此目录'),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  for (final s in _shortcuts)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(s.split('/').last),
+                        selected: _path == s,
+                        onSelected: (_) => _enter(s),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 8),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(_error!, textAlign: TextAlign.center),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _dirs.length,
+                          itemBuilder: (context, i) {
+                            final d = _dirs[i];
+                            final name = d.path.split('/').last;
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.folder_rounded),
+                              title: Text(name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _enter(d.path),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }

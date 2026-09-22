@@ -53,6 +53,10 @@ class _AlbumPageState extends State<AlbumPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(album.name)),
+      bottomNavigationBar: MiniPlayer(
+        settings: widget.settings,
+        controller: widget.controller,
+      ),
       body: FutureBuilder<List<Song>>(
         future: _future,
         builder: (context, snap) {

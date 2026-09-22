@@ -5,6 +5,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import 'mini_player.dart';
 import 'player_page.dart';
 import 'search_page.dart';
 
@@ -65,6 +66,8 @@ class _HomePageState extends State<HomePage> {
         title: name,
         songs: songs,
         client: _client,
+        settings: widget.settings,
+        controller: widget.controller,
         coverUrl: coverUrl,
         onPlay: (i) => _playSongs(songs, i),
       ),
@@ -297,6 +300,8 @@ class _PlaylistDetail extends StatelessWidget {
     required this.title,
     required this.songs,
     required this.client,
+    required this.settings,
+    required this.controller,
     required this.onPlay,
     this.coverUrl,
   });
@@ -304,6 +309,8 @@ class _PlaylistDetail extends StatelessWidget {
   final String title;
   final List<Song> songs;
   final SubsonicClient client;
+  final AppSettings settings;
+  final PlayerController controller;
   final void Function(int index) onPlay;
   final String? coverUrl;
 
@@ -311,6 +318,11 @@ class _PlaylistDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
+      // 底部迷你播放条：歌单点播后立即可见
+      bottomNavigationBar: MiniPlayer(
+        settings: settings,
+        controller: controller,
+      ),
       body: Column(
         children: [
           // 歌单封面头部

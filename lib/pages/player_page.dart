@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -28,6 +29,28 @@ class PlayerPage extends StatefulWidget {
 }
 
 class _PlayerPageState extends State<PlayerPage> {
+  bool _forceLandscape = false;
+
+  @override
+  void dispose() {
+    // 离开播放页时还原系统方向（允许所有方向），避免把其他页面锁住
+    SystemChrome.setPreferredOrientations([]);
+    super.dispose();
+  }
+
+  /// 手动强制横/竖屏：不依赖手机“自动旋转”开关，车机场景更可控。
+  Future<void> _toggleRotation() async {
+    final wantLandscape = !_forceLandscape;
+    await SystemChrome.setPreferredOrientations(
+      wantLandscape
+          ? [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
+          : [DeviceOrientation.portraitUp],
+    );
+    if (mounted) {
+      setState(() => _forceLandscape = wantLandscape);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -37,16 +60,32 @@ class _PlayerPageState extends State<PlayerPage> {
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
         // 背景跟随主题：自定义背景色优先，否则透明玻璃（通透度由主题统一处理）
-        final bg = Theme.of(context).scaffoldBackgroundColor;
+        final bg = widget.settings.bgColor != 0
+            ? Color(widget.settings.bgColor)
+            : Theme.of(context).scaffoldBackgroundColor;
 
         return Scaffold(
           backgroundColor: bg,
-          body: SafeArea(
-            child: song == null
-                ? const Center(child: Text('没有正在播放的歌曲'))
-                : landscape
-                    ? _landscapeView(context, song)
-                    : _portraitView(context, song),
+          body: Container(
+            // 高级质感：主题色轻微渐变叠加在透明玻璃之上
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
+                  Colors.transparent,
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: song == null
+                  ? const Center(child: Text('没有正在播放的歌曲'))
+                  : landscape
+                      ? _landscapeView(context, song)
+                      : _portraitView(context, song),
+            ),
           ),
         );
       },
@@ -114,7 +153,7 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // 右侧竖排按钮：歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
+  // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
     return Container(
       width: 52,
@@ -122,6 +161,16 @@ class _PlayerPageState extends State<PlayerPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          IconButton(
+            tooltip: '横竖屏切换（强制，不依赖系统自动旋转）',
+            icon: Icon(
+              _forceLandscape
+                  ? Icons.screen_rotation_rounded
+                  : Icons.screen_rotation_alt_rounded,
+              size: 22,
+            ),
+            onPressed: _toggleRotation,
+          ),
           LyricSizeControls(settings: widget.settings),
           const SizedBox(height: 2),
           _FavoriteButton(controller: widget.controller),
