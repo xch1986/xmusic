@@ -22,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Song>> _hotSongs;
   late Future<List<Song>> _localRec;
+  late Future<List<Song>> _biliHot;
 
   SubsonicClient get _client => widget.controller.client;
 
@@ -39,6 +40,7 @@ class _HomePageState extends State<HomePage> {
     _hotSongs = ext.getPlaylistSongs('3778678').timeout(const Duration(seconds: 20)).catchError((_) => <Song>[]);
     // 本地推荐
     _localRec = _client.randomSongs(size: 20);
+    _biliHot = ext.search('热门', 'bilibili', count: 15).timeout(const Duration(seconds: 15)).catchError((_) => <Song>[]);
   }
 
   void _reload() => setState(_load);
@@ -110,7 +112,7 @@ class _HomePageState extends State<HomePage> {
                   return const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('加载排行榜...')));
                 }
                 // 取前6个排行榜
-                final lists = snap.data!.take(6).toList();
+                final lists = snap.data!.take(12).toList();
                 return GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -126,6 +128,34 @@ class _HomePageState extends State<HomePage> {
                   )).toList(),
                 );
               },
+            ),
+            // B站热门
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text('B站热门',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            SizedBox(
+              height: 190,
+              child: FutureBuilder<List<Song>>(
+                future: _biliHot,
+                builder: (context, snap) {
+                  if (!snap.hasData || snap.data!.isEmpty) {
+                    return const Center(child: Text('加载中...'));
+                  }
+                  final songs = snap.data!;
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: songs.length > 10 ? 10 : songs.length,
+                    itemBuilder: (context, i) => Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _Card(song: songs[i], client: _client,
+                          onTap: () => _playSongs(songs, i)),
+                    ),
+                  );
+                },
+              ),
             ),
             // 本地推荐
             Padding(
