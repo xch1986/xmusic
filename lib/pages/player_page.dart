@@ -701,12 +701,18 @@ class _LyricsViewState extends State<LyricsView> {
               itemBuilder: (context, i) {
                 final line = lines[i];
                 final active = !synced || i == _current;
+                // 歌词描边：永远与主题背景相反（浅色底用黑边、深色底用亮灰边），
+                // 保证白色/自定义浅色歌词在任何背景下都清晰。
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final stroke = isDark
+                    ? Colors.white.withValues(alpha: 0.20)
+                    : Colors.black.withValues(alpha: 0.55);
+                const glow = Shadow(color: Colors.black45, blurRadius: 10);
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
-                    // 非激活行高度 = 2×(9×scale)；激活行外补白少 10 再叠加容器 20px，总高一致，滚动不跳动
                     padding: EdgeInsets.symmetric(vertical: 9 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
@@ -714,9 +720,12 @@ class _LyricsViewState extends State<LyricsView> {
                         fontSize: _baseFontSize * scale,
                         height: 1.4,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        shadows: const [
-                          Shadow(color: Colors.black26, blurRadius: 6),
-                          Shadow(color: Colors.black12, blurRadius: 2),
+                        shadows: [
+                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(1.6, 1.6)),
+                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(-1.6, -1.6)),
+                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(1.6, -1.6)),
+                          Shadow(color: stroke, blurRadius: 0, offset: const Offset(-1.6, 1.6)),
+                          glow,
                         ],
                         color: active
                             ? (widget.settings.lyricActive != 0
