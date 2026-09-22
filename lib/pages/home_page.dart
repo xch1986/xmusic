@@ -338,17 +338,9 @@ class _PlaylistDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      // 底部迷你播放条：歌单点播后立即可见
-      bottomNavigationBar: MiniPlayer(
-        settings: settings,
-        controller: controller,
-      ),
-      // 单 ListView 直出（头部+按钮+歌曲列表滚动一体），不依赖 Expanded，
-      // 任何情况下歌曲列表都必定渲染，杜绝“空白页+拉伸播放栏”。
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 16),
+      bottomNavigationBar: MiniPlayer(settings: settings, controller: controller),
+      body: Column(
         children: [
-          // 歌单封面头部
           if (coverUrl != null && coverUrl!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -376,69 +368,58 @@ class _PlaylistDetail extends StatelessWidget {
                 ],
               ),
             ),
-          // 播放按钮行（Wrap 防窄屏溢出）
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            child: Row(
               children: [
                 ElevatedButton.icon(
-                  onPressed: () => onPlay(0),
+                  onPressed: songs.isEmpty || error != null ? null : () => onPlay(0),
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('播放全部'),
                 ),
+                const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: songs.isEmpty || error != null ? null : () {
                     songs.shuffle();
                     onPlay(0);
                   },
                   icon: const Icon(Icons.shuffle_rounded),
-                  label: const Text('随机播放'),
+                  label: const Text('随机'),
                 ),
-                Text('共 ${songs.length} 首',
-                    style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           ),
-          const Divider(height: 8),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Icon(Icons.cloud_off_rounded,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  const SizedBox(height: 8),
-                  Text(error!,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: 12),
-                  if (onRetry != null)
-                    FilledButton.icon(
-                      onPressed: onRetry,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('重试'),
+          const Divider(height: 1),
+          Expanded(
+            child: error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_off_rounded, size: 40),
+                      const SizedBox(height: 8),
+                      Text(error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      if (onRetry != null)
+                        FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('重试'),
+                        ),
+                    ],
+                  ),
+                )
+              : songs.isEmpty
+                ? const Center(child: Text('暂无歌曲'))
+                : ListView.builder(
+                    itemCount: songs.length,
+                    itemBuilder: (context, i) => SongTile(
+                      song: songs[i],
+                      client: client,
+                      onTap: () => onPlay(i),
                     ),
-                ],
-              ),
-            )
-          else if (songs.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: Text('暂无歌曲')),
-            )
-          else
-            ...List.generate(
-              songs.length,
-              (i) => SongTile(
-                song: songs[i],
-                client: client,
-                onTap: () => onPlay(i),
-              ),
-            ),
+                  ),
+          ),
         ],
       ),
     );
