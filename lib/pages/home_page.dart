@@ -55,14 +55,17 @@ class _HomePageState extends State<HomePage> {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
     List<Song> songs;
+    String? error;
     try {
       songs = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
-    } catch (_) {
+    } catch (e) {
       songs = const [];
+      error = '加载失败（$e）';
     }
+    if (songs.isEmpty && error == null) error = '没有歌曲数据';
     if (!mounted) return;
     Navigator.pop(context); // dismiss loading
-    // 空数据也进入详情页：显示页面结构+“暂无歌曲”，绝不无声无息返回
+    // 无论成败都进入详情页：失败显示原因+重试，绝不空白页或无声返回
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
         title: name,
@@ -71,6 +74,8 @@ class _HomePageState extends State<HomePage> {
         settings: widget.settings,
         controller: widget.controller,
         coverUrl: coverUrl,
+        error: error,
+        onRetry: () => _openPlaylist(name, playlistId, coverUrl: coverUrl),
         onPlay: (i) => _playSongs(songs, i),
       ),
     ));
@@ -315,6 +320,8 @@ class _PlaylistDetail extends StatelessWidget {
     required this.controller,
     required this.onPlay,
     this.coverUrl,
+    this.error,
+    this.onRetry,
   });
 
   final String title;
@@ -324,6 +331,8 @@ class _PlaylistDetail extends StatelessWidget {
   final PlayerController controller;
   final void Function(int index) onPlay;
   final String? coverUrl;
+  final String? error;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -394,7 +403,29 @@ class _PlaylistDetail extends StatelessWidget {
             ),
           ),
           const Divider(height: 8),
-          if (songs.isEmpty)
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Icon(Icons.cloud_off_rounded,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 8),
+                  Text(error!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 12),
+                  if (onRetry != null)
+                    FilledButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('重试'),
+                    ),
+                ],
+              ),
+            )
+          else if (songs.isEmpty)
             const Padding(
               padding: EdgeInsets.all(32),
               child: Center(child: Text('暂无歌曲')),
