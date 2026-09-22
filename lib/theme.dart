@@ -274,8 +274,9 @@ class AppTheme {
       // ---- 输入框/开关/滑块/分段 ----
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.38)),
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.68),
+        labelStyle: TextStyle(color: onSurface.withValues(alpha: 0.72)),
+        hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.52)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
