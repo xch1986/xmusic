@@ -22,8 +22,8 @@ class AppTheme {
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
   // 浅色模式：背景更实（暖白底），避免透出深色壁纸后像黑灰；深色模式：保持透明玻璃。
-  static const double _lightBgAlpha = 0.72;
-  static const double _darkBgAlpha = 0.40;
+  static const double _lightBgAlpha = 0.62;
+  static const double _darkBgAlpha = 0.34;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
   static const double _lightPanelAlpha = 0.93;
   static const double _lightSheetAlpha = 0.96;
@@ -117,6 +117,8 @@ class AppTheme {
     final panel = withAlpha255(surface, panelAlpha);
     final sheet = withAlpha255(surface, sheetAlpha);
     final panelLow = withAlpha255(surface, panelAlpha - 0.08);
+    // 卡片：比面板再透一档（壁纸透出），配合柔和投影=车机桌面卡片质感
+    final card = withAlpha255(surface, (panelAlpha - 0.06).clamp(0.4, 0.92));
     final border = scheme.outlineVariant.withValues(alpha: 0.65);
 
     final base = ThemeData(
@@ -139,7 +141,7 @@ class AppTheme {
     return base.copyWith(
       // ---- AppBar：玻璃透明条 ----
       appBarTheme: AppBarTheme(
-        backgroundColor: panelLow.withValues(alpha: 0.55),
+        backgroundColor: panelLow.withValues(alpha: 0.32),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -154,10 +156,11 @@ class AppTheme {
       ),
       // ---- 导航栏：雾面玻璃 ----
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: panelLow.withValues(alpha: 0.62),
+        // 参照车机桌面导航栏：高透明浮在壁纸上，靠图标阴影保证可读
+        backgroundColor: panelLow.withValues(alpha: 0.32),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        height: 68,
+        height: 62,
         indicatorColor: primary.withValues(alpha: 0.16),
         labelTextStyle: WidgetStatePropertyAll(
           TextStyle(fontSize: 12, color: onSurface, fontWeight: FontWeight.w600),
@@ -171,9 +174,10 @@ class AppTheme {
       ),
       // ---- 卡片/面板：雾面玻璃 + 细描边 ----
       cardTheme: CardThemeData(
-        color: panel,
+        color: card,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
+        elevation: 2,
+        shadowColor: scheme.shadow.withValues(alpha: 0.22),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: border, width: 0.6),
