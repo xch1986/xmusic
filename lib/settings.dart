@@ -43,7 +43,7 @@ class AppSettings extends ChangeNotifier {
   String webdavPath = '';
   String webdavName = '';
   double _lyricScale = 1.0;
-  double _glassOpacity = 0.35;
+  double _glassOpacity = 0.15;
   int _bgColor = 0;
   int _lyricActive = 0;
   int _lyricPast = 0;
@@ -81,7 +81,7 @@ class AppSettings extends ChangeNotifier {
     webdavPath = _prefs.getString(_kDavPath) ?? '';
     webdavName = _prefs.getString(_kDavName) ?? '';
     _lyricScale = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
-    _glassOpacity = (_prefs.getDouble(_kGlass) ?? 0.35).clamp(0.1, 1.0);
+    _glassOpacity = (_prefs.getDouble(_kGlass) ?? 0.15).clamp(0.0, 1.0);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
     _lyricActive = _prefs.getInt(_kLyricActive) ?? 0;
@@ -136,7 +136,7 @@ class AppSettings extends ChangeNotifier {
   void decreaseLyric() => setLyricScale(_lyricScale - scaleStep);
 
   Future<void> setGlassOpacity(double v) async {
-    v = v.clamp(0.1, 1.0);
+    v = v.clamp(0.0, 1.0);
     if ((v - _glassOpacity).abs() < 0.01) return;
     _glassOpacity = v;
     notifyListeners();
