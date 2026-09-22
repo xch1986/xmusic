@@ -5,10 +5,9 @@ import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
 import 'mini_player.dart';
-import 'player_page.dart';
 
 /// Artist page: 直接展示该歌手的歌曲列表（搜索该歌手名下歌曲），
-/// 不再先展示专辑网格，符合车机“点歌手 → 直接选歌”的使用习惯。
+/// 不做专辑网格；底部挂全局迷你播放条，点击歌曲播放后立即可见。
 class ArtistPage extends StatefulWidget {
   const ArtistPage({
     super.key,
@@ -37,14 +36,8 @@ class _ArtistPageState extends State<ArtistPage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
+    // 只播放不跳转：底部全局迷你播放条立即出现（车机/列表场景）
     await widget.controller.playQueue(songs, index);
-    if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-    ));
     if (mounted) setState(() {});
   }
 
@@ -52,6 +45,7 @@ class _ArtistPageState extends State<ArtistPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.artist.name)),
+      // 全局播放栏位：点击歌曲列表开始播放后，底部立即显示迷你播放条
       bottomNavigationBar: MiniPlayer(
         settings: widget.settings,
         controller: widget.controller,

@@ -294,13 +294,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              Positioned(
-                left: 12, bottom: 10,
-                child: Text(name, style: theme.textTheme.titleSmall?.copyWith(
-                  color: Colors.white, fontWeight: FontWeight.w600,
-                  shadows: [const Shadow(blurRadius: 4, color: Colors.black54)],
-                )),
-              ),
+
             ],
           ),
         ),

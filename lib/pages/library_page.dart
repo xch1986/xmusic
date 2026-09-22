@@ -7,7 +7,6 @@ import '../subsonic.dart';
 import '../widgets.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
-import 'player_page.dart';
 import 'playlist_page.dart';
 
 /// Library page with tabs: 歌单 / 专辑 / 歌手 / 本地(真本地扫描).
@@ -414,14 +413,8 @@ class _LocalTabState extends State<_LocalTab> {
   }
 
   Future<void> _play(int i) async {
+    // 只播放不跳转：底部全局迷你播放条立即出现
     await widget.controller.playQueue(_songs, i);
-    if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-    ));
     if (mounted) setState(() {});
   }
 

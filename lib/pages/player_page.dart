@@ -702,41 +702,22 @@ class _LyricsViewState extends State<LyricsView> {
                 final line = lines[i];
                 final active = !synced || i == _current;
 
-                final text = Text(line.text.isEmpty ? '♪' : line.text,
-                  textAlign: widget.alignRight ? TextAlign.right : TextAlign.center);
-
-                // 当前行：玻璃高亮条（圆角半透明背景），迪友卡片式聚焦质感
-                final content = active
-                    ? Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: cs.primary.withValues(alpha: 0.10),
-                            width: 0.5,
-                          ),
-                        ),
-                        child: text,
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: text,
-                      );
-
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: synced ? () => widget.player.seek(line.time) : null,
                   child: Padding(
                     // 非激活行高度 = 2×(9×scale)；激活行外补白少 10 再叠加容器 20px，总高一致，滚动不跳动
-                    padding: EdgeInsets.symmetric(vertical: active ? (9 * scale - 10).clamp(0.0, 60.0).toDouble() : 9 * scale),
+                    padding: EdgeInsets.symmetric(vertical: 9 * scale),
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
                         fontSize: _baseFontSize * scale,
                         height: 1.4,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        shadows: const [
+                          Shadow(color: Colors.black26, blurRadius: 6),
+                          Shadow(color: Colors.black12, blurRadius: 2),
+                        ],
                         color: active
                             ? (widget.settings.lyricActive != 0
                                 ? Color(widget.settings.lyricActive)
@@ -749,7 +730,8 @@ class _LyricsViewState extends State<LyricsView> {
                                     ? Color(widget.settings.lyricFuture)
                                     : cs.onSurface.withOpacity(0.45))),
                       ),
-                      child: content,
+                        child: Text(line.text.isEmpty ? '♪' : line.text,
+                          textAlign: widget.alignRight ? TextAlign.right : TextAlign.center),
                     ),
                   ),
                 );

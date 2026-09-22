@@ -4,7 +4,6 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
-import 'player_page.dart';
 import 'mini_player.dart';
 
 class AlbumPage extends StatefulWidget {
@@ -35,14 +34,8 @@ class _AlbumPageState extends State<AlbumPage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
+    // 只播放不跳转：底部全局迷你播放条立即出现（车机/列表场景）
     await widget.controller.playQueue(songs, index);
-    if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-    ));
     if (mounted) setState(() {});
   }
 

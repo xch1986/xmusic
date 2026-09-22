@@ -133,7 +133,12 @@ class SettingsPage extends StatelessWidget {
                         width: 36, height: 36,
                         decoration: BoxDecoration(
                           color: col, shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24, width: 2),
+                          border: Border.all(
+                            color: col.computeLuminance() > 0.6
+                                ? Colors.black.withValues(alpha: 0.25)
+                                : Colors.white.withValues(alpha: 0.45),
+                            width: 2,
+                          ),
                         ),
                       ),
                     )).toList(),
