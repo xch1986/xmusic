@@ -106,6 +106,27 @@ jobs:
           echo "const String appVersion = '0.2.${{ github.run_number }}';" > lib/app_version.dart
           cat lib/app_version.dart
 
+      - name: Transparent window background
+        run: |
+          python3 <<'PYEOF'
+          import glob
+          # Find styles.xml and set transparent window background
+          for p in glob.glob("android/app/src/main/res/values*/styles.xml"):
+              s = open(p).read()
+              if 'windowBackground' not in s:
+                  s = s.replace('</style>', '<item name="android:windowBackground">@android:color/transparent</item>\n    </style>')
+              if 'windowIsTranslucent' not in s:
+                  s = s.replace('</style>', '<item name="android:windowIsTranslucent">true</item>\n    </style>')
+              open(p, "w").write(s)
+              print("Patched " + p)
+          # Also create drawable transparent bg
+          import os
+          os.makedirs("android/app/src/main/res/drawable", exist_ok=True)
+          with open("android/app/src/main/res/drawable/transparent_bg.xml", "w") as f:
+              f.write('<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android">\n    <solid android:color="@android:color/transparent"/>\n</shape>')
+          print("Created transparent_bg.xml")
+          PYEOF
+
       - run: flutter pub get
       - name: Disable release lint fatal
         run: |
