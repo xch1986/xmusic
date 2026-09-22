@@ -25,7 +25,10 @@ class ExternalApi {
     return jsonDecode(utf8.decode(res.bodyBytes));
   }
 
-  Future<List<Song>> search(String keyword, {String source = 'netease', int limit = 20}) async {
+  Future<List<Song>> search(String keyword,
+      {String source = 'netease', int limit = 20, int? count}) async {
+    // count 为 limit 的别名：首页 B站热门用 count: 15，搜索页用 limit:
+    limit = count ?? limit;
     final raw = await _getJson('search', source, {
       'name': keyword, 'count': '$limit', 'pages': '1',
     });
