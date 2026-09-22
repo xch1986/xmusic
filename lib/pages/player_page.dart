@@ -322,8 +322,6 @@ class _PlayerPageState extends State<PlayerPage> {
 /// Big single line that tracks the currently-active lyric (portrait).
 class _CurrentLyricLine extends StatefulWidget {
   const _CurrentLyricLine({required this.controller, required this.settings});
-  final PlayerController controller;
-  final AppSettings settings;
 
   @override
   State<_CurrentLyricLine> createState() => _CurrentLyricLineState();
@@ -433,7 +431,7 @@ class _RepeatButton extends StatelessWidget {
 class LyricSizeControls extends StatelessWidget {
   const LyricSizeControls({super.key, required this.settings});
 
-  final AppSettings settings;
+  final int? visibleLines;
 
   @override
   Widget build(BuildContext context) {
@@ -468,11 +466,15 @@ class LyricsView extends StatefulWidget {
     required this.lyrics,
     required this.player,
     required this.settings,
+    this.alignRight = false,
+    this.visibleLines,
   });
 
   final Lyrics lyrics;
   final AudioPlayer player;
   final AppSettings settings;
+  final bool alignRight;
+  final int? visibleLines;
 
   @override
   State<LyricsView> createState() => _LyricsViewState();
