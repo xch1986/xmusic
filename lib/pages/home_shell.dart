@@ -38,7 +38,16 @@ class _HomeShellState extends State<HomeShell> {
         mainAxisSize: MainAxisSize.min,
         children: [
           MiniPlayer(settings: widget.settings, controller: widget.controller),
-          NavigationBar(
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                  width: 0.6,
+                ),
+              ),
+            ),
+            child: NavigationBar(
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
             destinations: const [
@@ -63,6 +72,7 @@ class _HomeShellState extends State<HomeShell> {
                 label: '设置',
               ),
             ],
+          ),
           ),
         ],
       ),
