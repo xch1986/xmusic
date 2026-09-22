@@ -1,9 +1,15 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
+/// 全局唯一的 AudioPlayer 实例（双播问题根因修复）。
+/// audio_service 在 Android 上可能因服务重建而创建第二个 MyAudioHandler 实例，
+/// 若每个实例都 new 一个 AudioPlayer，会出现两首歌同时播放、进度不同的双播。
+/// 所有 handler 共享同一个 player，即可杜绝该问题。
+final AudioPlayer sharedPlayer = AudioPlayer();
+
 /// AudioService handler：把 just_audio 的播放状态桥接到系统通知栏/锁屏/车机。
 class MyAudioHandler extends BaseAudioHandler with SeekHandler {
-  final AudioPlayer _player = AudioPlayer();
+  final AudioPlayer _player = sharedPlayer;
 
   /// 由 PlayerController 设置：通知栏点 next/prev 时回调。
   Future<void> Function()? onSkipNext;

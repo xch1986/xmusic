@@ -165,6 +165,14 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setBool(_kAutoPlay, v);
   }
 
+  Future<void> setDownloadPath(String v) async {
+    final path = v.trim();
+    if (path == downloadPath) return;
+    downloadPath = path;
+    notifyListeners();
+    await _prefs.setString(_kDownloadPath, path);
+  }
+
   Future<void> setThemeMode(AppThemeMode mode) async {
     if (mode == _themeMode) return;
     _themeMode = mode;

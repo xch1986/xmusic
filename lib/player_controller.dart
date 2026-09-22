@@ -58,6 +58,9 @@ class PlayerController extends ChangeNotifier {
   Duration _lastPos = Duration.zero;
   DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
+  /// 播放加载令牌：快速连点切歌/自动播放时，只允许最新一次加载真正生效，
+  /// 旧加载在关键节点放弃，避免两次 setUrl 相互覆盖造成竞态。
+  int _playToken = 0;
   String? lastError;
   Duration _prevStuckPos = Duration.zero;
 
@@ -159,8 +162,10 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
     if (i < 0 || i >= queue.length) return;
+    final token = ++_playToken;
     final s = queue[i];
     final url = await _mediaUrlForSong(s);
+    if (token != _playToken) return; // 期间已切歌，放弃本次加载
     if (url.isEmpty) throw '无法获取播放地址';
     _updateMediaItem(s);
     await player.stop();
@@ -170,8 +175,11 @@ class PlayerController extends ChangeNotifier {
         (st) => st == ProcessingState.idle,
       ).timeout(const Duration(milliseconds: 1500));
     } catch (_) {}
+    if (token != _playToken) return;
     await Future.delayed(const Duration(milliseconds: 200));
+    if (token != _playToken) return;
     await player.setUrl(url);
+    if (token != _playToken) return;
     index = i;
     notifyListeners();
     _applyLoopMode();
@@ -240,13 +248,14 @@ class PlayerController extends ChangeNotifier {
     lyricsLoading = true;
     notifyListeners();
     try {
-      final src = (s.fromExternal && s.externalSource != null && s.externalSource != 'qq')
-          ? s.externalSource! : 'netease';
+      // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
+      // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）
       var result = s.fromExternal
-          ? await external.lyricFor(s.id, source: src)
+          ? await external.lyricFor(s.id, source: s.externalSource ?? 'netease')
           : await client.lyricsFor(s);
-      // 外部源没歌词时回退网易云
-      if (s.fromExternal && (result == null || result.lines.isEmpty)) {
+      if (s.fromExternal &&
+          s.externalSource == 'netease' &&
+          (result == null || result.lines.isEmpty)) {
         result = await external.lyricFor(s.id, source: 'netease');
       }
       if (token != _loadToken) return;
@@ -267,11 +276,27 @@ class PlayerController extends ChangeNotifier {
     if (url.isEmpty) return '无法获取下载地址';
     final bytes = await http.get(Uri.parse(url));
     if (bytes.statusCode != 200) return '下载失败 HTTP ${bytes.statusCode}';
-    final dir = await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
+    // 优先使用用户配置的下载路径；未配置时回退到应用专属外部存储目录
+    String base;
+    if (settings.downloadPath.trim().isNotEmpty) {
+      base = settings.downloadPath.trim();
+    } else {
+      base = (await getExternalStorageDirectory())?.path ??
+          (await getApplicationDocumentsDirectory()).path;
+    }
+    final dir = Directory(base);
+    try {
+      if (!await dir.exists()) await dir.create(recursive: true);
+    } catch (_) {
+      return '无法创建目录 $base，请在系统设置中授予存储权限';
+    }
     final safe = _safeName('${s.artist} - ${s.title}');
     final file = File('${dir.path}/$safe.mp3');
-    await file.writeAsBytes(bytes.bodyBytes);
+    try {
+      await file.writeAsBytes(bytes.bodyBytes);
+    } catch (_) {
+      return '保存失败：无写入权限，请授予存储权限后重试';
+    }
     return '已保存到 ${file.path}';
   }
 
