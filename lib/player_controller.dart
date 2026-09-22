@@ -188,7 +188,12 @@ class PlayerController extends ChangeNotifier {
     if (token != _playToken) return;
     await Future.delayed(const Duration(milliseconds: 200));
     if (token != _playToken) return;
-    await player.setUrl(url);
+    // B站音轨 CDN 需要 UA + Referer，否则 403/拒绝
+    if (s.fromExternal && s.externalSource == 'bilibili') {
+      await player.setUrl(url, headers: ExternalApi.biliPlayHeaders);
+    } else {
+      await player.setUrl(url);
+    }
     if (token != _playToken) return;
     index = i;
     notifyListeners();
@@ -289,7 +294,12 @@ class PlayerController extends ChangeNotifier {
   Future<String> downloadSongToLocal(Song s) async {
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) return '无法获取下载地址';
-    final bytes = await http.get(Uri.parse(url));
+    final bytes = await http.get(
+      Uri.parse(url),
+      headers: (s.fromExternal && s.externalSource == 'bilibili')
+          ? ExternalApi.biliPlayHeaders
+          : const {},
+    );
     if (bytes.statusCode != 200) return '下载失败 HTTP ${bytes.statusCode}';
     // 优先使用用户配置的下载路径；未配置时回退到应用专属外部存储目录
     String base;

@@ -315,11 +315,15 @@ class ExternalApi {
   // ==================== B站直连 ====================
 
   /// B站视频音轨直连：view 拿 cid → playurl 拿音频流（选最高码率）。
-  Future<String?> biliStreamUrl(String bvid) async {
-    if (bvid.isEmpty) return null;
+  /// 兼容 bvid（BV 开头）与 aid（纯数字）两种 id。
+  Future<String?> biliStreamUrl(String bvidOrAid) async {
+    final id = bvidOrAid.trim();
+    if (id.isEmpty) return null;
+    final isBv = RegExp(r'^[Bb][Vv][0-9A-Za-z]+$').hasMatch(id);
+    final videoParam = isBv ? 'bvid=$id' : 'aid=$id';
     try {
       final view = await _getRaw(
-        Uri.parse('https://api.bilibili.com/x/web-interface/view?bvid=$bvid'),
+        Uri.parse('https://api.bilibili.com/x/web-interface/view?$videoParam'),
         _hBili,
       ) as Map<String, dynamic>;
       final data = view['data'] as Map<String, dynamic>?;
@@ -327,7 +331,7 @@ class ExternalApi {
       if (cid == null || cid.isEmpty) return null;
       final play = await _getRaw(
         Uri.parse(
-            'https://api.bilibili.com/x/player/playurl?bvid=$bvid&cid=$cid&fnval=16&fourk=1'),
+            'https://api.bilibili.com/x/player/playurl?$videoParam&cid=$cid&fnval=16&fourk=1'),
         _hBili,
       ) as Map<String, dynamic>;
       final pd = play['data'] as Map<String, dynamic>?;
@@ -348,4 +352,10 @@ class ExternalApi {
     } catch (_) {}
     return null;
   }
+
+  /// 播放/下载 B站音轨时需要带 UA + Referer（部分 CDN 拒绝裸请求）。
+  static const Map<String, String> biliPlayHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    'Referer': 'https://www.bilibili.com/',
+  };
 }

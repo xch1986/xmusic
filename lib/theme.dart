@@ -21,12 +21,14 @@ class AppTheme {
   static const Color _darkPrimary = Color(0xFF93A0FF); // 亮靛蓝
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
-  // 背景透明度：继续透——浅色更透（让白天的桌面透出来），深色更深沉但不闷。
-  static const double _lightBgAlpha = 0.44;
-  static const double _darkBgAlpha = 0.58;
+  // 浅色模式：背景更实（暖白底），避免透出深色壁纸后像黑灰；深色模式：保持透明玻璃。
+  static const double _lightBgAlpha = 0.86;
+  static const double _darkBgAlpha = 0.48;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
-  static const double _panelAlpha = 0.86;
-  static const double _sheetAlpha = 0.93;
+  static const double _lightPanelAlpha = 0.93;
+  static const double _lightSheetAlpha = 0.96;
+  static const double _darkPanelAlpha = 0.86;
+  static const double _darkSheetAlpha = 0.93;
 
   static Color withAlpha255(Color c, double alpha) =>
       c.withValues(alpha: alpha.clamp(0.0, 1.0));
@@ -58,8 +60,8 @@ class AppTheme {
     return _build(
       scheme,
       _lightBgAlpha,
-      _panelAlpha,
-      _sheetAlpha,
+      _lightPanelAlpha,
+      _lightSheetAlpha,
       _lightSurface,
       _lightPrimary,
       _lightOnSurface,
@@ -93,8 +95,8 @@ class AppTheme {
     return _build(
       scheme,
       _darkBgAlpha,
-      _panelAlpha,
-      _sheetAlpha,
+      _darkPanelAlpha,
+      _darkSheetAlpha,
       _darkSurface,
       _darkPrimary,
       _darkOnSurface,

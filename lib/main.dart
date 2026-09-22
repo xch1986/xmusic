@@ -16,10 +16,15 @@ late MyAudioHandler audioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 允许所有屏幕方向（默认即如此，显式声明以防任何历史锁定残留），
-  // 播放页支持横竖屏切换（车机/手机）。
+  // 显式允许所有四个方向（空列表在部分 Android/Flutter 版本上不生效或反而锁方向），
+  // 播放页支持横竖屏切换（车机/手机），跟随系统自动旋转。
   try {
-    await SystemChrome.setPreferredOrientations([]);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   } catch (_) {}
   // 首次启动请求通知权限（Android 13+ 需要运行时申请）。
   try {
