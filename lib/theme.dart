@@ -183,7 +183,9 @@ class AppTheme {
           color: onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w800,
-          shadows: [Shadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 8)],
+          shadows: scheme.brightness == Brightness.dark
+              ? [Shadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 8)]
+              : null,
         ),
       ),
       // ---- 导航栏：雾面玻璃 ----
@@ -199,7 +201,9 @@ class AppTheme {
             fontSize: 12,
             color: onSurface,
             fontWeight: FontWeight.w600,
-            shadows: [Shadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 6)],
+            shadows: scheme.brightness == Brightness.dark
+                ? [Shadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 6)]
+                : null,
           ),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
