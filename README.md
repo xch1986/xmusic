@@ -1,45 +1,69 @@
-# 本项目立项源于音流不可调节歌词大小和背景不能跟随系统变化，对于车机使用大大不便，于是就萌生了写一个音乐播放器，用于车机播放的想法。
+# 音素 xMusic
 
-# My Player
+一款开源的 Flutter 音乐播放器，支持 Navidrome/Subsonic 自建音乐服务器，同时聚合网易云、B站等外网音源。
 
-A small Flutter client for Navidrome (or any Subsonic / OpenSubsonic server).
+## 功能
 
-- Lyric size: `−` / `+` buttons in the player's app bar (70 %–200 %, saved between launches).
-- Theme: the whole app, including the player, follows the system light/dark setting.
-  Colors come from one fixed Material 3 seed; nothing is extracted from album art.
-- Synced lyrics (OpenSubsonic `getLyricsBySongId`, falling back to `getLyrics` / LRC).
-  Tap a line to seek.
-- The password is not stored — only the Subsonic salt + token derived from it.
+### 本地音乐（Navidrome/Subsonic）
+- 浏览歌曲、专辑、歌手、歌单
+- 播放队列管理
+- 收藏/下载到本地或NAS WebDAV
+- 歌词同步显示（双击刷新）
+- 播放模式：顺序/随机/单曲循环
 
-## Setup
+### 在线音源
+- **网易云**：直连API，排行榜、歌单、搜索、播放、封面、歌词
+- **B站**：搜索、播放
+- **GDStudio API**：多源搜索聚合（QQ/网易/酷狗/酷我/B站）
+- 首页排行榜：飙升榜、新歌榜、原创榜、热歌榜等12个榜单
 
-Requires Flutter 3.22 or newer.
+### 播放界面
+- 竖屏：黑胶封面 + 歌词 + 进度条 + 控制栏
+- 横屏（车机）：左大黑胶 + 右歌词5行靠右
+- 通知栏媒体控制（Android MediaSession）
+- 车机识别（APP_MUSIC category）
 
-```bash
-flutter create --project-name my_stream_player my_stream_player_tmp
-cp -r my_stream_player_tmp/android my_stream_player_tmp/ios my_stream_player_tmp/macos \
-      my_stream_player_tmp/windows my_stream_player_tmp/web .   # whichever platforms you want
-rm -rf my_stream_player_tmp
-flutter pub get
-flutter run
-```
+### 个性化
+- 主题模式：浅色/深色/跟随系统
+- 自定义主题色（低饱和预设 + HSV选色器 + 16进制输入）
+- 歌词颜色自定义（当前/已唱/未唱分别配色）
+- 玻璃通透度调节（0%-100%，最低全透明）
+- 歌词字号调节
 
-(Or run `flutter create .` inside this folder; it keeps the existing `lib/` and `pubspec.yaml`.)
+### 其他
+- 封面缓存（CachedNetworkImage）
+- 启动自动播放开关
+- 本地下载路径设置
+- 本地歌单随机播放
 
-### Android
+## 技术栈
 
-In `android/app/src/main/AndroidManifest.xml`:
+- Flutter + Dart
+- just_audio（音频播放）
+- audio_service（后台播放 + 通知栏控制）
+- cached_network_image（封面缓存）
+- scrollable_positioned_list（歌词滚动）
+- 直连网易云API + GDStudio聚合API
 
-```xml
-<uses-permission android:name="android.permission.INTERNET"/>
-<application ... android:usesCleartextTraffic="true">   <!-- only if your server is plain http -->
-```
+## 构建
 
-### iOS
+通过 GitHub Actions 自动构建APK：
+- 推送 main 分支自动触发
+- 版本号：0.3.X（X = workflow run number）
+- 产物：`my-player-apk` artifact
 
-If your server is plain http, add an App Transport Security exception in `ios/Runner/Info.plist`.
+## 下载
 
-## Not included yet
+前往 [Actions](https://github.com/xch1986/xmusic/actions) 下载最新构建的APK。
 
-Background playback and lock-screen controls (add `just_audio_background`),
-search, playlists, offline cache, shuffle/repeat.
+## 配置
+
+首次启动需在设置中配置：
+1. **源** → Navidrome 服务器地址、用户名、密码
+2. **源** → 外部API地址（默认 gdStudio）
+3. **主题** → 选择主题模式和颜色
+4. **歌词** → 歌词字号、颜色
+
+## License
+
+MIT
