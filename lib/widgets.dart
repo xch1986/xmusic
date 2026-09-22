@@ -51,6 +51,7 @@ class CoverImage extends StatelessWidget {
                 fit: BoxFit.cover,
                 fadeInDuration: const Duration(milliseconds: 200),
                 fadeOutDuration: const Duration(milliseconds: 200),
+                httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
                 errorWidget: (_, __, ___) => placeholder,
                 placeholder: (_, __) => placeholder,
               ),
