@@ -73,6 +73,16 @@ class MyApp extends StatelessWidget {
           },
           theme: AppTheme.light(settings),
           darkTheme: AppTheme.dark(settings),
+          // 限制全局文字缩放：车机系统字体过大时列表行会被撑高（看起来像“拉伸的播放条”），
+          // 统一收敛到 1.2 倍以内，保证歌曲列表/榜单/详情页布局稳定。
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            final scale = mq.textScaler.scale(14).clamp(0.9, 1.2);
+            return MediaQuery(
+              data: mq.copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            );
+          },
           home: Root(settings: settings),
         );
       },

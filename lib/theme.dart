@@ -22,8 +22,8 @@ class AppTheme {
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
   // 浅色模式：背景更实（暖白底），避免透出深色壁纸后像黑灰；深色模式：保持透明玻璃。
-  static const double _lightBgAlpha = 0.86;
-  static const double _darkBgAlpha = 0.48;
+  static const double _lightBgAlpha = 0.72;
+  static const double _darkBgAlpha = 0.40;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
   static const double _lightPanelAlpha = 0.93;
   static const double _lightSheetAlpha = 0.96;
