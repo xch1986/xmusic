@@ -50,15 +50,23 @@ class AppTheme {
   }
 
   static ThemeData light(AppSettings settings) {
-    final scheme = const ColorScheme.light(
+    Color surfaceColor = _lightSurface;
+    Color onSurfaceColor = _lightOnSurface;
+    if (settings.bgColor != 0) {
+      surfaceColor = Color(settings.bgColor);
+      // Auto-compute text color based on background luminance
+      final lum = surfaceColor.computeLuminance();
+      onSurfaceColor = lum > 0.5 ? const Color(0xFF1C2130) : const Color(0xFFE8EBF2);
+    }
+    final scheme = ColorScheme.light(
       primary: _lightPrimary,
       onPrimary: Colors.white,
       secondary: Color(0xFF6E7BD9),
       onSecondary: Colors.white,
       error: Color(0xFFB3261E),
       onError: Colors.white,
-      surface: _lightSurface,
-      onSurface: _lightOnSurface,
+      surface: surfaceColor,
+      onSurface: onSurfaceColor,
       surfaceContainerLowest: Color(0xFFFFFDF7),
       surfaceContainerLow: Color(0xFFFBF8F0),
       surfaceContainer: Color(0xFFF3EFE4),
@@ -78,22 +86,29 @@ class AppTheme {
       _lightBgAlpha,
       _lightPanelAlpha,
       _lightSheetAlpha,
-      _lightSurface,
+      surfaceColor,
       _lightPrimary,
-      _lightOnSurface,
+      onSurfaceColor,
     );
   }
 
   static ThemeData dark(AppSettings settings) {
-    final scheme = const ColorScheme.dark(
+    Color surfaceColor = _darkSurface;
+    Color onSurfaceColor = _darkOnSurface;
+    if (settings.bgColor != 0) {
+      surfaceColor = Color(settings.bgColor);
+      final lum = surfaceColor.computeLuminance();
+      onSurfaceColor = lum > 0.5 ? const Color(0xFF1C2130) : const Color(0xFFE8EBF2);
+    }
+    final scheme = ColorScheme.dark(
       primary: _darkPrimary,
       onPrimary: Color(0xFF10142E),
       secondary: Color(0xFF7A86E8),
       onSecondary: Color(0xFF10142E),
       error: Color(0xFFFFB4AB),
       onError: Color(0xFF690005),
-      surface: _darkSurface,
-      onSurface: _darkOnSurface,
+      surface: surfaceColor,
+      onSurface: onSurfaceColor,
       surfaceContainerLowest: Color(0xFF0A0D14),
       surfaceContainerLow: Color(0xFF121722),
       surfaceContainer: Color(0xFF171C29),
@@ -113,9 +128,9 @@ class AppTheme {
       _darkBgAlpha,
       _darkPanelAlpha,
       _darkSheetAlpha,
-      _darkSurface,
+      surfaceColor,
       _darkPrimary,
-      _darkOnSurface,
+      onSurfaceColor,
     );
   }
 
