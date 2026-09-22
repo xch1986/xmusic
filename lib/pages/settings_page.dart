@@ -200,7 +200,7 @@ class SettingsPage extends StatelessWidget {
               width: 150,
               child: Slider(
                 value: settings.glassOpacity,
-                min: 0.1, max: 1.0, divisions: 9,
+                min: 0.0, max: 1.0, divisions: 10,
                 onChanged: (v) => settings.setGlassOpacity(v),
               ),
             ),

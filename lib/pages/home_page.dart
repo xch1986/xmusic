@@ -45,14 +45,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _playSongs(List<Song> songs, int index) async {
     await widget.controller.playQueue(songs, index);
-    if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(settings: widget.settings, controller: widget.controller),
-    ));
     if (mounted) setState(() {});
   }
 
-  Future<void> _openPlaylist(String name, String playlistId) async {
+  Future<void> _openPlaylist(String name, String playlistId, {String? coverUrl}) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
     final songs = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
@@ -67,6 +63,7 @@ class _HomePageState extends State<HomePage> {
         title: name,
         songs: songs,
         client: _client,
+        coverUrl: coverUrl,
         onPlay: (i) => _playSongs(songs, i),
       ),
     ));
@@ -221,7 +218,7 @@ class _HomePageState extends State<HomePage> {
       elevation: 1,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => _openPlaylist(name, id),
+        onTap: () => _openPlaylist(name, id, coverUrl: coverUrl),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -271,12 +268,14 @@ class _PlaylistDetail extends StatelessWidget {
     required this.songs,
     required this.client,
     required this.onPlay,
+    this.coverUrl,
   });
 
   final String title;
   final List<Song> songs;
   final SubsonicClient client;
   final void Function(int index) onPlay;
+  final String? coverUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -284,6 +283,34 @@ class _PlaylistDetail extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: Column(
         children: [
+          // 歌单封面头部
+          if (coverUrl != null && coverUrl!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: coverUrl!,
+                      width: 80, height: 80, fit: BoxFit.cover,
+                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text('共 ${songs.length} 首', style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(

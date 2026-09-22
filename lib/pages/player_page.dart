@@ -548,7 +548,7 @@ class _LyricsViewState extends State<LyricsView> {
               itemCount: lines.length,
               padding: EdgeInsets.symmetric(
                 horizontal: 24,
-                vertical: constraints.maxHeight * 0.15,
+                vertical: constraints.maxHeight * 0.08,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
