@@ -57,13 +57,7 @@ class SettingsPage extends StatelessWidget {
 
 
   /// 取色弹窗文字细描边：弹窗内白字在浅色/自定义背景上可读（不压字）
-  static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle()).copyWith(
-        shadows: const [
-          Shadow(color: Colors.black45, blurRadius: 0, offset: Offset(1, 1)),
-          Shadow(color: Colors.black45, blurRadius: 0, offset: Offset(-1, -1)),
-          Shadow(color: Colors.black26, blurRadius: 3),
-        ],
-      );
+  static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle());
 
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
@@ -148,12 +142,13 @@ class SettingsPage extends StatelessWidget {
                         width: 36, height: 36,
                         decoration: BoxDecoration(
                           color: col, shape: BoxShape.circle,
-                          border: Border.all(
-                            color: col.computeLuminance() > 0.6
-                                ? Colors.black.withValues(alpha: 0.25)
-                                : Colors.white.withValues(alpha: 0.45),
-                            width: 2,
-                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: col.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                     )).toList(),
