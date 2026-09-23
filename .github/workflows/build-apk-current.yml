@@ -130,6 +130,14 @@ jobs:
           PYEOF
 
       - run: flutter pub get
+      - name: Clean stale build caches
+        run: |
+          # [xmusic] 修复：GitHub 构建环境曾复用旧编译产物（产物版本号停留在旧值）。
+          # 强制清空 Dart/Gradle 缓存，保证每次构建都是全量编译当前代码。
+          flutter clean || true
+          rm -rf build .dart_tool android/app/build android/.gradle
+          rm -rf ~/.gradle/caches/build-cache-* 2>/dev/null || true
+          echo "clean done"
       - name: Patch audio_service MediaSession always-active
         run: |
           python3 <<'PYEOF'
