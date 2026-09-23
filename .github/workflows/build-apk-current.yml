@@ -57,7 +57,7 @@ jobs:
           if ma:
               pk = ma.replace("android/app/src/main/kotlin/", "").replace("/MainActivity.kt", "").replace("/", ".")
               with open(ma, "w") as f:
-                  f.write("package " + pk + "\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n")
+                  f.write("package " + pk + "\n\nimport android.content.Intent\nimport com.ryanheise.audioservice.AudioService\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity() {\n    override fun onCreate(savedInstanceState: android.os.Bundle?) {\n        super.onCreate(savedInstanceState)\n        // [xmusic] 车机识别：App 启动即拉起 AudioService，MediaSession 常驻活跃，迪友等车机桌面才能枚举到\n        startService(Intent(this, AudioService::class.java))\n    }\n}\n")
               print("Wrote " + ma)
               print(open(ma).read())
           else:
