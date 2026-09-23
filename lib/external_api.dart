@@ -559,10 +559,17 @@ class ExternalApi {
         final singers = ((raw['artists'] as List?) ?? [])
             .map((a) => (a as Map)['name']?.toString() ?? '')
             .join(' / ');
-        final nameOk = name == title || name.contains(title) || title.contains(name);
+        // [xmusic] 放宽匹配：去掉括号内容/空白/标点后比较，提高 QQ/酷狗歌名命中率
+        String norm(String s) => s
+            .replaceAll(RegExp(r'[（(【\[].*?[）)】\]]'), '')
+            .replaceAll(RegExp(r'[\s\p{P}]'), '')
+            .toLowerCase();
+        final nameOk = name == title || name.contains(title) || title.contains(name) ||
+            norm(name) == norm(title) || norm(name).contains(norm(title)) || norm(title).contains(norm(name));
         final artOk = artist.isEmpty ||
             singers.contains(artist) ||
-            artist.contains(singers);
+            artist.contains(singers) ||
+            norm(artist).contains(norm(singers)) || norm(singers).contains(norm(artist));
         if (nameOk && artOk) {
           final album = raw['album'] as Map<String, dynamic>?;
           final song = Song(
@@ -680,6 +687,30 @@ class ExternalApi {
       final url = utf8.decode(res.bodyBytes).trim();
       if (url.isEmpty || !url.startsWith('http')) return null;
       return url;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 酷我直连兜底：按歌名+歌手搜酷我并解析播放 URL（QQ/B站 播放失败时用，实测可用）。
+  Future<String?> matchKuwo(String title, String artist) async {
+    try {
+      final hits = await searchKuwo('$title $artist'.trim(), limit: 5);
+      if (hits.isEmpty) return null;
+      String norm(String s) => s
+          .replaceAll(RegExp(r'[（(【\[].*?[）)】\]]'), '')
+          .replaceAll(RegExp(r'[\s\p{P}]'), '')
+          .toLowerCase();
+      final nt = norm(title);
+      for (final h in hits) {
+        final hn = norm(h.title);
+        if (hn == nt || hn.contains(nt) || nt.contains(hn)) {
+          final u = await kuwoStreamUrl(h.id);
+          if (u != null && u.isNotEmpty) return u;
+        }
+      }
+      final u = await kuwoStreamUrl(hits.first.id);
+      return (u != null && u.isNotEmpty) ? u : null;
     } catch (_) {
       return null;
     }

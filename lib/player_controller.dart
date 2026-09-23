@@ -159,7 +159,7 @@ class PlayerController extends ChangeNotifier {
         return url ?? '';
       }
       if (src == 'qq') {
-        // vkey 直连受 IP/会员风控（2026 实测匿名/cookie 均拿不到 purl）：失败后按歌名+歌手网易云兜底
+        // vkey 直连受 IP/会员风控（2026 实测匿名/cookie 均拿不到 purl）：失败后网易云兜底，再酷我兜底
         final url = await external.qqStreamUrl(s.id, cookie: settings.qqCookie);
         if (url != null && url.isNotEmpty) return url;
         try {
@@ -168,6 +168,10 @@ class PlayerController extends ChangeNotifier {
             final u = await external.streamUrlFor(m.id, source: 'netease');
             if (u != null && u.isNotEmpty) return u;
           }
+        } catch (_) {}
+        try {
+          final kw = await external.matchKuwo(s.title, s.artist);
+          if (kw != null && kw.isNotEmpty) return kw;
         } catch (_) {}
         return '';
       }
@@ -459,9 +463,19 @@ class PlayerController extends ChangeNotifier {
   Future<void> next() async {
     if (_repeat == PlayMode.shuffle) { _playRandom(); return; }
     if (queue.isEmpty) return;
-    try {
-      await _loadAndPlay((index + 1) % queue.length);
-    } catch (e) { lastError = e.toString(); notifyListeners(); }
+    // [xmusic] 切歌治本：外源歌（QQ/B站）地址解析失败时自动跳过，不再卡在旧歌
+    final n = queue.length;
+    var i = (index + 1) % n;
+    for (var tried = 0; tried < n; tried++) {
+      try {
+        await _loadAndPlay(i);
+        return;
+      } catch (_) {
+        i = (i + 1) % n;
+      }
+    }
+    lastError = '队列内歌曲均无法播放';
+    notifyListeners();
   }
 
   Future<void> previous() async {
@@ -470,9 +484,18 @@ class PlayerController extends ChangeNotifier {
       return;
     }
     if (queue.isEmpty) return;
-    try {
-      await _loadAndPlay(index <= 0 ? queue.length - 1 : index - 1);
-    } catch (e) { lastError = e.toString(); notifyListeners(); }
+    final n = queue.length;
+    var i = index <= 0 ? n - 1 : index - 1;
+    for (var tried = 0; tried < n; tried++) {
+      try {
+        await _loadAndPlay(i);
+        return;
+      } catch (_) {
+        i = i <= 0 ? n - 1 : i - 1;
+      }
+    }
+    lastError = '队列内歌曲均无法播放';
+    notifyListeners();
   }
 
   void togglePlay() {
