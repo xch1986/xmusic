@@ -167,6 +167,18 @@ jobs:
           seg = open(p).read().split("public void onCreate()")[1].split("public int onStartCommand")[0]
           print("onCreate setActive count:", seg.count("setActive(true)"))
           print("total setActive count:", open(p).read().count("setActive(true)"))
+          # [xmusic] 车机识别关键：迪友桌面用 MediaSessionManager.getActiveSessions + state 过滤
+          # 未播放时 audio_service 呈 STATE_NONE（idle）会被过滤不显示；改为 PAUSED 即可枚举。
+          # 同时保证 setActions 始终含 PLAY_PAUSE/PLAY/PAUSE（方向盘播放暂停可用）。
+          s2 = open(p).read()
+          s2 = s2.replace("case idle: return PlaybackStateCompat.STATE_NONE;",
+                          "case idle: return PlaybackStateCompat.STATE_PAUSED;")
+          # setActions 强制并上 PLAY_PAUSE（Dart systemActions 无 playPause 映射，AUTO_ENABLED 有但保险起见）
+          s2 = s2.replace(".setActions(AUTO_ENABLED_ACTIONS | actionBits)",
+                          ".setActions(AUTO_ENABLED_ACTIONS | actionBits | PlaybackStateCompat.ACTION_PLAY_PAUSE)")
+          open(p, "w").write(s2)
+          print("idle->PAUSED applied:", "STATE_PAUSED;" in s2.split("case idle:")[1][:60])
+          print("PLAY_PAUSE forced:", "ACTION_PLAY_PAUSE)" in s2)
           PYEOF
       - name: Disable release lint fatal
         run: |
