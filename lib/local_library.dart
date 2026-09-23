@@ -45,10 +45,29 @@ class LocalLibrary {
       artist: artist,
       album: (dirName.isEmpty || dirName == f.path) ? '本地文件' : dirName,
       coverArt: null,
+      coverUrl: _findCover(f),
       durationSec: null,
       fromExternal: false,
       streamUrl: Uri.file(path).toString(), // file:///...
     );
+  }
+
+  /// 找本地封面：优先同名图片（<歌名>.jpg 等），其次同目录 cover/folder/albumart。
+  /// 命中返回 file:// URI，供 CoverImage 直接渲染本地图。
+  static String? _findCover(File f) {
+    final base = f.path.replaceFirst(RegExp(r'\.[^.]+$'), '');
+    final dir = f.parent.path;
+    const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+    final candidates = <String>[
+      for (final e in exts) '$base$e',
+      for (final e in exts) '$dir/cover$e',
+      for (final e in exts) '$dir/folder$e',
+      for (final e in exts) '$dir/albumart$e',
+    ];
+    for (final c in candidates) {
+      if (File(c).existsSync()) return Uri.file(c).toString();
+    }
+    return null;
   }
 
   /// 读取本地文件缓存；无缓存或损坏返回空列表。
@@ -64,6 +83,7 @@ class LocalLibrary {
           title: (m['title'] ?? '').toString(),
           artist: (m['artist'] ?? '').toString(),
           album: (m['album'] ?? '').toString(),
+          coverUrl: m['coverUrl']?.toString(),
           streamUrl: m['streamUrl']?.toString(),
         );
       }).toList();
@@ -81,6 +101,7 @@ class LocalLibrary {
                 'title': s.title,
                 'artist': s.artist,
                 'album': s.album,
+                'coverUrl': s.coverUrl,
                 'streamUrl': s.streamUrl,
               })
           .toList()));

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -46,15 +48,22 @@ class CoverImage extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         child: url == null
             ? placeholder
-            : CachedNetworkImage(
-                imageUrl: url.toString(),
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 200),
-                fadeOutDuration: const Duration(milliseconds: 200),
-                httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                errorWidget: (_, __, ___) => placeholder,
-                placeholder: (_, __) => placeholder,
-              ),
+            : (url.scheme == 'file'
+                // 本地封面（file://）：直接用 Image.file 渲染，不走网络缓存
+                ? Image.file(
+                    File(url.toFilePath()),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => placeholder,
+                  )
+                : CachedNetworkImage(
+                    imageUrl: url.toString(),
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 200),
+                    fadeOutDuration: const Duration(milliseconds: 200),
+                    httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                    errorWidget: (_, __, ___) => placeholder,
+                    placeholder: (_, __) => placeholder,
+                  )),
       ),
     );
   }

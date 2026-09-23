@@ -151,7 +151,7 @@ class PlayerController extends ChangeNotifier {
         return url ?? '';
       }
       if (src == 'qq') {
-        final url = await external.qqStreamUrl(s.id);
+        final url = await external.qqStreamUrl(s.id, cookie: settings.qqCookie);
         return url ?? '';
       }
       if (src == 'kuwo') {

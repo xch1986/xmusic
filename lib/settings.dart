@@ -28,6 +28,7 @@ class AppSettings extends ChangeNotifier {
   static const _kLyricFuture = 'lyric_future';
   static const _kAutoPlay = 'auto_play';
   static const _kDownloadPath = 'download_path';
+  static const _kQqCookie = 'qq_cookie';
 
   late final SharedPreferences _prefs;
 
@@ -48,6 +49,7 @@ class AppSettings extends ChangeNotifier {
   int _lyricFuture = 0;
   bool _autoPlay = true;
   String downloadPath = '';
+  String qqCookie = '';
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScale;
@@ -85,6 +87,7 @@ class AppSettings extends ChangeNotifier {
     _lyricFuture = _prefs.getInt(_kLyricFuture) ?? 0;
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
+    qqCookie = _prefs.getString(_kQqCookie) ?? '';
   }
 
   SubsonicClient buildClient() {
@@ -118,6 +121,17 @@ class AppSettings extends ChangeNotifier {
     await _prefs.remove(_kUser);
     await _prefs.remove(_kSalt);
     await _prefs.remove(_kToken);
+  }
+
+  /// QQ音乐 Cookie（设置里填写后解锁 QQ 榜单/播放）。
+  Future<void> setQqCookie(String v) async {
+    qqCookie = v.trim();
+    notifyListeners();
+    if (qqCookie.isEmpty) {
+      await _prefs.remove(_kQqCookie);
+    } else {
+      await _prefs.setString(_kQqCookie, qqCookie);
+    }
   }
 
   Future<void> setLyricScale(double v) async {

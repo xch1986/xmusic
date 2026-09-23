@@ -102,11 +102,14 @@ class MyApp extends StatelessWidget {
           },
           theme: AppTheme.light(settings),
           darkTheme: AppTheme.dark(settings),
-          // 限制全局文字缩放：车机系统字体过大时列表行会被撑高（看起来像“拉伸的播放条”），
-          // 统一收敛到 1.2 倍以内，保证歌曲列表/榜单/详情页布局稳定。
+          // 文字缩放：手机保持收敛区间（防车机/系统字体过大撑高列表行）；
+          // 车机（横屏大屏）单独适配——物理屏大、观看距离远，基础字号放大一档。
           builder: (context, child) {
             final mq = MediaQuery.of(context);
-            final scale = mq.textScaler.scale(14).clamp(0.9, 1.2);
+            final size = mq.size;
+            final isCarScreen = size.width > size.height && size.shortestSide >= 480;
+            final raw = mq.textScaler.scale(14);
+            final scale = isCarScreen ? raw.clamp(1.15, 1.3) : raw.clamp(0.9, 1.2);
             return MediaQuery(
               data: mq.copyWith(textScaler: TextScaler.linear(scale)),
               child: child!,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
@@ -56,6 +57,23 @@ class ExternalApi {
     if (res.statusCode != 200) throw SubsonicException('HTTP ${res.statusCode}');
     return jsonDecode(utf8.decode(res.bodyBytes));
   }
+  /// 忽略证书的 GET（酷狗 mobilecdn 证书链校验失败）。
+  Future<dynamic> _insecureGetJson(Uri uri, {int timeoutSec = 12}) async {
+    final client = HttpClient()
+      ..badCertificateCallback = (cert, host, port) => true;
+    try {
+      final req = await client.getUrl(uri);
+      req.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36');
+      req.headers.set('Referer', 'https://m.kugou.com/');
+      final res = await req.close().timeout(Duration(seconds: timeoutSec));
+      final body = await res.transform(utf8.decoder).join();
+      if (res.statusCode != 200) throw SubsonicException('HTTP ${res.statusCode}');
+      return jsonDecode(body);
+    } finally {
+      client.close();
+    }
+  }
+
 
   // ==================== GDStudio 聚合 ====================
 
@@ -255,9 +273,17 @@ class ExternalApi {
     }
   }
 
-  /// QQ音乐播放地址（vkey）。2026年起匿名接口普遍返回空，返回 null 表示受限。
-  Future<String?> qqStreamUrl(String songmid) async {
+  /// 从 cookie 提取 uin（支持完整 cookie 头或 uin=o123456; qqmusic_key=...）。
+  static String _uinFromCookie(String cookie) {
+    final m = RegExp(r'uin=o?(\d+)').firstMatch(cookie);
+    return m != null ? 'o${m.group(1)}' : '0';
+  }
+
+  /// QQ音乐播放地址（vkey）。带 cookie（设置里填的 QQ Cookie）可解锁会员/每日推荐；
+  /// 匿名 2026 年起普遍返回空，返回 null 表示受限。
+  Future<String?> qqStreamUrl(String songmid, {String cookie = ''}) async {
     if (songmid.isEmpty) return null;
+    final rawUin = cookie.isEmpty ? '0' : _uinFromCookie(cookie);
     final guid = (1000000000 + Random().nextInt(8999999999)).toString();
     final body = {
       'req_0': {
@@ -267,17 +293,20 @@ class ExternalApi {
           'guid': guid,
           'songmid': [songmid],
           'songtype': [0],
-          'uin': '0',
+          'uin': rawUin,
           'loginflag': 1,
           'platform': '20',
         },
       },
-      'comm': {'uin': 0, 'format': 'json', 'ct': 24, 'cv': 0},
+      'comm': {
+        'uin': int.tryParse(rawUin.replaceFirst('o', '')) ?? 0,
+        'format': 'json', 'ct': 24, 'cv': 0,
+      },
     };
     try {
       final j = await _postRaw(
         Uri.parse('https://u.y.qq.com/cgi-bin/musicu.fcg'),
-        {..._hQq, 'Content-Type': 'application/json'},
+        {..._hQq, if (cookie.isNotEmpty) 'Cookie': cookie, 'Content-Type': 'application/json'},
         body,
       ) as Map<String, dynamic>;
       final data = j['req_0']?['data'] as Map<String, dynamic>?;
@@ -310,6 +339,185 @@ class ExternalApi {
     } catch (_) {
       return null;
     }
+  }
+
+  /// QQ 排行榜列表（带 cookie 更稳）。返回 {id, name, coverImgUrl}。
+  Future<List<Map<String, dynamic>>> qqToplists({String cookie = ''}) async {
+    try {
+      final uin = cookie.isEmpty ? 0 : (int.tryParse(_uinFromCookie(cookie).replaceFirst('o', '')) ?? 0);
+      final j = await _postRaw(
+        Uri.parse('https://u.y.qq.com/cgi-bin/musicu.fcg'),
+        {..._hQq, if (cookie.isNotEmpty) 'Cookie': cookie, 'Content-Type': 'application/json'},
+        {
+          'comm': {'ct': 24, 'cv': 0, if (cookie.isNotEmpty) 'uin': uin},
+          'req_0': {
+            'module': 'music.chart.chartlist',
+            'method': 'GetChartList',
+            'param': {'showtype': 2},
+          },
+        },
+      ) as Map<String, dynamic>;
+      final list = ((j['req_0']?['data']?['chart'] ?? j['req_0']?['data']?['list']) as List?) ?? [];
+      return list.cast<Map<String, dynamic>>().map((m) => {
+            'id': (m['chartId'] ?? m['id'] ?? '').toString(),
+            'name': (m['chartName'] ?? m['name'] ?? '').toString(),
+            'coverImgUrl': (m['picUrl'] ?? '').toString(),
+          }).where((m) => (m['id'] ?? '').isNotEmpty).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// QQ 榜单歌曲（chartId 榜单 id，songmid 作为播放 id）。
+  Future<List<Song>> qqToplistSongs(String chartId,
+      {String cookie = '', int limit = 30}) async {
+    try {
+      final uin = cookie.isEmpty ? 0 : (int.tryParse(_uinFromCookie(cookie).replaceFirst('o', '')) ?? 0);
+      final j = await _postRaw(
+        Uri.parse('https://u.y.qq.com/cgi-bin/musicu.fcg'),
+        {..._hQq, if (cookie.isNotEmpty) 'Cookie': cookie, 'Content-Type': 'application/json'},
+        {
+          'comm': {'ct': 24, 'cv': 0, if (cookie.isNotEmpty) 'uin': uin},
+          'req_0': {
+            'module': 'music.chart.songlist',
+            'method': 'GetChartSongList',
+            'param': {
+              'chartId': int.tryParse(chartId) ?? 0,
+              'num': limit,
+              'page': 0,
+            },
+          },
+        },
+      ) as Map<String, dynamic>;
+      final list = ((j['req_0']?['data']?['songInfoList'] ?? j['req_0']?['data']?['list']) as List?) ?? [];
+      return list.cast<Map<String, dynamic>>().map((t) {
+        final singers = ((t['singer'] as List?) ?? [])
+            .map((s) => (s as Map)['name']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(' / ');
+        final mid = (t['mid'] ?? t['songmid'] ?? '').toString();
+        final albumMid = (t['album']?['mid'] ?? '').toString();
+        return Song(
+          id: mid,
+          title: (t['name'] ?? t['songname'] ?? '').toString(),
+          artist: singers.isEmpty ? '未知' : singers,
+          album: (t['album']?['name'] ?? '').toString(),
+          coverUrl: albumMid.isEmpty
+              ? null
+              : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+          durationSec: (t['interval'] as num?)?.toInt(),
+          fromExternal: true,
+          externalSource: 'qq',
+        );
+      }).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 每日30首（有 QQ cookie 时）：QQ 热歌榜（chartId=4）前 30，播放走 QQ。
+  Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
+    final songs = await qqToplistSongs('4', cookie: cookie, limit: count);
+    if (songs.isEmpty) return daily30FromKugou(count: count); // 榜单接口异常时兜底
+    return songs;
+  }
+
+  // ==================== 酷狗榜单（mobilecdn 公开接口，无签名） ====================
+
+  /// 酷狗榜单原始数据（rankid: 8888=TOP500, 6666=飙升榜 等）。
+  Future<List<Map<String, String>>> kugouRankRaw(String rankid,
+      {int page = 1, int pagesize = 30}) async {
+    try {
+      final j = await _insecureGetJson(
+        Uri.parse('https://mobilecdn.kugou.com/api/v3/rank/song')
+            .replace(queryParameters: {
+          'rankid': rankid, 'page': '$page', 'pagesize': '$pagesize',
+        }),
+      );
+      final info = (j['data']?['info'] as List?) ?? [];
+      return info.cast<Map<String, dynamic>>().map((it) {
+        final authors = (it['authors'] as List?) ?? [];
+        final artist = authors
+            .map((a) => (a as Map)['author_name']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(' / ');
+        return {
+          'title': it['songname']?.toString() ?? '',
+          'artist': artist,
+        };
+      }).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 网易云按 歌名+歌手 搜索匹配（酷狗等源的播放兜底）。
+  Future<Song?> matchNetease(String title, String artist) async {
+    try {
+      final kw = '$title $artist'.trim();
+      final uri = Uri.parse('https://music.163.com/api/search/get')
+          .replace(queryParameters: {
+        's': kw, 'type': '1', 'offset': '0', 'limit': '3',
+      });
+      final j = await _getRaw(uri, _h163) as Map<String, dynamic>;
+      final songs = (((j['result'] as Map?)?['songs']) as List?) ?? [];
+      for (final raw in songs.cast<Map<String, dynamic>>()) {
+        final name = (raw['name'] ?? '').toString();
+        final singers = ((raw['artists'] as List?) ?? [])
+            .map((a) => (a as Map)['name']?.toString() ?? '')
+            .join(' / ');
+        final nameOk = name == title || name.contains(title) || title.contains(name);
+        final artOk = artist.isEmpty ||
+            singers.contains(artist) ||
+            artist.contains(singers);
+        if (nameOk && artOk) {
+          final album = raw['album'] as Map<String, dynamic>?;
+          return Song(
+            id: raw['id'].toString(),
+            title: name,
+            artist: singers.isEmpty ? artist : singers,
+            album: (album?['name'] ?? '').toString(),
+            coverUrl: (album?['picUrl'] ?? raw['picUrl'])?.toString(),
+            durationSec: (raw['duration'] as num?) != null
+                ? ((raw['duration'] as num) / 1000).round()
+                : null,
+            fromExternal: true,
+            externalSource: 'netease',
+          );
+        }
+      }
+      // 严格匹配失败：退而取第一条（至少是同名歌）
+      final first = songs.firstOrNull as Map<String, dynamic>?;
+      if (first != null) {
+        final album = first['album'] as Map<String, dynamic>?;
+        return Song(
+          id: first['id'].toString(),
+          title: (first['name'] ?? '').toString(),
+          artist: artist.isEmpty ? '未知' : artist,
+          album: (album?['name'] ?? '').toString(),
+          coverUrl: (album?['picUrl'] ?? first['picUrl'])?.toString(),
+          fromExternal: true,
+          externalSource: 'netease',
+        );
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 每日30首（无 QQ cookie 时）：酷狗 TOP500 → 网易云匹配播放。
+  Future<List<Song>> daily30FromKugou({int count = 30}) async {
+    final raw = await kugouRankRaw('8888', page: 1, pagesize: count + 5);
+    final out = <Song>[];
+    for (final r in raw) {
+      final title = r['title'] ?? '';
+      if (title.isEmpty) continue;
+      final s = await matchNetease(title, r['artist'] ?? '');
+      if (s != null) out.add(s);
+      if (out.length >= count) break;
+    }
+    return out;
   }
 
   // ==================== 酷我音乐直连 ====================

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -53,6 +55,10 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+
+  /// 取色弹窗文字细描边：弹窗内白字在浅色/自定义背景上可读（不压字）
+  static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle());
+
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
@@ -92,7 +98,7 @@ class SettingsPage extends StatelessWidget {
         builder: (ctx, setD) {
           final c = hsv.toColor().withOpacity(alpha);
           return AlertDialog(
-            title: Text(title),
+            title: Text(title, style: _stroke(null)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -105,7 +111,12 @@ class SettingsPage extends StatelessWidget {
                     Expanded(
                       child: TextField(
                         controller: hexCtl,
-                        decoration: const InputDecoration(labelText: '十六进制', isDense: true),
+                        style: _stroke(Theme.of(ctx).textTheme.bodyLarge),
+                        decoration: InputDecoration(
+                          labelText: '十六进制',
+                          isDense: true,
+                          labelStyle: _stroke(null),
+                        ),
                         onChanged: (v) {
                           final hex = v.replaceAll('#', '').trim();
                           if (hex.length == 8) {
@@ -121,7 +132,7 @@ class SettingsPage extends StatelessWidget {
                   ]),
                   const SizedBox(height: 16),
                   // 调色板
-                  const Text('调色板', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('调色板', style: _stroke(const TextStyle(fontWeight: FontWeight.bold))),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 12, runSpacing: 12,
@@ -131,14 +142,20 @@ class SettingsPage extends StatelessWidget {
                         width: 36, height: 36,
                         decoration: BoxDecoration(
                           color: col, shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: col.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                     )).toList(),
                   ),
                   const SizedBox(height: 16),
                   // 精细调整
-                  const Text('精细调整', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('精细调整', style: _stroke(const TextStyle(fontWeight: FontWeight.bold))),
                   _slider('透明度', alpha, 0, 1, (v) => setD(() => alpha = v)),
                   _slider('色相', hsv.hue, 0, 360, (v) => setD(() => hsv = HSVColor.fromAHSV(alpha, v / 360.0, hsv.saturation, hsv.value))),
                   _slider('饱和度', hsv.saturation, 0, 1, (v) => setD(() => hsv = HSVColor.fromAHSV(alpha, hsv.hue / 360.0, v, hsv.value))),
@@ -147,10 +164,10 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text('取消', style: _stroke(null))),
               TextButton(
                 onPressed: () { onPick(0); Navigator.of(ctx).pop(); },
-                child: const Text('跟随默认'),
+                child: Text('跟随默认', style: _stroke(null)),
               ),
               FilledButton(
                 onPressed: () {
@@ -171,9 +188,9 @@ class SettingsPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
-        SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 13))),
+        SizedBox(width: 60, child: Text(label, style: _stroke(const TextStyle(fontSize: 13)))),
         Expanded(child: Slider(value: val, min: min, max: max, onChanged: onChanged)),
-        SizedBox(width: 40, child: Text(val.toStringAsFixed(2), style: const TextStyle(fontSize: 12))),
+        SizedBox(width: 40, child: Text(val.toStringAsFixed(2), style: _stroke(const TextStyle(fontSize: 12)))),
       ]),
     );
   }
@@ -192,19 +209,6 @@ class SettingsPage extends StatelessWidget {
             title: const Text('主题模式'),
             subtitle: Text(_themeName(settings.themeMode)),
             onTap: () => _showThemeModeDialog(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.blur_on_rounded),
-            title: const Text('玻璃通透度'),
-            subtitle: Text('${(settings.glassOpacity * 100).round()}% 不透明'),
-            trailing: SizedBox(
-              width: 150,
-              child: Slider(
-                value: settings.glassOpacity,
-                min: 0.0, max: 1.0, divisions: 10,
-                onChanged: (v) => settings.setGlassOpacity(v),
-              ),
-            ),
           ),
           ListTile(
             leading: const Icon(Icons.color_lens_outlined),
@@ -237,6 +241,25 @@ class SettingsPage extends StatelessWidget {
             title: const Text('外部API地址'),
             subtitle: Text(settings.externalApiUrl),
             onTap: () => _showExternalApiDialog(context),
+          ),
+          // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源），
+          // 点进去展示具体地址，只读不可改。
+          ListTile(
+            leading: const Icon(Icons.public_rounded),
+            title: const Text('外网搜索源'),
+            subtitle: const Text('自动聚合：网易云 / B站 / QQ / 聚合API\nQQ 播放受版权/VIP 限制，点击查看详情'),
+            isThreeLine: true,
+            onTap: () => _showSourcesInfo(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
+            title: const Text('QQ音乐 Cookie'),
+            subtitle: Text(settings.qqCookie.trim().isEmpty
+                ? '未设置：每日30首用酷狗+网易云兜底\n设置后解锁 QQ 榜单与播放（点击查看获取方法）'
+                : '已设置：每日30首/QQ榜单自动启用\n点击可修改（Cookie 含登录态，勿外泄）'),
+            isThreeLine: true,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showQqCookieDialog(context),
           ),
           const Divider(),
 
@@ -286,14 +309,7 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.folder_outlined),
             title: const Text('本地下载路径'),
             subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music（默认）' : settings.downloadPath),
-            onTap: () async {
-              final ctl = TextEditingController(text: settings.downloadPath.isEmpty ? '/storage/emulated/0/Music' : settings.downloadPath);
-              await showDialog(context: context, builder: (ctx) => AlertDialog(
-                title: const Text('本地下载路径'),
-                content: TextField(controller: ctl, decoration: const InputDecoration(hintText: '/storage/emulated/0/Music')),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () { settings.setDownloadPath(ctl.text); Navigator.pop(ctx); }, child: const Text('保存'))],
-              ));
-            },
+            onTap: () => _pickDownloadDirectory(context),
           ),
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
@@ -370,6 +386,136 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  /// 目录选择器：从 /storage/emulated/0 开始逐层浏览，选中后保存。
+  Future<void> _pickDownloadDirectory(BuildContext context) async {
+    final start = settings.downloadPath.isNotEmpty
+        ? settings.downloadPath
+        : '/storage/emulated/0';
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _DirectoryPickerSheet(initialPath: start),
+    );
+    if (picked != null && picked.isNotEmpty) {
+      settings.setDownloadPath(picked);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('下载目录已设为 $picked')),
+        );
+      }
+    }
+  }
+
+  /// 外网搜索源详情：只读展示各源具体地址，不可更改。
+  void _showSourcesInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('外网搜索源'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _srcRow('聚合API（当前）', settings.externalApiUrl),
+              _srcRow('网易云直连', 'https://music.163.com'),
+              _srcRow('B站直连', 'https://api.bilibili.com'),
+              _srcRow('QQ音乐', 'https://c.y.qq.com（播放受版权/VIP限制）'),
+              const SizedBox(height: 8),
+              Text('搜索外网时自动聚合以上全部源，播放按歌曲来源分发；'
+                  '聚合API地址可在上方“外部API地址”填写修改。',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _srcRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontSize: 13),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// QQ音乐 Cookie 输入：粘贴 y.qq.com 请求头里的 Cookie 整串即可解锁 QQ 榜单/播放。
+  void _showQqCookieDialog(BuildContext context) {
+    final ctl = TextEditingController(text: settings.qqCookie);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('QQ音乐 Cookie'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('填写后解锁 QQ 每日30首 / 各榜单，播放直接走 QQ。',
+                  style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: ctl,
+                maxLines: 3,
+                style: const TextStyle(fontSize: 13),
+                decoration: const InputDecoration(
+                  labelText: 'Cookie（整串粘贴）',
+                  hintText: 'uin=o123456; qqmusic_key=...',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text('如何获取：',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 4),
+              const Text(
+                '1. 电脑浏览器登录 https://y.qq.com（建议用 Chrome/Edge）\n'
+                '2. 按 F12 打开开发者工具 → 切到 Network（网络）面板\n'
+                '3. 刷新页面，任选一个请求，复制请求头里的 Cookie 整串\n'
+                '4. 粘贴到上方输入框并保存\n'
+                '提示：Cookie 含登录态，勿分享给他人；失效后重新获取即可。',
+                style: TextStyle(fontSize: 12, height: 1.6),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              settings.setQqCookie(ctl.text.trim());
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showExternalApiDialog(BuildContext context) {
     final ctl = TextEditingController(text: settings.externalApiUrl);
     showDialog(
@@ -381,6 +527,190 @@ class SettingsPage extends StatelessWidget {
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
           FilledButton(onPressed: () { settings.setExternalApiUrl(ctl.text); Navigator.of(ctx).pop(); }, child: const Text('保存')),
         ],
+      ),
+    );
+  }
+}
+
+/// 纯 Dart 目录浏览器：无需额外插件，配合“所有文件访问”权限使用。
+class _DirectoryPickerSheet extends StatefulWidget {
+  const _DirectoryPickerSheet({required this.initialPath});
+
+  final String initialPath;
+
+  @override
+  State<_DirectoryPickerSheet> createState() => _DirectoryPickerSheetState();
+}
+
+class _DirectoryPickerSheetState extends State<_DirectoryPickerSheet> {
+  late String _path = widget.initialPath;
+  List<Directory> _dirs = const [];
+  bool _loading = true;
+  String? _error;
+
+  static const _shortcuts = [
+    '/storage/emulated/0',
+    '/storage/emulated/0/Music',
+    '/storage/emulated/0/Download',
+    '/storage/emulated/0/Movies',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _enter(_path);
+  }
+
+  Future<void> _enter(String p) async {
+    setState(() {
+      _path = p;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final entries = await Directory(p)
+          .list(followLinks: false)
+          .where((e) => e is Directory)
+          .where((e) => !e.path.split('/').last.startsWith('.'))
+          .toList();
+      final dirs = entries.cast<Directory>().toList()
+        ..sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
+      if (!mounted) return;
+      setState(() {
+        _dirs = dirs;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '无法读取目录：$e';
+      });
+    }
+  }
+
+  void _goUp() {
+    if (_path == '/' || _path.isEmpty) return;
+    final parent = _path.substring(0, _path.lastIndexOf('/'));
+    _enter(parent.isEmpty ? '/' : parent);
+  }
+
+  Future<void> _createFolder() async {
+    final ctl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('新建文件夹'),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '文件夹名称'),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctl.text.trim()),
+            child: const Text('创建'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    try {
+      await Directory('$_path/$name').create(recursive: false);
+      _enter(_path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('创建失败：$e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final canGoUp = _path != '/' && _path.isNotEmpty;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.72,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_upward_rounded),
+                    tooltip: '上一级',
+                    onPressed: canGoUp ? _goUp : null,
+                  ),
+                  Expanded(
+                    child: Text(_path,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.create_new_folder_outlined),
+                    tooltip: '新建文件夹',
+                    onPressed: _createFolder,
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(_path),
+                    child: const Text('选择此目录'),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  for (final s in _shortcuts)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(s.split('/').last),
+                        selected: _path == s,
+                        onSelected: (_) => _enter(s),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 8),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(_error!, textAlign: TextAlign.center),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _dirs.length,
+                          itemBuilder: (context, i) {
+                            final d = _dirs[i];
+                            final name = d.path.split('/').last;
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.folder_rounded),
+                              title: Text(name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _enter(d.path),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }
