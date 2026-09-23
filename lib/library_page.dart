@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,8 @@ import '../subsonic.dart';
 import '../widgets.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
-import 'playlist_page.dart';
+import 'playlist_page.dart';import 'player_page.dart';
+
 
 /// Library page with tabs: 歌单 / 专辑 / 歌手 / 本地(真本地扫描).
 class LibraryPage extends StatefulWidget {
@@ -68,7 +70,7 @@ class _LibraryPageState extends State<LibraryPage>
           controller: _tab,
           tabs: const [
             Tab(text: '歌单'),
-            Tab(text: '专辑'),
+            Tab(text: '收藏'),
             Tab(text: '歌手'),
             Tab(text: '本地'),
           ],
@@ -82,7 +84,7 @@ class _LibraryPageState extends State<LibraryPage>
             settings: widget.settings,
             controller: widget.controller,
           ),
-          _AlbumTab(client: _client, onOpenAlbum: _openAlbum),
+          _FavoriteTab(settings: widget.settings, controller: widget.controller),
           _ArtistTab(
             client: _client,
             settings: widget.settings,
@@ -98,6 +100,82 @@ class _LibraryPageState extends State<LibraryPage>
   }
 }
 
+// ---------------- 收藏 tab（服务器星标歌曲） ----------------
+class _FavoriteTab extends StatefulWidget {
+  const _FavoriteTab({required this.settings, required this.controller});
+
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  State<_FavoriteTab> createState() => _FavoriteTabState();
+}
+
+class _FavoriteTabState extends State<_FavoriteTab> {
+  late Future<List<Song>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.controller.client.starredSongs();
+  }
+
+  Future<void> _play(List<Song> songs, int i) async {
+    // 点歌即跳转播放页；底部全局迷你播放条仍会出现
+    await widget.controller.playQueue(songs, i);
+    if (mounted) setState(() {});
+    if (context.mounted) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PlayerPage(
+          settings: widget.settings,
+          controller: widget.controller,
+        ),
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Song>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snap.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('加载失败：'),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => setState(() =>
+                      _future = widget.controller.client.starredSongs()),
+                  child: const Text('重试'),
+                ),
+              ],
+            ),
+          );
+        }
+        final songs = snap.data!;
+        if (songs.isEmpty) {
+          return const Center(
+            child: Text('暂无收藏歌曲\n在播放页点 ♥ 收藏后会显示在这里'),
+          );
+        }
+        return ListView.builder(
+          itemCount: songs.length,
+          itemBuilder: (context, i) => SongTile(
+            song: songs[i],
+            client: widget.controller.client,
+            onTap: () => _play(songs, i),
+          ),
+        );
+      },
+    );
+  }
+}
 // ---------------- 专辑 tab ----------------
 class _AlbumTab extends StatefulWidget {
   const _AlbumTab({required this.client, required this.onOpenAlbum});
@@ -278,23 +356,12 @@ class _ArtistTabState extends State<_ArtistTab> {
     _future = widget.client.artists();
   }
 
-  /// 按歌手名从网易云查歌手头像 URL（type=100 歌手搜索），失败返回 null。
+  /// 按歌手名搜封面当头像：网易云歌手搜索接口 2026 起失效（返回 400），
+  /// 改用酷狗搜索该歌手的热门歌曲封面（union_cover）代替，保证列表"有图"。
   Future<String?> _artistImage(String name) {
     return _imgCache.putIfAbsent(name, () async {
       try {
-        final uri = Uri.parse('https://music.163.com/api/search/get')
-            .replace(queryParameters: {'s': name, 'type': '100', 'offset': '0', 'limit': '1'});
-        final res = await http.get(uri, headers: _h163)
-            .timeout(const Duration(seconds: 8));
-        if (res.statusCode != 200) return null;
-        final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        final artists = ((j['result'] as Map?)?['artists'] as List?) ?? [];
-        if (artists.isEmpty) return null;
-        final a = artists.first as Map;
-        // 网易云歌手大头像 picUrl（完整 http URL），失败退 img1v1Url
-        final raw = (a['picUrl'] ?? a['img1v1Url'] ?? '').toString();
-        if (raw.isEmpty || !raw.startsWith('http')) return null;
-        return raw;
+        return await widget.controller.external.kugouSearchCover(name);
       } catch (_) {
         return null;
       }
@@ -324,7 +391,8 @@ class _ArtistTabState extends State<_ArtistTab> {
               imageUrl: url,
               width: 44, height: 44,
               fit: BoxFit.cover,
-              httpHeaders: _h163,
+              // [xmusic] 酷狗图床用通用 UA，不带网易云 Referer（防防盗链拒绝）
+              httpHeaders: const {'User-Agent': 'Mozilla/5.0'},
               errorWidget: (_, __, ___) => _initialCircle(theme, ar.name),
               placeholder: (_, __) => _initialCircle(theme, ar.name),
             ),
@@ -510,6 +578,47 @@ class _LocalTabState extends State<_LocalTab> {
       _songs = cached;
       _loading = false;
     });
+    _backfillCovers(); // 旧缓存/新扫描漏掉的封面：按文件内嵌 ID3 懒补
+  }
+
+  /// 对 coverUrl 为空的本地歌曲，从音频文件内嵌 ID3（APIC）提取封面，
+  /// 逐个补进列表并回写缓存。提取失败静默跳过（不阻塞列表）。
+  Future<void> _backfillCovers() async {
+    final need = _songs.where((s) => (s.coverUrl ?? '').isEmpty).toList();
+    if (need.isEmpty) return;
+    var changed = false;
+    for (final s in need) {
+      try {
+        final p = Uri.tryParse(s.streamUrl ?? '')?.toFilePath();
+        if (p == null || p.isEmpty) continue;
+        String? cover = await LocalLibrary.extractId3Cover(File(p));
+        if (cover == null) {
+          // 内嵌封面缺失（非 mp3 或未内嵌）：按 歌名+歌手 从酷狗搜封面补图
+          cover = await widget.controller.external
+              .kugouSearchCover('${s.title} ${s.artist}');
+        }
+        if (cover != null) {
+          final i = _songs.indexWhere((x) => x.id == s.id);
+          if (i >= 0 && mounted) {
+            setState(() {
+              _songs[i] = Song(
+                id: s.id,
+                title: s.title,
+                artist: s.artist,
+                album: s.album,
+                coverArt: null,
+                coverUrl: cover,
+                durationSec: s.durationSec,
+                fromExternal: false,
+                streamUrl: s.streamUrl,
+              );
+            });
+            changed = true;
+          }
+        }
+      } catch (_) {}
+    }
+    if (changed) await LocalLibrary.save(_songs);
   }
 
   Future<void> _scan() async {
@@ -559,9 +668,17 @@ class _LocalTabState extends State<_LocalTab> {
   }
 
   Future<void> _play(int i) async {
-    // 只播放不跳转：底部全局迷你播放条立即出现
+    // 点歌即跳转播放页；底部全局迷你播放条仍会出现
     await widget.controller.playQueue(_songs, i);
     if (mounted) setState(() {});
+    if (context.mounted) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PlayerPage(
+          settings: widget.settings,
+          controller: widget.controller,
+        ),
+      ));
+    }
   }
 
   @override

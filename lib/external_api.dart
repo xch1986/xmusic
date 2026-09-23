@@ -505,7 +505,9 @@ class ExternalApi {
         final tp = (it['trans_param'] as Map?);
         final cover = tp?['union_cover']?.toString() ?? '';
         if (cover.isNotEmpty && cover.contains('{size}')) {
-          return cover.replaceAll('{size}', '400');
+          final u = cover.replaceAll('{size}', '400');
+          // [xmusic] 酷狗图床统一走 https，避免明文流量边缘问题
+          return u.startsWith('http://') ? 'https://' + u.substring(7) : u;
         }
       }
       return null;
