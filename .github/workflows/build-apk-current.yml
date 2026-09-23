@@ -19,7 +19,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          cache: false
 
       - name: Generate Android project
         run: flutter create --platforms=android --project-name my_stream_player .
@@ -133,10 +133,10 @@ jobs:
       - name: Clean stale build caches
         run: |
           # [xmusic] 修复：GitHub 构建环境曾复用旧编译产物（产物版本号停留在旧值）。
-          # 强制清空 Dart/Gradle 缓存，保证每次构建都是全量编译当前代码。
+          # 强制清空 Dart/Gradle 全部缓存（含 ~/.gradle transforms 等），保证全量编译。
           flutter clean || true
           rm -rf build .dart_tool android/app/build android/.gradle
-          rm -rf ~/.gradle/caches/build-cache-* 2>/dev/null || true
+          rm -rf ~/.gradle 2>/dev/null || true
           echo "clean done"
       - name: Patch audio_service MediaSession always-active
         run: |
@@ -179,6 +179,22 @@ jobs:
           fi
           grep -n lint "$f"
       - run: flutter build apk --release --build-number=${{ github.run_number }} --build-name=0.3.${{ github.run_number }}
+
+      - name: Verify APK version freshness
+        run: |
+          # [xmusic] 防旧产物交付：APK 内必须能找到当前版本串，否则构建失败（不会上传旧包）
+          python3 <<'PYEOF'
+          import zipfile, re
+          p = "build/app/outputs/flutter-apk/app-release.apk"
+          z = zipfile.ZipFile(p)
+          so = z.read("lib/arm64-v8a/libapp.so")
+          vers = set(re.findall(rb"0\.3\.\d+", so))
+          expect = b"0.3.${{ github.run_number }}"
+          if expect not in vers:
+              print("VERSION MISMATCH: expect", expect, "found", sorted(vers))
+              raise SystemExit(1)
+          print("version ok:", sorted(vers))
+          PYEOF
 
       - uses: actions/upload-artifact@v4
         with:
