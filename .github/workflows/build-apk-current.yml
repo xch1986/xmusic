@@ -130,6 +130,32 @@ jobs:
           PYEOF
 
       - run: flutter pub get
+      - name: Patch audio_service MediaSession always-active
+        run: |
+          python3 <<'PYEOF'
+          import glob, os
+          # 车机识别：迪友桌面用 MediaSessionManager.getActiveSessions 枚举音乐应用。
+          # audio_service 默认只在播放时才 setActive(true)，服务未播放时车机识别不到。
+          # 这里 patch 插件源码：onCreate 创建 MediaSession 后立即 setActive(true)，服务一启动即常驻激活。
+          files = glob.glob(os.path.expanduser("~/.pub-cache/hosted/pub.dev/audio_service-*/android/src/main/java/com/ryanheise/audioservice/AudioService.java"))
+          print("audio_service files:", files)
+          if not files:
+              raise SystemExit("AudioService.java not found in pub cache!")
+          p = files[0]
+          s = open(p).read()
+          anchor = "mediaSession.setQueue(queue);"
+          add = anchor + "\n        // [xmusic] 常驻激活：服务启动即 setActive，车机桌面(迪友) getActiveSessions 才能枚举到\n        mediaSession.setActive(true);"
+          onCreateSeg = s.split("public void onCreate()")[1].split("public int onStartCommand")[0]
+          if anchor in s and "setActive(true)" not in onCreateSeg:
+              s = s.replace(anchor, add, 1)
+              open(p, "w").write(s)
+              print("PATCHED: onCreate setActive(true)")
+          else:
+              print("SKIP: anchor=", anchor in s, "already patched=", "setActive(true)" in onCreateSeg)
+          seg = open(p).read().split("public void onCreate()")[1].split("public int onStartCommand")[0]
+          print("onCreate setActive count:", seg.count("setActive(true)"))
+          print("total setActive count:", open(p).read().count("setActive(true)"))
+          PYEOF
       - name: Disable release lint fatal
         run: |
           f=android/app/build.gradle
