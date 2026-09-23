@@ -13,6 +13,33 @@ import 'theme.dart';
 
 /// 全局 audio handler（通知栏/车机/锁屏控制）。
 late MyAudioHandler audioHandler;
+/// 系统级 AudioService 是否就绪。init 失败（车机慢/超时）时 fallback 本地 handler，
+/// 此时没有系统 MediaSession，车机桌面（迪友）枚举不到——首次播放前会重试。
+bool audioServiceReady = false;
+
+/// 重新初始化系统音频服务：仅当首次 init 失败时调用（播放前兜底）。
+Future<void> ensureSystemAudioHandler() async {
+  if (audioServiceReady) return;
+  try {
+    final h = await AudioService.init(
+      builder: () => MyAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.xmusic.player.channel.audio',
+        androidNotificationChannelName: '音乐播放',
+        androidNotificationChannelDescription: '音素音乐播放器',
+        androidNotificationOngoing: false,
+        androidStopForegroundOnPause: false,
+        androidShowNotificationBadge: true,
+        androidNotificationClickStartsActivity: true,
+      ),
+    ).timeout(const Duration(seconds: 30));
+    audioHandler = h;
+    audioServiceReady = true;
+    debugPrint('AudioService re-init OK');
+  } catch (e) {
+    debugPrint('AudioService re-init failed: $e');
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +58,7 @@ Future<void> main() async {
     await Permission.notification.request();
   } catch (_) {}
   // 初始化系统级音频服务。包 try-catch+timeout：失败不阻塞启动（避免白屏）。
+  // 车机性能弱/启动慢：超时放宽到 30s，仍失败则 fallback，播放前 ensureSystemAudioHandler 重试。
   try {
     audioHandler = await AudioService.init(
       builder: () => MyAudioHandler(),
@@ -43,7 +71,8 @@ Future<void> main() async {
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
       ),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 30));
+    audioServiceReady = true;
   } catch (e) {
     debugPrint('AudioService init failed: $e');
     audioHandler = MyAudioHandler();

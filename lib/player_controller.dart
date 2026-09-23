@@ -185,6 +185,9 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> _loadAndPlay(int i, {bool autoplay = true}) async {
     if (i < 0 || i >= queue.length) return;
+    // 车机识别：确保系统级 AudioService 就绪（首次 init 失败时播放前重试）。
+    // 否则没有 MediaSession，车机桌面（迪友）枚举不到音素。
+    await ensureSystemAudioHandler();
     final token = ++_playToken;
     final s = queue[i];
     final url = await _mediaUrlForSong(s);
