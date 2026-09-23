@@ -687,6 +687,16 @@ class ExternalApi {
       }).timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) return null;
       final url = utf8.decode(res.bodyBytes).trim();
+      // [xmusic] 酷我 antiserver 2026-09 实测返回 JSON {"code":200,"url":"https://..."}，
+      // 需解析取 url；兼容旧版纯文本 URL 响应。
+      if (url.startsWith('{')) {
+        try {
+          final j = jsonDecode(url) as Map<String, dynamic>;
+          final u = j['url']?.toString() ?? '';
+          if (u.isNotEmpty && u.startsWith('http')) return u;
+        } catch (_) {}
+        return null;
+      }
       if (url.isEmpty || !url.startsWith('http')) return null;
       return url;
     } catch (_) {

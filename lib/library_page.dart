@@ -368,18 +368,10 @@ class _ArtistTabState extends State<_ArtistTab> {
     });
   }
 
-  /// 歌手头像：服务器 coverArt 优先；没有时按名查网易云头像，再失败显示首字圆标。
+  /// 歌手头像：统一走酷狗搜索图（Navidrome artist coverArt 字段常有但对应图
+  /// 缺失/404，酷狗兜底触发不了 → 列表无图）。酷狗失败时显示首字圆标。
   Widget _artistLeading(BuildContext context, Artist ar) {
     final theme = Theme.of(context);
-    if (ar.coverArt != null && ar.coverArt!.isNotEmpty) {
-      return CoverImage(
-        client: widget.client,
-        coverId: ar.coverArt,
-        size: 44,
-        radius: 8,
-        requestSize: 120,
-      );
-    }
     return FutureBuilder<String?>(
       future: _artistImage(ar.name),
       builder: (context, snap) {
