@@ -33,7 +33,9 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> play() async {
-    if (!allowPlay) return;
+    // 仅当 PlayerController 尚未接管时拦截（防 AudioService 启动自动恢复→双播）；
+    // 一旦接管（onSkipNext 已设置），通知栏/方向盘主动播放一律放行。
+    if (!allowPlay && onSkipNext == null) return;
     await _player.play();
   }
 
