@@ -356,37 +356,15 @@ class _ArtistTabState extends State<_ArtistTab> {
     _future = widget.client.artists();
   }
 
-  /// 按歌手名从网易云查歌手头像 URL（type=100 歌手搜索）。
-  /// 拉 5 条候选、校验名字匹配（避免张冠李戴），失败重试一次。
+  /// 按歌手名搜封面当头像：网易云歌手搜索接口 2026 起失效（返回 400），
+  /// 改用酷狗搜索该歌手的热门歌曲封面（union_cover）代替，保证列表"有图"。
   Future<String?> _artistImage(String name) {
     return _imgCache.putIfAbsent(name, () async {
-      for (var attempt = 0; attempt < 2; attempt++) {
-        try {
-          final uri = Uri.parse('https://music.163.com/api/search/get')
-              .replace(queryParameters: {'s': name, 'type': '100', 'offset': '0', 'limit': '5'});
-          final res = await http.get(uri, headers: _h163)
-              .timeout(const Duration(seconds: 8));
-          if (res.statusCode != 200) {
-            await Future.delayed(const Duration(milliseconds: 300));
-            continue;
-          }
-          final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-          final artists = ((j['result'] as Map?)?['artists'] as List?) ?? [];
-          for (final a in artists.cast<Map>()) {
-            final an = (a['name'] ?? '').toString();
-            if (an.isEmpty) continue;
-            if (an == name || an.contains(name) || name.contains(an)) {
-              // 网易云歌手大头像 picUrl（完整 http URL），失败退 img1v1Url
-              final raw = (a['picUrl'] ?? a['img1v1Url'] ?? '').toString();
-              if (raw.isNotEmpty && raw.startsWith('http')) return raw;
-            }
-          }
-          return null; // 有结果但无匹配：不重试（避免反复请求）
-        } catch (_) {
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
+      try {
+        return await widget.controller.external.kugouSearchCover(name);
+      } catch (_) {
+        return null;
       }
-      return null;
     });
   }
 
@@ -612,7 +590,12 @@ class _LocalTabState extends State<_LocalTab> {
       try {
         final p = Uri.tryParse(s.streamUrl ?? '')?.toFilePath();
         if (p == null || p.isEmpty) continue;
-        final cover = await LocalLibrary.extractId3Cover(File(p));
+        String? cover = await LocalLibrary.extractId3Cover(File(p));
+        if (cover == null) {
+          // 内嵌封面缺失（非 mp3 或未内嵌）：按 歌名+歌手 从酷狗搜封面补图
+          cover = await widget.controller.external
+              .kugouSearchCover('${s.title} ${s.artist}');
+        }
         if (cover != null) {
           final i = _songs.indexWhere((x) => x.id == s.id);
           if (i >= 0 && mounted) {
