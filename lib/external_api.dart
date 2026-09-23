@@ -425,21 +425,22 @@ class ExternalApi {
       final j = await _getRaw(uri, _hQq) as Map<String, dynamic>;
       final list = (j['songlist'] as List?) ?? const [];
       return list.cast<Map<String, dynamic>>().map((t) {
-        final singers = ((t['singer'] as List?) ?? [])
+        final d = (t['data'] as Map?) ?? t; // 歌曲字段在 data 子对象里；兼容无 data 格式
+        final singers = ((d['singer'] as List?) ?? [])
             .map((s) => (s as Map)['name']?.toString() ?? '')
             .where((s) => s.isNotEmpty)
             .join(' / ');
-        final mid = (t['songmid'] ?? t['mid'] ?? '').toString();
-        final albumMid = (t['albummid'] ?? t['album']?['mid'] ?? '').toString();
+        final mid = (d['songmid'] ?? d['mid'] ?? '').toString();
+        final albumMid = (d['albummid'] ?? d['album']?['mid'] ?? '').toString();
         return Song(
           id: mid,
-          title: (t['songname'] ?? t['name'] ?? '').toString(),
+          title: (d['songname'] ?? d['name'] ?? '').toString(),
           artist: singers.isEmpty ? '未知' : singers,
-          album: (t['albumname'] ?? t['album']?['name'] ?? '').toString(),
+          album: (d['albumname'] ?? d['album']?['name'] ?? '').toString(),
           coverUrl: albumMid.isEmpty
               ? null
               : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
-          durationSec: (t['interval'] as num?)?.toInt(),
+          durationSec: (d['interval'] as num?)?.toInt(),
           fromExternal: true,
           externalSource: 'qq',
         );
@@ -482,6 +483,34 @@ class ExternalApi {
       }).toList();
     } catch (_) {
       return const [];
+    }
+  }
+
+  /// 酷狗按关键词搜索歌曲封面（union_cover，{size} 替换为 400）。
+  /// 用于：本地歌曲/歌手无图时按 歌名+歌手（或歌手名）搜封面。
+  Future<String?> kugouSearchCover(String keyword) async {
+    try {
+      final j = await _insecureGetJson(
+        Uri.parse('http://mobilecdn.kugou.com/api/v3/search/song')
+            .replace(queryParameters: {
+          'format': 'json',
+          'keyword': keyword,
+          'page': '1',
+          'pagesize': '5',
+          'showtype': '1',
+        }),
+      );
+      final info = ((j['data'] as Map?)?['info'] as List?) ?? [];
+      for (final it in info.cast<Map>()) {
+        final tp = (it['trans_param'] as Map?);
+        final cover = tp?['union_cover']?.toString() ?? '';
+        if (cover.isNotEmpty && cover.contains('{size}')) {
+          return cover.replaceAll('{size}', '400');
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 
