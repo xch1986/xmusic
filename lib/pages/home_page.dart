@@ -77,7 +77,10 @@ class _HomePageState extends State<HomePage> {
     return ext.daily30FromKugou();
   }
 
-  void _reload() => setState(_load);
+  Future<void> _reload() async {
+    _load();
+    await Future.wait([_toplists, _daily30, _qqPlaylists]);
+  }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
     await widget.controller.playQueue(songs, index);
@@ -216,11 +219,8 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => _reload(),
-        child: Container(
-          // [xmusic] 2026-09-24 车机横屏参考网易云车机版：深色底 #171717；手机端保持原浅色
-          color: const Color(0xFF171717), // 深色底（用户要求通用，手机也看效果）
-          child: ListView(
+        onRefresh: _reload,
+        child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
             // 每日30首大卡片
@@ -236,8 +236,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text('排行榜',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+                      fontWeight: FontWeight.w700)),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _toplists,
@@ -272,10 +271,22 @@ class _HomePageState extends State<HomePage> {
             // QQ 精选歌单（用户强烈要求；硬编码 dissid，点进才拉歌曲）
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Text('QQ歌单',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('QQ歌单',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  IconButton(
+                    tooltip: '换一批',
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    onPressed: () {
+                      setState(() => _qqPlaylists = widget.controller.external.qqPlaylists());
+                    },
+                  ),
+                ],
+              ),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _qqPlaylists,
@@ -342,7 +353,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
           ),
-        ),
       ),
     );
   }
