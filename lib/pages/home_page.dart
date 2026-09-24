@@ -541,8 +541,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
-
   /// QQ 精选歌单卡（网易云车机版风格：方形圆角封面 + 下方标题，无封面图用深灰渐变+图标）。
   Widget _qqPlaylistCard(String name, String dissid) {
     final car = isCarScreen(context);
@@ -583,6 +581,8 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+}
 
 /// 歌单详情页（支持左滑删除歌曲，移除记录按歌单名本地持久化）
 class _PlaylistDetail extends StatefulWidget {
