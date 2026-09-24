@@ -234,6 +234,24 @@ class _PlayerPageState extends State<PlayerPage> {
               Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
+              // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
+              if (widget.controller.loadingUrl) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 12, height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2, color: theme.colorScheme.primary),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('正在解析播放地址…', style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary, fontSize: 13)),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
