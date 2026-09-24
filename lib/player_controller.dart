@@ -151,20 +151,14 @@ class PlayerController extends ChangeNotifier {
         : LoopMode.off);
   }
 
-  /// 返回 (播放URL, 兜底命中的真实曲目元数据)。
-  /// [xmusic] 2026-09-24：原实现只返回 URL——QQ vkey 失败兜底到网易云/酷我、
-  /// 网易云 GDStudio 失败兜底到酷我时，播的是匹配到的另一首，但队列标题/歌手/专辑/
-  /// 歌词源仍停留在原曲，导致"每日30首 歌名专辑与实际播放对不上、拖进度歌词对不上"。
-  /// 现在兜底命中哪首就把哪首带回来，由 _loadAndPlay 同步队列元数据。
-  Future<({String url, Song? resolved})> _mediaUrlForSong(Song s) async {
-    const emptyRec = (url: '', resolved: null);
-    if (s.streamUrl != null) return (url: s.streamUrl!, resolved: null);
+  Future<String> _mediaUrlForSong(Song s) async {
+    if (s.streamUrl != null) return s.streamUrl!;
     if (s.fromExternal) {
       final src = s.externalSource ?? 'netease';
       // B站/QQ/酷我走直连；网易云走GDStudio聚合（稳定）
       if (src == 'bilibili') {
         final url = await external.biliStreamUrl(s.id);
-        return (url: url ?? '', resolved: null);
+        return url ?? '';
       }
       if (src == 'qq') {
         // vkey 直连受 IP/会员风控（2026 实测匿名/cookie 均拿不到 purl）：失败后并行兜底。
@@ -173,32 +167,30 @@ class PlayerController extends ChangeNotifier {
           final url = await external
               .qqStreamUrl(s.id, cookie: settings.qqCookie)
               .timeout(const Duration(seconds: 8));
-          if (url != null && url.isNotEmpty) return (url: url, resolved: null);
+          if (url != null && url.isNotEmpty) return url;
         } catch (_) {}
         final ne = () async {
           try {
             final m = await external
                 .matchNetease(s.title, s.artist)
                 .timeout(const Duration(seconds: 10));
-            if (m == null) return emptyRec;
+            if (m == null) return '';
             final u = await external
                 .streamUrlFor(m.id, source: 'netease')
                 .timeout(const Duration(seconds: 10));
-            if (u == null || u.isEmpty) return emptyRec;
-            return (url: u, resolved: m);
+            return u ?? '';
           } catch (_) {
-            return emptyRec;
+            return '';
           }
         };
         final kw = () async {
           try {
-            final r = await external
-                .matchKuwoMatched(s.title, s.artist)
+            final u = await external
+                .matchKuwo(s.title, s.artist)
                 .timeout(const Duration(seconds: 15));
-            if (r == null) return emptyRec;
-            return (url: r.$1, resolved: r.$2);
+            return u ?? '';
           } catch (_) {
-            return emptyRec;
+            return '';
           }
         };
         final f1 = ne();
@@ -213,33 +205,33 @@ class PlayerController extends ChangeNotifier {
           return v;
         });
         final first = await Future.any([c1, c2]);
-        if (first.url.isNotEmpty) return first;
+        if (first.isNotEmpty) return first;
         final other = await (fromF1 ? f2 : f1);
-        if (other.url.isNotEmpty) return other;
+        if (other.isNotEmpty) return other;
         return first;
       }
       if (src == 'kuwo') {
         final url = await external
             .kuwoStreamUrl(s.id)
             .timeout(const Duration(seconds: 12));
-        return (url: url ?? '', resolved: null);
+        return url ?? '';
       }
       // netease 等其余源：GDStudio 失败后加酷我兜底（每日30首等网易云匹配源）
       try {
         final u = await external
             .streamUrlFor(s.id, source: 'netease')
             .timeout(const Duration(seconds: 12));
-        if (u != null && u.isNotEmpty) return (url: u, resolved: null);
+        if (u != null && u.isNotEmpty) return u;
       } catch (_) {}
       try {
-        final r = await external
-            .matchKuwoMatched(s.title, s.artist)
+        final kw = await external
+            .matchKuwo(s.title, s.artist)
             .timeout(const Duration(seconds: 15));
-        if (r != null) return (url: r.$1, resolved: r.$2);
+        if (kw != null && kw.isNotEmpty) return kw;
       } catch (_) {}
-      return emptyRec;
+      return '';
     }
-    return (url: client.streamUrl(s.id).toString(), resolved: null);
+    return client.streamUrl(s.id).toString();
   }
 
   /// 更新通知栏/锁屏显示的歌曲元数据。
@@ -306,11 +298,8 @@ class PlayerController extends ChangeNotifier {
     loadingUrl = true;
     notifyListeners();
     String url;
-    Song? resolved;
     try {
-      final res = await _mediaUrlForSong(s);
-      url = res.url;
-      resolved = res.resolved;
+      url = await _mediaUrlForSong(s);
     } finally {
       // 无论成功失败都复位加载态（成功由播放器缓冲态接管，失败由错误提示接管）
       if (token == _playToken) {
@@ -339,23 +328,6 @@ class PlayerController extends ChangeNotifier {
     }
     if (token != _playToken) return;
     index = i;
-    // [xmusic] 兜底换源命中真实曲目后，把队列项同步成"实际在播的这首歌"：
-    // 标题/歌手/专辑/封面/歌词源一起换，否则界面和歌词还是原曲（每日30首错配根因）。
-    if (resolved != null) {
-      final rs = resolved!;
-      queue[i] = Song(
-        id: rs.id,
-        title: rs.title,
-        artist: rs.artist,
-        album: rs.album,
-        coverArt: rs.coverArt,
-        coverUrl: rs.coverUrl,
-        durationSec: rs.durationSec,
-        fromExternal: true,
-        externalSource: rs.externalSource,
-      );
-    }
-    _updateMediaItem(queue[i]);
     notifyListeners();
     _applyLoopMode();
     _loadLyrics();
@@ -479,16 +451,8 @@ class PlayerController extends ChangeNotifier {
       var result;
       final src = s.externalSource;
       if (src == 'qq') {
-        // QQ直连歌词；无歌词时不再回退网易云（ID体系不同）
         result = await external.qqLyric(s.id);
-      } else if (s.fromExternal) {
-        // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
-        // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）
-        result = await external.lyricFor(s.id, source: src ?? 'netease');
-        if (src == 'netease' && (result == null || result.lines.isEmpty)) {
-          result = await external.lyricFor(s.id, source: 'netease');
-        }
-        // 统一兜底：QQ直连/酷我没词时，按歌名+歌手搜网易云（车机用户反馈"歌单进去没歌词"）
+        // QQ 没词时按歌名+歌手搜网易云兜底（车机用户反馈"播放没歌词"）
         if (result == null || result.lines.isEmpty) {
           try {
             final hits = await external
@@ -498,6 +462,13 @@ class PlayerController extends ChangeNotifier {
               if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
             }
           } catch (_) {}
+        }
+      } else if (s.fromExternal) {
+        // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
+        // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）
+        result = await external.lyricFor(s.id, source: src ?? 'netease');
+        if (src == 'netease' && (result == null || result.lines.isEmpty)) {
+          result = await external.lyricFor(s.id, source: 'netease');
         }
       } else {
         // 本地文件歌：优先同目录 .lrc；其次 Navidrome 歌词；最后按歌名+歌手搜网易云兜底
@@ -539,7 +510,7 @@ class PlayerController extends ChangeNotifier {
   // ---- 下载 ----
 
   Future<String> downloadSongToLocal(Song s) async {
-    final url = (await _mediaUrlForSong(s)).url;
+    final url = await _mediaUrlForSong(s);
     if (url.isEmpty) return '无法获取下载地址';
     final bytes = await http.get(
       Uri.parse(url),
@@ -574,7 +545,7 @@ class PlayerController extends ChangeNotifier {
 
   Future<String> uploadSongToNas(Song s) async {
     if (!settings.webdavConfigured) return '未配置 NAS (WebDAV) 地址';
-    final url = (await _mediaUrlForSong(s)).url;
+    final url = await _mediaUrlForSong(s);
     if (url.isEmpty) return '无法获取下载地址';
     final media = await http.get(Uri.parse(url));
     if (media.statusCode != 200) return '获取歌曲失败 HTTP ${media.statusCode}';
