@@ -24,7 +24,7 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Song>> _daily30;
   late Future<List<Song>> _localRec;
-  late List<Map<String, dynamic>> _qqPlaylists;
+  late Future<List<Map<String, dynamic>>> _qqPlaylists;
 
   SubsonicClient get _client => widget.controller.client;
 
@@ -219,7 +219,7 @@ class _HomePageState extends State<HomePage> {
         onRefresh: () async => _reload(),
         child: Container(
           // [xmusic] 2026-09-24 车机横屏参考网易云车机版：深色底 #171717；手机端保持原浅色
-          color: isCarScreen(context) ? const Color(0xFF171717) : null,
+          color: const Color(0xFF171717), // 深色底（用户要求通用，手机也看效果）
           child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
@@ -237,7 +237,7 @@ class _HomePageState extends State<HomePage> {
               child: Text('排行榜',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: isCarScreen(context) ? Colors.white : null)),
+                      color: Colors.white)),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _toplists,
@@ -275,20 +275,27 @@ class _HomePageState extends State<HomePage> {
               child: Text('QQ歌单',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: isCarScreen(context) ? Colors.white : null)),
+                      color: Colors.white)),
             ),
-            GridView.count(
-              crossAxisCount: isCarScreen(context) ? 6 : 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              mainAxisSpacing: isCarScreen(context) ? 12 : 10,
-              crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-              childAspectRatio: isCarScreen(context) ? 0.92 : 1.1,
-              children: _qqPlaylists.map((p) => _qqPlaylistCard(
-                p['name'] as String,
-                p['dissid'] as String,
-              )).toList(),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _qqPlaylists,
+              builder: (context, snap) {
+                final list = snap.data ?? const [];
+                return GridView.count(
+                  crossAxisCount: isCarScreen(context) ? 6 : 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  mainAxisSpacing: isCarScreen(context) ? 12 : 10,
+                  crossAxisSpacing: isCarScreen(context) ? 10 : 10,
+                  childAspectRatio: isCarScreen(context) ? 0.92 : 1.1,
+                  children: list.map((p) => _qqPlaylistCard(
+                    p['name'] as String,
+                    p['dissid'] as String,
+                    p['coverImgUrl'] as String?,
+                  )).toList(),
+                );
+              },
             ),
             // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
             Padding(
@@ -296,7 +303,7 @@ class _HomePageState extends State<HomePage> {
               child: Text('歌单推荐',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: isCarScreen(context) ? Colors.white : null),
+                      color: Colors.white),
               ),
             ),
             Padding(
@@ -542,9 +549,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
   /// QQ 精选歌单卡（网易云车机版风格：方形圆角封面 + 下方标题，无封面图用深灰渐变+图标）。
-  Widget _qqPlaylistCard(String name, String dissid) {
+  Widget _qqPlaylistCard(String name, String dissid, String? coverUrl) {
     final car = isCarScreen(context);
-    final theme = Theme.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _openQqPlaylist(name, dissid),
@@ -553,16 +559,20 @@ class _HomePageState extends State<HomePage> {
         children: [
           AspectRatio(
             aspectRatio: 1,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: car ? const Color(0xFF262626) : theme.colorScheme.surfaceContainerHighest,
-              ),
-              child: Icon(
-                Icons.playlist_play_rounded,
-                color: car ? Colors.white70 : theme.colorScheme.onSurfaceVariant,
-                size: car ? 32 : 28,
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                      placeholder: (_, __) => Container(color: const Color(0xFF262626)),
+                      errorWidget: (_, __, ___) => Container(color: const Color(0xFF262626)),
+                    )
+                  : Container(
+                      color: const Color(0xFF262626),
+                      child: const Icon(Icons.playlist_play_rounded, color: Colors.white70, size: 32),
+                    ),
             ),
           ),
           const SizedBox(height: 6),
