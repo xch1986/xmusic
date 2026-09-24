@@ -583,7 +583,7 @@ class _HomePageState extends State<HomePage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: car ? 13 : 12,
-              color: car ? Colors.white : theme.textTheme.bodySmall?.color,
+              color: Colors.white,
               fontWeight: FontWeight.w500,
             ),
           ),
