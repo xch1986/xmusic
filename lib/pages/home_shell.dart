@@ -94,7 +94,7 @@ class _HomeShellState extends State<HomeShell> {
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
             labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-              fontSize: isCarScreen ? 15 : 12,
+              fontSize: isCarScreen ? 17 : 12,
               fontWeight: states.contains(WidgetState.selected)
                   ? FontWeight.w700
                   : FontWeight.w500,
