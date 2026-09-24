@@ -83,11 +83,16 @@ class _HomeShellState extends State<HomeShell> {
                 ),
               ),
             ),
+            child: NavigationBarTheme(
+            // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
+            // NavigationBar 无 iconSize 参数，图标尺寸由 NavigationBarThemeData.iconTheme 控制
+            data: NavigationBarThemeData(
+              iconTheme: WidgetStateProperty.resolveWith((states) =>
+                  IconThemeData(size: isCarScreen ? 30 : 24)),
+            ),
             child: NavigationBar(
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
-            // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
-            iconSize: isCarScreen ? 30 : 24,
             labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
               fontSize: isCarScreen ? 15 : 12,
               fontWeight: states.contains(WidgetState.selected)
@@ -117,6 +122,7 @@ class _HomeShellState extends State<HomeShell> {
                 label: '设置',
               ),
             ],
+          ),
           ),
           ),
         ],
