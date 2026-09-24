@@ -481,14 +481,36 @@ class ExternalApi {
     {'dissid': '9553767949', 'name': '钢琴轻音乐'},
   ];
 
-  /// QQ 精选歌单列表：硬编码 dissid + 在线轻量拉真实封面（song_num=1，每个歌单 ~11KB）。
+  /// QQ 歌单列表：每次打开首页动态抓 QQ 音乐分类页（SSR 内嵌歌单数据，
+  /// 跟着官网更新，不再硬编码），再轻量拉每个歌单的封面 logo。
   Future<List<Map<String, dynamic>>> qqPlaylists() async {
-    final results = await Future.wait<Map<String, dynamic>>(_qqPlaylists.map((p) async {
+    String html;
+    try {
+      final res = await http
+          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'), headers: _hQq)
+          .timeout(const Duration(seconds: 12));
+      html = utf8.decode(res.bodyBytes);
+    } catch (_) {
+      return const [];
+    }
+    // 从 SSR HTML 提取 (dissid, 歌单名)：<a href="/n/ryqq_v2/playlist/123">名称</a>
+    final pairs = <(String, String)>[];
+    final seen = <String>{};
+    for (final m in RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>')
+        .allMatches(html)) {
+      final id = m.group(1)!;
+      final name = m.group(2)!.trim();
+      if (name.isEmpty || seen.contains(id)) continue;
+      seen.add(id);
+      pairs.add((id, name));
+    }
+    final picks = pairs.take(10).toList();
+    final results = await Future.wait<Map<String, dynamic>>(picks.map((e) async {
       var cover = '';
       try {
         final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
             .replace(queryParameters: {
-          'type': '1', 'utf8': '1', 'disstid': p['dissid'], 'format': 'json',
+          'type': '1', 'utf8': '1', 'disstid': e.$1, 'format': 'json',
           'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
           'platform': 'y.json', 'needNewCode': '0',
           'loginUin': '0', 'hostUin': '0',
@@ -499,12 +521,13 @@ class ExternalApi {
         cover = (cd?['logo'] ?? '').toString();
       } catch (_) {}
       return {
-        'dissid': p['dissid'],
-        'name': p['name'],
+        'dissid': e.$1,
+        'name': e.$2,
         'coverImgUrl': cover.startsWith('http') ? cover : '',
       };
     }));
-    return results;
+    // 过滤掉私密/已删除（cdlist 为空、无封面也无歌曲的）
+    return results.where((m) => (m['coverImgUrl'] as String).isNotEmpty).toList();
   }
 
   /// QQ 歌单歌曲（qzone 老接口，匿名可用）。songlist 平铺字段：
