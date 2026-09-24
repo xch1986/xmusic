@@ -481,11 +481,31 @@ class ExternalApi {
     {'dissid': '9553767949', 'name': '钢琴轻音乐'},
   ];
 
-  /// QQ 精选歌单列表（不发网络请求，纯本地硬编码；封面由卡片渐变色承担，
-  /// 避免点进每个歌单都要拉一遍上千首歌曲只为拿封面）。
-  List<Map<String, dynamic>> qqPlaylists() => _qqPlaylists
-      .map((p) => {'dissid': p['dissid'], 'name': p['name']})
-      .toList();
+  /// QQ 精选歌单列表：硬编码 dissid + 在线轻量拉真实封面（song_num=1，每个歌单 ~11KB）。
+  Future<List<Map<String, dynamic>>> qqPlaylists() async {
+    final results = await Future.wait(_qqPlaylists.map((p) async {
+      var cover = '';
+      try {
+        final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+            .replace(queryParameters: {
+          'type': '1', 'utf8': '1', 'disstid': p['dissid'], 'format': 'json',
+          'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+          'platform': 'y.json', 'needNewCode': '0',
+          'loginUin': '0', 'hostUin': '0',
+          'song_num': '1', 'song_begin': '0',
+        });
+        final j = await _getRaw(uri, _hQq, timeoutSec: 10) as Map<String, dynamic>;
+        final cd = ((j['cdlist'] as List?) ?? const []).cast<Map>().firstOrNull;
+        cover = (cd?['logo'] ?? '').toString();
+      } catch (_) {}
+      return {
+        'dissid': p['dissid'],
+        'name': p['name'],
+        'coverImgUrl': cover.startsWith('http') ? cover : '',
+      };
+    }));
+    return results;
+  }
 
   /// QQ 歌单歌曲（qzone 老接口，匿名可用）。songlist 平铺字段：
   /// songmid/songname/singer[].name/albumname/albummid/interval。
