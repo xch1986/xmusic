@@ -275,24 +275,24 @@ class _PlayerPageState extends State<PlayerPage> {
     // [xmusic] 2026-09-24 车机图标适配：右侧歌词大小/收藏/下载图标放大
     final car = isCarScreen(context);
     return Container(
-      width: car ? 60 : 52,
+      width: car ? 70 : 56,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
           IconTheme(
-            data: IconThemeData(size: car ? 30 : 24),
+            data: IconThemeData(size: car ? 48 : 40),
             child: LyricSizeControls(settings: widget.settings),
           ),
           const SizedBox(height: 2),
           IconTheme(
-            data: IconThemeData(size: car ? 30 : 24),
+            data: IconThemeData(size: car ? 48 : 40),
             child: _FavoriteButton(controller: widget.controller),
           ),
           IconButton(
             tooltip: '下载',
-            icon: Icon(Icons.download_rounded, size: car ? 28 : 22),
+            icon: Icon(Icons.download_rounded, size: car ? 48 : 40),
             onPressed: () => _downloadMenu(context),
           ),
         ],
@@ -340,16 +340,17 @@ class _PlayerPageState extends State<PlayerPage> {
                       child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  // [xmusic] 2026-09-24 车机横屏：歌名/歌手/专辑 下移并放大（黑胶与信息间距拉大、字号加大）
+                  SizedBox(height: isCarScreen(context) ? 40 : 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       children: [
                         Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 24)),
-                        const SizedBox(height: 6),
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: isCarScreen(context) ? 34 : 24)),
+                        const SizedBox(height: isCarScreen(context) ? 10 : 6),
                         Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 15)),
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: isCarScreen(context) ? 22 : 15)),
                       ],
                     ),
                   ),
@@ -825,10 +826,10 @@ class _CornerButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // [xmusic] 2026-09-24 车机图标适配：左上角主页/返回按钮放大（40->48，图标22->26）
+    // [xmusic] 2026-09-24 车机图标统一：左上角主页/返回按钮图标与控制栏一致（车机48/手机40）
     final car = isCarScreen(context);
-    final s = car ? 48.0 : 40.0;
-    final isz = car ? 26.0 : 22.0;
+    final s = car ? 56.0 : 44.0;
+    final isz = car ? 48.0 : 40.0;
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -981,12 +982,11 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final gap = compact ? 20.0 : 20.0;
-    // [xmusic] 2026-09-24 车机图标适配：横屏大屏(车机)控制按钮整体放大，
-    // 开车场景下触控目标更大更易点按（播放键 44->52、上下曲 40->48、侧键 36->44）。
+    // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
-    final playSize = car ? 52.0 : 44.0;
+    final playSize = car ? 48.0 : 40.0;
     final navSize = car ? 48.0 : 40.0;
-    final sideIcon = car ? 44.0 : 36.0;
+    final sideIcon = car ? 48.0 : 40.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
