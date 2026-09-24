@@ -370,7 +370,7 @@ class ExternalApi {
       'songmid': songmid, 'format': 'json', 'nobase64': '1',
     });
     try {
-      final j = await _getRaw(uri, _hQq) as Map<String, dynamic>;
+      final j = await _getRaw(uri, _hQq, timeoutSec: 8) as Map<String, dynamic>;
       final raw = j['lyric']?.toString() ?? '';
       if (raw.trim().isEmpty) return null;
       return Lyrics.fromLrc(raw);
@@ -524,6 +524,7 @@ class ExternalApi {
       final r = await _getRaw(
         Uri.parse('https://music.163.com/api/song/detail?ids=[${s.id}]'),
         _h163,
+        timeoutSec: 10,
       ) as Map<String, dynamic>;
       final songs = (r['songs'] as List?) ?? [];
       if (songs.isNotEmpty) {
@@ -554,7 +555,7 @@ class ExternalApi {
           .replace(queryParameters: {
         's': kw, 'type': '1', 'offset': '0', 'limit': '3',
       });
-      final j = await _getRaw(uri, _h163) as Map<String, dynamic>;
+      final j = await _getRaw(uri, _h163, timeoutSec: 10) as Map<String, dynamic>;
       final songs = (((j['result'] as Map?)?['songs']) as List?) ?? [];
       for (final raw in songs.cast<Map<String, dynamic>>()) {
         final name = (raw['name'] ?? '').toString();
@@ -644,7 +645,7 @@ class ExternalApi {
     try {
       final j = await _getRaw(uri, const {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      }) as Map<String, dynamic>;
+      }, timeoutSec: 10) as Map<String, dynamic>;
       final abslist = (j['abslist'] as List?) ?? const [];
       final out = <Song>[];
       for (final t in abslist.cast<Map<String, dynamic>>()) {
@@ -684,7 +685,7 @@ class ExternalApi {
       final res = await http.get(uri, headers: const {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         'Referer': 'http://www.kuwo.cn/',
-      }).timeout(const Duration(seconds: 20));
+      }).timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return null;
       final url = utf8.decode(res.bodyBytes).trim();
       // [xmusic] 酷我 antiserver 2026-09 实测返回 JSON {"code":200,"url":"https://..."}，
