@@ -564,59 +564,122 @@ class _HomePageState extends State<HomePage> {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => _openQqPlaylist(name, dissid),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  (coverUrl != null && coverUrl.isNotEmpty)
-                      ? CachedNetworkImage(
-                          imageUrl: coverUrl,
-                          fit: BoxFit.cover,
-                          httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
-                          placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                          errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                        )
-                      : Container(color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant)),
-                  // 底部暗渐变，压白字
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Color(0x99000000)],
-                        stops: [0.55, 1.0],
-                      ),
-                    ),
-                    child: SizedBox.expand(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            (coverUrl != null && coverUrl.isNotEmpty)
+                ? CachedNetworkImage(
+                    imageUrl: coverUrl,
+                    fit: BoxFit.cover,
+                    httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                    placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                    errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                  )
+                : Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant),
                   ),
-                  Positioned(
-                    left: 10, right: 34, bottom: 10,
-                    child: Text(name,
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600, height: 1.2)),
-                  ),
-                  Positioned(
-                    right: 8, bottom: 8,
-                    child: Container(
-                      width: 28, height: 28,
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.play_arrow_rounded, size: 18, color: Colors.black87),
-                    ),
-                  ),
-                ],
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Color(0x99000000)],
+                  stops: [0.55, 1.0],
+                ),
+              ),
+              child: SizedBox.expand(),
+            ),
+            Positioned(
+              left: 10, right: 34, bottom: 10,
+              child: Text(name,
+                  maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600, height: 1.2)),
+            ),
+            Positioned(
+              right: 8, bottom: 8,
+              child: Container(
+                width: 28, height: 28,
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: const Icon(Icons.play_arrow_rounded, size: 18, color: Colors.black87),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-Widget build(BuildContext context) {
+
+}
+
+/// 歌单详情页（支持左滑删除歌曲，移除记录按歌单名本地持久化）
+class _PlaylistDetail extends StatefulWidget {
+  const _PlaylistDetail({
+    required this.title,
+    required this.songs,
+    required this.client,
+    required this.settings,
+    required this.controller,
+    required this.onPlay,
+    this.coverUrl,
+    this.error,
+    this.onRetry,
+  });
+
+  final String title;
+  final List<Song> songs;
+  final SubsonicClient client;
+  final AppSettings settings;
+  final PlayerController controller;
+  final void Function(int index) onPlay;
+  final String? coverUrl;
+  final String? error;
+  final VoidCallback? onRetry;
+
+  @override
+  State<_PlaylistDetail> createState() => _PlaylistDetailState();
+}
+
+class _PlaylistDetailState extends State<_PlaylistDetail> {
+  Set<String> _removed = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRemoved();
+  }
+
+  Future<void> _loadRemoved() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'playlist_removed_${widget.title}';
+      final list = prefs.getStringList(key) ?? const <String>[];
+      if (!mounted) return;
+      setState(() => _removed = list.toSet());
+    } catch (_) {}
+  }
+
+  Future<void> _removeSong(Song song) async {
+    setState(() => _removed = {..._removed, song.id});
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+          'playlist_removed_${widget.title}', _removed.toList());
+    } catch (_) {}
+  }
+
+  /// 未被移除的歌曲在原始列表中的索引（onPlay 需要原始索引）
+  List<int> get _visibleIndices {
+    final out = <int>[];
+    for (var i = 0; i < widget.songs.length; i++) {
+      if (!_removed.contains(widget.songs[i].id)) out.add(i);
+    }
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final title = widget.title;
     final songs = widget.songs;
     final client = widget.client;
