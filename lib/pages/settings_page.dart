@@ -2,6 +2,7 @@ import 'dart:io';
 import '../toast.dart';
 
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../app_version.dart';
@@ -328,7 +329,71 @@ class SettingsPage extends StatelessWidget {
                     : '以下权限未授予：' + missing.join('、')),
               ));
             },
-          ),          ListTile(
+          ),
+          // [xmusic] 2026-09-24 悬浮窗权限入口：车机能识别的音乐应用(如 MobiMusic)通常有此权限，
+          // 提供入口可手动开启，排除该变量。
+          ListTile(
+            leading: const Icon(Icons.picture_in_picture_alt_outlined),
+            title: const Text('允许出现在其他应用上（悬浮窗）'),
+            subtitle: const Text('车机能识别的音乐应用普遍开启，点击前往系统设置开启'),
+            onTap: () async {
+              try {
+                final st = await Permission.systemAlertWindow.status;
+                if (st.isGranted) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('悬浮窗权限已开启')));
+                } else {
+                  final res = await Permission.systemAlertWindow.request();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(res.isGranted
+                          ? '悬浮窗权限已开启'
+                          : '未开启：请在系统设置-应用-音素-允许出现在其他应用上 中手动打开')));
+                }
+              } catch (_) {}
+            },
+          ),
+          // [xmusic] 2026-09-24 通知权限 + 媒体服务自检：车机识别排查入口
+          ListTile(
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('通知权限（媒体控制）'),
+            subtitle: const Text('通知栏播放控制需要；Android 12- 自动授予不弹框，点击检查状态'),
+            onTap: () async {
+              try {
+                final granted = await notificationGranted();
+                if (!context.mounted) return;
+                if (granted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('通知权限已授予，通知栏会显示播放控制')));
+                } else {
+                  final missing = await ensureAppPermissions();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(missing.contains('通知')
+                          ? '通知未授权：请在系统设置-应用-音素-通知 中手动打开'
+                          : '通知权限已授予')));
+                }
+              } catch (_) {}
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_remote_outlined),
+            title: const Text('媒体服务自检'),
+            subtitle: const Text('点击检查系统媒体服务是否就绪（车机桌面识别的前提）'),
+            onTap: () async {
+              var running = false;
+              try {
+                running = await AudioService.isRunning();
+              } catch (_) {}
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(running
+                      ? '系统媒体服务运行中：车机桌面（迪友）应能枚举到音素'
+                      : '媒体服务未运行：播放一首歌后自动拉起，再切车机桌面查看')));
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
             subtitle: const Text('Android 11+ 写入公共目录需要（如 /Music）'),
