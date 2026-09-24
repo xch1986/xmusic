@@ -24,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Song>> _daily30;
   late Future<List<Song>> _localRec;
+  late List<Map<String, dynamic>> _qqPlaylists;
 
   SubsonicClient get _client => widget.controller.client;
 
@@ -39,6 +40,8 @@ class _HomePageState extends State<HomePage> {
     _toplists = _loadToplists();
     // 每日30首：飙升榜/新歌榜/原创榜 各取前10去重（避开热歌榜，避免与下方排行榜网格重复）
     _daily30 = _loadDaily30();
+    // QQ 精选歌单（硬编码 dissid，本地列表零网络请求；点进去才拉歌曲）
+    _qqPlaylists = ext.qqPlaylists();
     // 本地推荐
     _localRec = _client.randomSongs(size: 20);
   }
@@ -154,6 +157,35 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
+  /// QQ 精选歌单详情：qzone 老接口拉歌曲（songmid），进列表页，播放走 QQ→网易云/酷我兜底。
+  Future<void> _openQqPlaylist(String name, String dissid) async {
+    final ext = widget.controller.external;
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    List<Song> songs;
+    String? error;
+    try {
+      songs = await ext.qqPlaylistSongs(dissid, limit: 100).timeout(const Duration(seconds: 20));
+    } catch (e) {
+      songs = const [];
+      error = '加载失败（$e）';
+    }
+    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (!mounted) return;
+    Navigator.pop(context);
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _PlaylistDetail(
+        title: name,
+        songs: songs,
+        client: _client,
+        settings: widget.settings,
+        controller: widget.controller,
+        error: error,
+        onRetry: () => _openQqPlaylist(name, dissid),
+        onPlay: (i) => _playSongs(songs, i),
+      ),
+    ));
+  }
+
   /// 本地推荐：点歌单卡先进歌单列表页（不再点卡片直接播单曲）
   Future<void> _openLocalRec(List<Song> songs) async {
     await Navigator.of(context).push(MaterialPageRoute(
@@ -185,7 +217,10 @@ class _HomePageState extends State<HomePage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
-        child: ListView(
+        child: Container(
+          // [xmusic] 2026-09-24 车机横屏参考网易云车机版：深色底 #171717；手机端保持原浅色
+          color: isCarScreen(context) ? const Color(0xFF171717) : null,
+          child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
             // 每日30首大卡片
@@ -200,7 +235,9 @@ class _HomePageState extends State<HomePage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text('排行榜',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isCarScreen(context) ? Colors.white : null)),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _toplists,
@@ -208,20 +245,21 @@ class _HomePageState extends State<HomePage> {
                 if (!snap.hasData || snap.data!.isEmpty) {
                   return const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('加载排行榜...')));
                 }
-                // 网易云前8 + QQ前4（有 cookie 时）
+                // 网易云前8 + QQ前4
                 final ne = snap.data!.where((t) => t['source'] != 'qq').take(8).toList();
                 final qq = snap.data!.where((t) => t['source'] == 'qq').take(4).toList();
                 final lists = [...ne, ...qq];
-                // [xmusic] 2026-09-24 车机排行榜卡片缩小：一行4个（原3个太大），卡片更扁
+                // [xmusic] 2026-09-24 车机横屏参考网易云车机版：一行6个、方形封面+下方标题，
+                // 卡片更小不占满整屏；手机仍 3 列。
                 final car = isCarScreen(context);
                 return GridView.count(
-                  crossAxisCount: car ? 4 : 3,
+                  crossAxisCount: car ? 6 : 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: car ? 12 : 16),
-                  mainAxisSpacing: car ? 8 : 10,
-                  crossAxisSpacing: car ? 8 : 10,
-                  childAspectRatio: car ? 1.3 : 1.1,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  mainAxisSpacing: car ? 12 : 10,
+                  crossAxisSpacing: car ? 10 : 10,
+                  childAspectRatio: car ? 0.92 : 1.1,
                   children: lists.map((t) => _toplistCard(
                     t['name'] as String,
                     t['id'] as String,
@@ -231,11 +269,35 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
+            // QQ 精选歌单（用户强烈要求；硬编码 dissid，点进才拉歌曲）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text('QQ歌单',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isCarScreen(context) ? Colors.white : null)),
+            ),
+            GridView.count(
+              crossAxisCount: isCarScreen(context) ? 6 : 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              mainAxisSpacing: isCarScreen(context) ? 12 : 10,
+              crossAxisSpacing: isCarScreen(context) ? 10 : 10,
+              childAspectRatio: isCarScreen(context) ? 0.92 : 1.1,
+              children: _qqPlaylists.map((p) => _qqPlaylistCard(
+                p['name'] as String,
+                p['dissid'] as String,
+              )).toList(),
+            ),
             // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
               child: Text('歌单推荐',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isCarScreen(context) ? Colors.white : null),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -272,6 +334,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -378,6 +441,50 @@ class _HomePageState extends State<HomePage> {
 
   Widget _toplistCard(String name, String id, String? coverUrl,
       {String source = ''}) {
+    // [xmusic] 车机横屏参考网易云车机版：方封面 + 下方标题；手机保持原铺满卡。
+    if (isCarScreen(context)) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => source == 'qq'
+            ? _openQqToplist(name, id, coverUrl)
+            : _openPlaylist(name, id, coverUrl: coverUrl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                        placeholder: (_, __) => Container(color: const Color(0xFF262626)),
+                        errorWidget: (_, __, ___) => Container(color: const Color(0xFF262626)),
+                      )
+                    : Container(
+                        color: const Color(0xFF262626),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(8),
+                        child: Text(name,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      );
+    }
     final theme = Theme.of(context);
     return Material(
       borderRadius: BorderRadius.circular(12),
@@ -435,6 +542,47 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+  /// QQ 精选歌单卡（网易云车机版风格：方形圆角封面 + 下方标题，无封面图用深灰渐变+图标）。
+  Widget _qqPlaylistCard(String name, String dissid) {
+    final car = isCarScreen(context);
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openQqPlaylist(name, dissid),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: car ? const Color(0xFF262626) : theme.colorScheme.surfaceContainerHighest,
+              ),
+              child: Icon(
+                Icons.playlist_play_rounded,
+                color: car ? Colors.white70 : theme.colorScheme.onSurfaceVariant,
+                size: car ? 32 : 28,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: car ? 13 : 12,
+              color: car ? Colors.white : theme.textTheme.bodySmall?.color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
 /// 歌单详情页（支持左滑删除歌曲，移除记录按歌单名本地持久化）
 class _PlaylistDetail extends StatefulWidget {
