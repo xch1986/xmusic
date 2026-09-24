@@ -336,6 +336,43 @@ class PlayerController extends ChangeNotifier {
     if (autoplay) {
       await player.play();
     }
+    // [xmusic] 2026-09-24 试听片段检测（用户反馈：排行榜/每日30首部分歌只有 11/30 秒）：
+    // 酷我 /nf/ 试听已在 external_api.kuwoStreamUrl 拦截；这里兜底检测"声明时长>60s
+    // 但实际可播时长<40s"的试听（如 QQ vkey 非会员 30s 试听），自动换 GDStudio 网易云完整版重播。
+    if (s.fromExternal && (s.durationSec ?? 0) > 60 && token == _playToken) {
+      try {
+        await player.processingStateStream.firstWhere(
+          (st) => st == ProcessingState.ready,
+        ).timeout(const Duration(seconds: 8));
+        final realDur = player.duration?.inSeconds ?? 0;
+        if (realDur > 0 && realDur < 40 && token == _playToken) {
+          // 试听确认：用歌名+歌手匹配网易云，GDStudio 对 VIP 歌实测也返回完整文件
+          final m = await external
+              .matchNetease(s.title, s.artist)
+              .timeout(const Duration(seconds: 10));
+          if (m != null && token == _playToken) {
+            final u2 = await external
+                .streamUrlFor(m.id, source: 'netease')
+                .timeout(const Duration(seconds: 10));
+            if (u2 != null && u2.isNotEmpty && token == _playToken) {
+              await player.stop();
+              try {
+                await player.processingStateStream.firstWhere(
+                  (st) => st == ProcessingState.idle,
+                ).timeout(const Duration(milliseconds: 1500));
+              } catch (_) {}
+              await player.setUrl(u2);
+              index = i;
+              notifyListeners();
+              _applyLoopMode();
+              _loadLyrics();
+              if (autoplay) await player.play();
+              unawaited(saveLastState());
+            }
+          }
+        }
+      } catch (_) {}
+    }
     // 每次切歌/开始播放都保存最新状态（曲目+进度），
     // 退出或清后台后恢复的就是退出时正在播的歌，而不是停留在最初点开的那首。
     unawaited(saveLastState());
