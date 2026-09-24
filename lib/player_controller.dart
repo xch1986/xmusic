@@ -68,6 +68,8 @@ class PlayerController extends ChangeNotifier {
   int _playToken = 0;
   /// 自动封面令牌：切歌/连点只允许最新一次自动封面生效。
   int _coverToken = 0;
+  /// 正在解析播放地址（外源歌兜底链较长，UI 据此显示"加载中"，避免用户以为没反应）。
+  bool loadingUrl = false;
   String? lastError;
   Duration _prevStuckPos = Duration.zero;
 
@@ -159,27 +161,75 @@ class PlayerController extends ChangeNotifier {
         return url ?? '';
       }
       if (src == 'qq') {
-        // vkey 直连受 IP/会员风控（2026 实测匿名/cookie 均拿不到 purl）：失败后网易云兜底，再酷我兜底
-        final url = await external.qqStreamUrl(s.id, cookie: settings.qqCookie);
-        if (url != null && url.isNotEmpty) return url;
+        // vkey 直连受 IP/会员风控（2026 实测匿名/cookie 均拿不到 purl）：失败后并行兜底。
+        // 并行：网易云(GDStudio) 与 酷我 同时尝试，先返回非空者先用，避免串行 60-90s 卡死。
         try {
-          final m = await external.matchNetease(s.title, s.artist);
-          if (m != null) {
-            final u = await external.streamUrlFor(m.id, source: 'netease');
-            if (u != null && u.isNotEmpty) return u;
+          final url = await external
+              .qqStreamUrl(s.id, cookie: settings.qqCookie)
+              .timeout(const Duration(seconds: 8));
+          if (url != null && url.isNotEmpty) return url;
+        } catch (_) {}
+        final ne = () async {
+          try {
+            final m = await external
+                .matchNetease(s.title, s.artist)
+                .timeout(const Duration(seconds: 10));
+            if (m == null) return '';
+            final u = await external
+                .streamUrlFor(m.id, source: 'netease')
+                .timeout(const Duration(seconds: 10));
+            return u ?? '';
+          } catch (_) {
+            return '';
           }
-        } catch (_) {}
-        try {
-          final kw = await external.matchKuwo(s.title, s.artist);
-          if (kw != null && kw.isNotEmpty) return kw;
-        } catch (_) {}
-        return '';
+        };
+        final kw = () async {
+          try {
+            final u = await external
+                .matchKuwo(s.title, s.artist)
+                .timeout(const Duration(seconds: 15));
+            return u ?? '';
+          } catch (_) {
+            return '';
+          }
+        };
+        final f1 = ne();
+        final f2 = kw();
+        var fromF1 = false;
+        final c1 = f1.then((v) {
+          fromF1 = true;
+          return v;
+        });
+        final c2 = f2.then((v) {
+          fromF1 = false;
+          return v;
+        });
+        final first = await Future.any([c1, c2]);
+        if (first.isNotEmpty) return first;
+        final other = await (fromF1 ? f2 : f1);
+        if (other.isNotEmpty) return other;
+        return first;
       }
       if (src == 'kuwo') {
-        final url = await external.kuwoStreamUrl(s.id);
+        final url = await external
+            .kuwoStreamUrl(s.id)
+            .timeout(const Duration(seconds: 12));
         return url ?? '';
       }
-      return (await external.streamUrlFor(s.id, source: 'netease')) ?? '';
+      // netease 等其余源：GDStudio 失败后加酷我兜底（每日30首等网易云匹配源）
+      try {
+        final u = await external
+            .streamUrlFor(s.id, source: 'netease')
+            .timeout(const Duration(seconds: 12));
+        if (u != null && u.isNotEmpty) return u;
+      } catch (_) {}
+      try {
+        final kw = await external
+            .matchKuwo(s.title, s.artist)
+            .timeout(const Duration(seconds: 15));
+        if (kw != null && kw.isNotEmpty) return kw;
+      } catch (_) {}
+      return '';
     }
     return client.streamUrl(s.id).toString();
   }
@@ -244,7 +294,19 @@ class PlayerController extends ChangeNotifier {
     await ensureSystemAudioHandler();
     final token = ++_playToken;
     final s = queue[i];
-    final url = await _mediaUrlForSong(s);
+    // 外源歌兜底链较长，先置"加载中"，UI 显示加载反馈，避免用户以为点歌没反应
+    loadingUrl = true;
+    notifyListeners();
+    String url;
+    try {
+      url = await _mediaUrlForSong(s);
+    } finally {
+      // 无论成功失败都复位加载态（成功由播放器缓冲态接管，失败由错误提示接管）
+      if (token == _playToken) {
+        loadingUrl = false;
+        notifyListeners();
+      }
+    }
     if (token != _playToken) return; // 期间已切歌，放弃本次加载
     if (url.isEmpty) throw '无法获取播放地址';
     _updateMediaItem(s);
