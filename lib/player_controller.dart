@@ -355,6 +355,20 @@ class PlayerController extends ChangeNotifier {
                 .streamUrlFor(m.id, source: 'netease')
                 .timeout(const Duration(seconds: 10));
             if (u2 != null && u2.isNotEmpty && token == _playToken) {
+              // [xmusic] 2026-09-24 同步更新队列元数据为网易云匹配结果：
+              // 换源重播后界面必须显示"实际在播的歌"（原实现只换 URL 不换标题/歌手/专辑，
+              // 若匹配到同名不同版/翻唱，会出现播放与显示对不上号）。
+              queue[i] = Song(
+                id: m.id,
+                title: m.title,
+                artist: m.artist,
+                album: m.album,
+                coverArt: m.coverArt,
+                coverUrl: m.coverUrl,
+                durationSec: m.durationSec,
+                fromExternal: true,
+                externalSource: 'netease',
+              );
               await player.stop();
               try {
                 await player.processingStateStream.firstWhere(
