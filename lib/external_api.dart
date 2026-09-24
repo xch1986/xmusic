@@ -467,6 +467,66 @@ class ExternalApi {
     }
   }
 
+  /// QQ 精选歌单（硬编码 dissid）：歌单列表接口 fcg_get_diss_by_tag 2026 已废弃
+  /// （code=0 但 list 恒空），故 dissid 直接写死（从 y.qq.com/n/ryqq/category 分类页抓取）。
+  /// 点进歌单走 qzone 老接口 fcg_ucc_getcdinfo_byids_cp（匿名可用，实测 code=0）。
+  static const List<Map<String, String>> _qqPlaylists = [
+    {'dissid': '7799808010', 'name': '抖音热门·近期爆火'},
+    {'dissid': '7744311018', 'name': '千首抖音热歌'},
+    {'dissid': '9729526941', 'name': '经典老歌·8090怀旧'},
+    {'dissid': '9748705593', 'name': '开车DJ热歌'},
+    {'dissid': '9566642814', 'name': '跑步运动音乐'},
+    {'dissid': '9282300617', 'name': '华语情歌精选'},
+    {'dissid': '9616083182', 'name': '抖音热门DJ'},
+    {'dissid': '9553767949', 'name': '钢琴轻音乐'},
+  ];
+
+  /// QQ 精选歌单列表（不发网络请求，纯本地硬编码；封面由卡片渐变色承担，
+  /// 避免点进每个歌单都要拉一遍上千首歌曲只为拿封面）。
+  List<Map<String, dynamic>> qqPlaylists() => _qqPlaylists
+      .map((p) => {'dissid': p['dissid'], 'name': p['name']})
+      .toList();
+
+  /// QQ 歌单歌曲（qzone 老接口，匿名可用）。songlist 平铺字段：
+  /// songmid/songname/singer[].name/albumname/albummid/interval。
+  Future<List<Song>> qqPlaylistSongs(String dissid, {int limit = 100}) async {
+    if (dissid.trim().isEmpty) return const [];
+    final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+        .replace(queryParameters: {
+      'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+      'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+      'platform': 'y.json', 'needNewCode': '0',
+      'loginUin': '0', 'hostUin': '0',
+    });
+    try {
+      final j = await _getRaw(uri, _hQq, timeoutSec: 15) as Map<String, dynamic>;
+      final cdlist = (j['cdlist'] as List?) ?? const [];
+      if (cdlist.isEmpty) return const [];
+      final songs = (cdlist.first as Map)['songlist'] as List? ?? const [];
+      return songs.cast<Map<String, dynamic>>().map((t) {
+        final singers = ((t['singer'] as List?) ?? [])
+            .map((s) => (s as Map)['name']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(' / ');
+        final albumMid = (t['albummid'] ?? '').toString();
+        return Song(
+          id: (t['songmid'] ?? '').toString(),
+          title: (t['songname'] ?? '').toString(),
+          artist: singers.isEmpty ? '未知' : singers,
+          album: (t['albumname'] ?? '').toString(),
+          coverUrl: albumMid.isEmpty
+              ? null
+              : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+          durationSec: (t['interval'] as num?)?.toInt(),
+          fromExternal: true,
+          externalSource: 'qq',
+        );
+      }).where((s) => s.id.isNotEmpty).take(limit).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
   Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
     final songs = await qqToplistCp('4', limit: count);
@@ -776,10 +836,11 @@ class ExternalApi {
     }
   }
 
-  /// 酷我直连兜底：按歌名+歌手搜酷我并解析播放 URL（QQ/B站 播放失败时用，实测可用）。
-  /// [xmusic] 2026-09-24 修复：antiserver 对 VIP 歌返回 /nf/ 试听（11秒），
-  /// kuwoStreamUrl 已把试听视为失败；此处命中同名歌后逐首尝试，全试听则返回 null。
-  Future<String?> matchKuwo(String title, String artist) async {
+  /// 酷我直连兜底：按歌名+歌手搜酷我并解析播放 URL，同时返回命中的曲目元数据。
+  /// [xmusic] 2026-09-24 修复"播放与显示/歌词对不上"：原实现只返回 URL 不返回曲目，
+  /// 上层队列仍显示原曲元数据、按原曲 ID 取歌词；现在返回 (url, 命中Song)，
+  /// 播放成功后上层把队列项同步成实际在播的这首歌（标题/歌手/专辑/封面/歌词源全部对齐）。
+  Future<(String, Song)?> matchKuwoMatched(String title, String artist) async {
     try {
       final hits = await searchKuwo('$title $artist'.trim(), limit: 5);
       if (hits.isEmpty) return null;
@@ -789,9 +850,8 @@ class ExternalApi {
           .toLowerCase();
       final nt = norm(title);
       final na = norm(artist);
-      // [xmusic] 2026-09-24 修复"播放曲目与显示对不上号"：兜底换源必须歌名+歌手都匹配，
-      // 否则宁可返回 null（上层继续其他源或失败提示），绝不强行播放无关歌曲（原实现
-      // 最后无条件返回 hits.first，导致"素颜"播成同名/翻唱/别的歌）。
+      // 兜底换源必须歌名+歌手都匹配，否则宁可返回 null（上层继续其他源或失败提示），
+      // 绝不强行播放无关歌曲（原实现最后无条件返回 hits.first，导致播成同名/翻唱/别的歌）。
       for (final h in hits) {
         final hn = norm(h.title);
         final ha = norm(h.artist);
@@ -801,7 +861,7 @@ class ExternalApi {
             ha.contains(na.split(' ').first) || na.contains(ha.split(' ').first);
         if (titleOk && artOk) {
           final u = await kuwoStreamUrl(h.id);
-          if (u != null && u.isNotEmpty) return u;
+          if (u != null && u.isNotEmpty) return (u, h);
         }
       }
       return null; // 无歌名+歌手都匹配的条目，不强行兜底
