@@ -212,15 +212,16 @@ class _HomePageState extends State<HomePage> {
                 final ne = snap.data!.where((t) => t['source'] != 'qq').take(8).toList();
                 final qq = snap.data!.where((t) => t['source'] == 'qq').take(4).toList();
                 final lists = [...ne, ...qq];
-                // 车机上卡片太大会占满一行，改一行三个
+                // [xmusic] 2026-09-24 车机排行榜卡片缩小：一行4个（原3个太大），卡片更扁
+                final car = isCarScreen(context);
                 return GridView.count(
-                  crossAxisCount: 3,
+                  crossAxisCount: car ? 4 : 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.1,
+                  padding: const EdgeInsets.symmetric(horizontal: car ? 12 : 16),
+                  mainAxisSpacing: car ? 8 : 10,
+                  crossAxisSpacing: car ? 8 : 10,
+                  childAspectRatio: car ? 1.3 : 1.1,
                   children: lists.map((t) => _toplistCard(
                     t['name'] as String,
                     t['id'] as String,
