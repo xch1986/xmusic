@@ -208,7 +208,10 @@ class SettingsPage extends StatelessWidget {
       data: _car ? _mq.copyWith(textScaler: const TextScaler.linear(1.35)) : _mq,
       child: Builder(
         builder: (ctx) {
-          return Scaffold(
+          return IconTheme(
+        // [xmusic] 2026-09-24 车机图标适配：设置页列表图标整体放大
+        data: IconThemeData(size: _car ? 28 : 24),
+        child: Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
@@ -370,7 +373,8 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 24),
         ],
       ),
-    );
+      ),
+      );
         },
       ),
     );
