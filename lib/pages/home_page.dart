@@ -24,7 +24,6 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Song>> _daily30;
   late Future<List<Song>> _localRec;
-  late Future<List<Song>> _biliHot;
 
   SubsonicClient get _client => widget.controller.client;
 
@@ -42,7 +41,6 @@ class _HomePageState extends State<HomePage> {
     _daily30 = _loadDaily30();
     // 本地推荐
     _localRec = _client.randomSongs(size: 20);
-    _biliHot = ext.biliHotVideos(limit: 15).timeout(const Duration(seconds: 15)).catchError((_) => <Song>[]);
   }
 
   /// 排行榜：网易云榜单 + （设置了 QQ cookie 时）QQ 榜单混排（网易云前8 + QQ前4）。
@@ -156,20 +154,6 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
-  /// B站热门：点卡片先进歌单列表页（像榜单一样），再点歌曲播放整张歌单
-  Future<void> _openBiliHot(List<Song> songs) async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _PlaylistDetail(
-        title: 'B站热门',
-        songs: songs,
-        client: _client,
-        settings: widget.settings,
-        controller: widget.controller,
-        onPlay: (i) => _playSongs(songs, i),
-      ),
-    ));
-  }
-
   /// 本地推荐：点歌单卡先进歌单列表页（不再点卡片直接播单曲）
   Future<void> _openLocalRec(List<Song> songs) async {
     await Navigator.of(context).push(MaterialPageRoute(
@@ -246,7 +230,7 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            // B站热门 + 本地推荐：两个歌单卡并排（点击进歌单列表页，不是单曲卡）
+            // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
               child: Text('歌单推荐',
@@ -254,68 +238,36 @@ class _HomePageState extends State<HomePage> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: FutureBuilder<List<Song>>(
-                      future: _biliHot,
-                      builder: (context, snap) {
-                        if (!snap.hasData || snap.data!.isEmpty) {
-                          return _miniCard(
-                            title: 'B站热门',
-                            subtitle: '加载中...',
-                            icon: Icons.ondemand_video_rounded,
-                            colors: const [Color(0xFF5B7FFF), Color(0xFF8A6FFF)],
-                            onTap: null,
-                          );
-                        }
-                        final songs = snap.data!;
-                        return _miniCard(
-                          title: 'B站热门',
-                          subtitle: '${songs.length > 10 ? 10 : songs.length}首 · 视频热播',
-                          icon: Icons.ondemand_video_rounded,
-                          colors: const [Color(0xFF5B7FFF), Color(0xFF8A6FFF)],
-                          onTap: () => _openBiliHot(songs),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FutureBuilder<List<Song>>(
-                      future: _localRec,
-                      builder: (context, snap) {
-                        if (snap.hasError) {
-                          return _miniCard(
-                            title: '本地推荐',
-                            subtitle: '加载失败·重试',
-                            icon: Icons.queue_music_rounded,
-                            colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                            onTap: () => setState(_load),
-                          );
-                        }
-                        if (!snap.hasData || snap.data!.isEmpty) {
-                          return _miniCard(
-                            title: '本地推荐',
-                            subtitle: '加载中...',
-                            icon: Icons.queue_music_rounded,
-                            colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                            onTap: null,
-                          );
-                        }
-                        final songs = snap.data!;
-                        return _miniCard(
-                          title: '本地推荐',
-                          subtitle: '${songs.length > 12 ? 12 : songs.length}首 · 随机推荐',
-                          icon: Icons.queue_music_rounded,
-                          colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                          onTap: () => _openLocalRec(songs),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+              child: FutureBuilder<List<Song>>(
+                future: _localRec,
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return _miniCard(
+                      title: '本地推荐',
+                      subtitle: '加载失败·重试',
+                      icon: Icons.queue_music_rounded,
+                      colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
+                      onTap: () => setState(_load),
+                    );
+                  }
+                  if (!snap.hasData || snap.data!.isEmpty) {
+                    return _miniCard(
+                      title: '本地推荐',
+                      subtitle: '加载中...',
+                      icon: Icons.queue_music_rounded,
+                      colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
+                      onTap: null,
+                    );
+                  }
+                  final songs = snap.data!;
+                  return _miniCard(
+                    title: '本地推荐',
+                    subtitle: '${songs.length > 12 ? 12 : songs.length}首 · 随机推荐',
+                    icon: Icons.queue_music_rounded,
+                    colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
+                    onTap: () => _openLocalRec(songs),
+                  );
+                },
               ),
             ),
           ],
@@ -374,7 +326,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 半宽歌单卡（B站热门/本地推荐）：渐变底 + 图标 + 标题 + 副标题，点击进歌单页。
+  /// 半宽歌单卡（本地推荐）：渐变底 + 图标 + 标题 + 副标题，点击进歌单页。
   Widget _miniCard({
     required String title,
     required String subtitle,
