@@ -757,15 +757,23 @@ class ExternalApi {
           .replaceAll(RegExp(r'[\s\p{P}]'), '')
           .toLowerCase();
       final nt = norm(title);
+      final na = norm(artist);
+      // [xmusic] 2026-09-24 修复"播放曲目与显示对不上号"：兜底换源必须歌名+歌手都匹配，
+      // 否则宁可返回 null（上层继续其他源或失败提示），绝不强行播放无关歌曲（原实现
+      // 最后无条件返回 hits.first，导致"素颜"播成同名/翻唱/别的歌）。
       for (final h in hits) {
         final hn = norm(h.title);
-        if (hn == nt || hn.contains(nt) || nt.contains(hn)) {
+        final ha = norm(h.artist);
+        final titleOk = hn == nt || hn.contains(nt) || nt.contains(hn);
+        final artOk = na.isEmpty ||
+            ha == na || ha.contains(na) || na.contains(ha) ||
+            ha.contains(na.split(' ').first) || na.contains(ha.split(' ').first);
+        if (titleOk && artOk) {
           final u = await kuwoStreamUrl(h.id);
           if (u != null && u.isNotEmpty) return u;
         }
       }
-      final u = await kuwoStreamUrl(hits.first.id);
-      return (u != null && u.isNotEmpty) ? u : null;
+      return null; // 无歌名+歌手都匹配的条目，不强行兜底
     } catch (_) {
       return null;
     }
