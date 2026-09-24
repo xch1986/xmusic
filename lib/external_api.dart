@@ -395,13 +395,30 @@ class ExternalApi {
   ];
 
   Future<List<Map<String, dynamic>>> qqToplists({String cookie = ''}) async {
-    return _qqCharts
-        .map((c) => {
-              'id': c['id'],
-              'name': c['name'],
-              'coverImgUrl': c['cover'],
-            })
-        .toList();
+    // [xmusic] 2026-09-24 拉取真实榜单封面：fcg_v8_toplist_cp.fcg 返回 topinfo.pic（匿名可用），
+    // http 转 https 供 CachedNetworkImage 加载（http 会被 Android 明文流量拦截）。
+    final out = <Map<String, dynamic>>[];
+    for (final c in _qqCharts) {
+      var cover = c['cover'] ?? '';
+      try {
+        final uri = Uri.parse('https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg')
+            .replace(queryParameters: {
+          'topid': c['id']!,
+          'page': '1',
+          'toptype': 'top',
+          'format': 'json',
+          'platform': 'h5',
+          'needNewCode': '1',
+        });
+        final j = await _getRaw(uri, _hQq) as Map<String, dynamic>;
+        final pic = (j['topinfo'] as Map?)?['pic']?.toString() ?? '';
+        if (pic.isNotEmpty) {
+          cover = pic.replaceFirst('http://', 'https://');
+        }
+      } catch (_) {}
+      out.add({'id': c['id'], 'name': c['name'], 'coverImgUrl': cover});
+    }
+    return out;
   }
 
   /// QQ 榜单歌曲（topid 榜单 id，songmid 作为 id）。
