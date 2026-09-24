@@ -356,10 +356,14 @@ class _ArtistTabState extends State<_ArtistTab> {
     _future = widget.client.artists();
   }
 
-  /// 按歌手名搜封面当头像：网易云歌手搜索接口 2026 起失效（返回 400），
-  /// 改用酷狗搜索该歌手的热门歌曲封面（union_cover）代替，保证列表"有图"。
+  /// 按歌手名取歌手头像：优先网易云 type=100 歌手搜索的真实头像（用户要的是"歌手图片"），
+  /// 网易云失败/无图时回退酷狗热门歌曲封面；都失败显示首字圆标。
   Future<String?> _artistImage(String name) {
     return _imgCache.putIfAbsent(name, () async {
+      try {
+        final avatar = await widget.controller.external.neteaseArtistAvatar(name);
+        if (avatar != null && avatar.isNotEmpty) return avatar;
+      } catch (_) {}
       try {
         return await widget.controller.external.kugouSearchCover(name);
       } catch (_) {
@@ -391,7 +395,10 @@ class _ArtistTabState extends State<_ArtistTab> {
               imageUrl: url,
               width: 44, height: 44,
               fit: BoxFit.cover,
-              httpHeaders: _h163,
+              // [xmusic] 网易云图需带 Referer 防防盗链；酷狗图床用通用 UA
+              httpHeaders: url.contains('music.126.net')
+                  ? const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'}
+                  : const {'User-Agent': 'Mozilla/5.0'},
               errorWidget: (_, __, ___) => _initialCircle(theme, ar.name),
               placeholder: (_, __) => _initialCircle(theme, ar.name),
             ),
