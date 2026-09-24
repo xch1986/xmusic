@@ -372,18 +372,11 @@ class _ArtistTabState extends State<_ArtistTab> {
     });
   }
 
-  /// 歌手头像：服务器 coverArt 优先；没有时按名查网易云头像，再失败显示首字圆标。
+  /// 歌手头像：网易云真实头像优先（用户要求"歌手图片"），失败回退酷狗歌曲封面，
+  /// 再失败用服务器 coverArt（Navidrome artist 的 coverArt 常是专辑图且可能缺失），
+  /// 全失败显示首字圆标。
   Widget _artistLeading(BuildContext context, Artist ar) {
     final theme = Theme.of(context);
-    if (ar.coverArt != null && ar.coverArt!.isNotEmpty) {
-      return CoverImage(
-        client: widget.client,
-        coverId: ar.coverArt,
-        size: 44,
-        radius: 8,
-        requestSize: 120,
-      );
-    }
     return FutureBuilder<String?>(
       future: _artistImage(ar.name),
       builder: (context, snap) {
@@ -402,6 +395,16 @@ class _ArtistTabState extends State<_ArtistTab> {
               errorWidget: (_, __, ___) => _initialCircle(theme, ar.name),
               placeholder: (_, __) => _initialCircle(theme, ar.name),
             ),
+          );
+        }
+        // 网易云/酷狗都没图：服务器 coverArt 兜底（可能缺失，显示失败则圆标）
+        if (ar.coverArt != null && ar.coverArt!.isNotEmpty) {
+          return CoverImage(
+            client: widget.client,
+            coverId: ar.coverArt,
+            size: 44,
+            radius: 8,
+            requestSize: 120,
           );
         }
         return _initialCircle(theme, ar.name);
