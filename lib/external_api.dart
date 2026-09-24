@@ -646,14 +646,28 @@ class ExternalApi {
 
   /// 每日30首（无 QQ cookie 时）：酷狗 TOP500 → 网易云匹配播放。
   Future<List<Song>> daily30FromKugou({int count = 30}) async {
-    final raw = await kugouRankRaw('8888', page: 1, pagesize: count + 5);
+    // [xmusic] 2026-09-24 优化：TOP500 + 飙升榜混合取歌（各一半），去重后匹配网易云，
+    // 更贴近"每日30首·飙升/新歌/原创推荐"文案，且减少与排行榜网格（QQ热歌榜）重复。
+    final half = (count / 2).ceil();
+    final raw = <Map<String, String>>[];
+    for (final rid in ['8888', '6666']) {
+      try {
+        raw.addAll(await kugouRankRaw(rid, page: 1, pagesize: half + 3));
+      } catch (_) {}
+    }
     final out = <Song>[];
+    final seen = <String>{};
     for (final r in raw) {
       final title = r['title'] ?? '';
+      final artist = r['artist'] ?? '';
       if (title.isEmpty) continue;
-      final s = await matchNetease(title, r['artist'] ?? '');
-      if (s != null) out.add(s);
-      if (out.length >= count) break;
+      final key = '$title|$artist';
+      if (!seen.add(key)) continue; // 跨榜去重
+      final s = await matchNetease(title, artist);
+      if (s != null) {
+        out.add(s);
+        if (out.length >= count) break;
+      }
     }
     return out;
   }
