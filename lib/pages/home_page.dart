@@ -218,7 +218,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisCount: car ? 4 : 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: car ? 12 : 16),
+                  padding: EdgeInsets.symmetric(horizontal: car ? 12 : 16),
                   mainAxisSpacing: car ? 8 : 10,
                   crossAxisSpacing: car ? 8 : 10,
                   childAspectRatio: car ? 1.3 : 1.1,
