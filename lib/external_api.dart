@@ -516,6 +516,39 @@ class ExternalApi {
     }
   }
 
+  /// 网易云按歌手名搜索真实歌手头像（type=100 歌手搜索）。
+  /// [xmusic] 2026-09-24 实测：music.163.com/api/search/get?type=100 已恢复可用
+  /// （返回 artists[].picUrl 歌手本人照片；0.3.216 时期曾 400 失效被放弃）。
+  /// 用于音乐库歌手列表头像，优先于酷狗歌曲封面（用户要求"歌手图片"而非歌曲封面）。
+  Future<String?> neteaseArtistAvatar(String name) async {
+    if (name.trim().isEmpty) return null;
+    try {
+      final uri = Uri.parse('https://music.163.com/api/search/get')
+          .replace(queryParameters: {
+        's': name.trim(), 'type': '100', 'offset': '0', 'limit': '3',
+      });
+      final j = await _getRaw(uri, _h163, timeoutSec: 10) as Map<String, dynamic>;
+      final artists = (((j['result'] as Map?)?['artists']) as List?) ?? [];
+      for (final a in artists.cast<Map<String, dynamic>>()) {
+        // 精确匹配歌手名（防同名歌手）
+        final an = (a['name'] ?? '').toString();
+        final alias = ((a['alias'] as List?) ?? []).cast<String>();
+        if (an == name.trim() || alias.any((x) => x == name.trim())) {
+          final pic = a['picUrl']?.toString() ?? '';
+          if (pic.isNotEmpty) return pic;
+        }
+      }
+      // 无精确匹配：取第一个歌手（搜索结果首位通常是目标歌手）
+      if (artists.isNotEmpty) {
+        final pic = (artists.first as Map)['picUrl']?.toString() ?? '';
+        if (pic.isNotEmpty) return pic;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 网易云按 歌名+歌手 搜索匹配（酷狗等源的播放兜底）。
   /// 网易云搜索接口不返回 picUrl（album 只有 picId）；用 song/detail 补封面。
   Future<Song> _withNeteaseCover(Song s) async {
@@ -673,6 +706,8 @@ class ExternalApi {
   }
 
   /// 酷我音乐播放地址（antiserver anti.s，2026-09 实测可用，返回纯文本 URL）。
+  /// [xmusic] 2026-09-24 实测：VIP 歌曲 antiserver 返回 11 秒试听片段，
+  /// URL 路径含 /nf/（如 .../nf/resource/...），完整版无 /nf/。调用方应视为不可播。
   Future<String?> kuwoStreamUrl(String rid) async {
     if (rid.isEmpty) return null;
     final uri = Uri.parse('http://antiserver.kuwo.cn/anti.s').replace(queryParameters: {
@@ -694,11 +729,16 @@ class ExternalApi {
         try {
           final j = jsonDecode(url) as Map<String, dynamic>;
           final u = j['url']?.toString() ?? '';
-          if (u.isNotEmpty && u.startsWith('http')) return u;
+          if (u.isNotEmpty && u.startsWith('http')) {
+            // [xmusic] /nf/ = 试听片段，返回 null 视为受限不可播
+            if (u.contains('/nf/')) return null;
+            return u;
+          }
         } catch (_) {}
         return null;
       }
       if (url.isEmpty || !url.startsWith('http')) return null;
+      if (url.contains('/nf/')) return null; // [xmusic] 试听片段不可播
       return url;
     } catch (_) {
       return null;
@@ -706,6 +746,8 @@ class ExternalApi {
   }
 
   /// 酷我直连兜底：按歌名+歌手搜酷我并解析播放 URL（QQ/B站 播放失败时用，实测可用）。
+  /// [xmusic] 2026-09-24 修复：antiserver 对 VIP 歌返回 /nf/ 试听（11秒），
+  /// kuwoStreamUrl 已把试听视为失败；此处命中同名歌后逐首尝试，全试听则返回 null。
   Future<String?> matchKuwo(String title, String artist) async {
     try {
       final hits = await searchKuwo('$title $artist'.trim(), limit: 5);
@@ -760,24 +802,29 @@ class ExternalApi {
     }
   }
 
-  /// B站视频音轨直连：view 拿 cid → playurl 拿音频流（选最高码率）。
+  /// B站视频音轨直连：view 拿 cid+bvid → playurl 拿音频流（选最高码率）。
   /// 兼容 bvid（BV 开头）与 aid（纯数字）两种 id。
+  /// [xmusic] 2026-09 实测：playurl 接口用 aid 参数一律 -400（新旧 aid 均验证），
+  /// 必须改用 view 返回的 bvid 参数才能正常取流。因此统一从 view 取 bvid 再请求。
   Future<String?> biliStreamUrl(String bvidOrAid) async {
     final id = bvidOrAid.trim();
     if (id.isEmpty) return null;
     final isBv = RegExp(r'^[Bb][Vv][0-9A-Za-z]+$').hasMatch(id);
-    final videoParam = isBv ? 'bvid=$id' : 'aid=$id';
+    final viewParam = isBv ? 'bvid=$id' : 'aid=$id';
     try {
       final view = await _getRaw(
-        Uri.parse('https://api.bilibili.com/x/web-interface/view?$videoParam'),
+        Uri.parse('https://api.bilibili.com/x/web-interface/view?$viewParam'),
         _hBili,
       ) as Map<String, dynamic>;
       final data = view['data'] as Map<String, dynamic>?;
       final cid = data?['cid']?.toString();
+      // [xmusic] 关键：playurl 只认 bvid，从 view 结果取 bvid 用于取流
+      final bvid = data?['bvid']?.toString();
       if (cid == null || cid.isEmpty) return null;
+      if (bvid == null || bvid.isEmpty) return null;
       final play = await _getRaw(
         Uri.parse(
-            'https://api.bilibili.com/x/player/playurl?$videoParam&cid=$cid&fnval=16&fourk=1'),
+            'https://api.bilibili.com/x/player/playurl?bvid=$bvid&cid=$cid&fnval=16&fourk=1'),
         _hBili,
       ) as Map<String, dynamic>;
       final pd = play['data'] as Map<String, dynamic>?;
