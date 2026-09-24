@@ -421,6 +421,89 @@ class ExternalApi {
     return out;
   }
 
+  /// QQ 歌单列表：每次打开首页动态抓 QQ 音乐分类页 SSR（约20个），
+  /// 全部洗牌后随机取 8 个，再轻量拉每个歌单封面；刷新就换一批。
+  Future<List<Map<String, dynamic>>> qqPlaylists() async {
+    String html;
+    try {
+      final res = await http
+          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'), headers: _hQq)
+          .timeout(const Duration(seconds: 12));
+      html = utf8.decode(res.bodyBytes);
+    } catch (_) {
+      return const [];
+    }
+    final pairs = <(String, String)>[];
+    final seen = <String>{};
+    for (final m in RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>')
+        .allMatches(html)) {
+      final id = m.group(1)!;
+      final name = m.group(2)!.trim();
+      if (name.isEmpty || seen.contains(id)) continue;
+      seen.add(id);
+      pairs.add((id, name));
+    }
+    pairs.shuffle();
+    final picks = pairs.take(8).toList();
+    final results = await Future.wait<Map<String, dynamic>>(picks.map((e) async {
+      var cover = '';
+      try {
+        final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+            .replace(queryParameters: {
+          'type': '1', 'utf8': '1', 'disstid': e.$1, 'format': 'json',
+          'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+          'platform': 'y.json', 'needNewCode': '0',
+          'loginUin': '0', 'hostUin': '0',
+          'song_num': '1', 'song_begin': '0',
+        });
+        final j = await _getRaw(uri, _hQq, timeoutSec: 10) as Map<String, dynamic>;
+        final cd = ((j['cdlist'] as List?) ?? const []).cast<Map>().firstOrNull;
+        cover = (cd?['logo'] ?? '').toString();
+      } catch (_) {}
+      return {
+        'dissid': e.$1,
+        'name': e.$2,
+        'coverImgUrl': cover.startsWith('http') ? cover : '',
+      };
+    }));
+    return results.where((m) => (m['coverImgUrl'] as String).isNotEmpty).toList();
+  }
+
+  /// QQ 歌单歌曲（qzone 老接口，匿名可用）。
+  Future<List<Song>> qqPlaylistSongs(String dissid, {int limit = 100}) async {
+    if (dissid.trim().isEmpty) return const [];
+    final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+        .replace(queryParameters: {
+      'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+      'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+      'platform': 'y.json', 'needNewCode': '0',
+      'loginUin': '0', 'hostUin': '0',
+    });
+    try {
+      final j = await _getRaw(uri, _hQq, timeoutSec: 15) as Map<String, dynamic>;
+      final cd = ((j['cdlist'] as List?) ?? const []).cast<Map>().firstOrNull;
+      final list = ((cd?['songlist'] as List?) ?? const []);
+      return list.cast<Map>().map((s) {
+        final singers = ((s['singer'] as List?) ?? const [])
+            .map((x) => (x as Map)['name'].toString())
+            .join(' / ');
+        final am = (s['albummid'] ?? '').toString();
+        return Song(
+          id: (s['songmid'] ?? '').toString(),
+          title: (s['songname'] ?? '').toString(),
+          artist: singers.isEmpty ? '未知' : singers,
+          album: (s['albumname'] ?? '').toString(),
+          coverUrl: am.isEmpty ? null : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$am.jpg',
+          durationSec: (s['interval'] as num?)?.toInt(),
+          fromExternal: true,
+          externalSource: 'qq',
+        );
+      }).where((s) => s.id.isNotEmpty).take(limit).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// QQ 榜单歌曲（topid 榜单 id，songmid 作为 id）。
   /// 用 c.y.qq.com 老接口 fcg_v8_toplist_cp.fcg（匿名可用，2026-09 实测 code=0）。
   Future<List<Song>> qqToplistSongs(String chartId,
@@ -458,111 +541,6 @@ class ExternalApi {
               ? null
               : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
           durationSec: (d['interval'] as num?)?.toInt(),
-          fromExternal: true,
-          externalSource: 'qq',
-        );
-      }).where((s) => s.id.isNotEmpty).take(limit).toList();
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  /// QQ 精选歌单（硬编码 dissid）：歌单列表接口 fcg_get_diss_by_tag 2026 已废弃
-  /// （code=0 但 list 恒空），故 dissid 直接写死（从 y.qq.com/n/ryqq/category 分类页抓取）。
-  /// 点进歌单走 qzone 老接口 fcg_ucc_getcdinfo_byids_cp（匿名可用，实测 code=0）。
-  static const List<Map<String, String>> _qqPlaylists = [
-    {'dissid': '7799808010', 'name': '抖音热门·近期爆火'},
-    {'dissid': '7744311018', 'name': '千首抖音热歌'},
-    {'dissid': '9729526941', 'name': '经典老歌·8090怀旧'},
-    {'dissid': '9748705593', 'name': '开车DJ热歌'},
-    {'dissid': '9566642814', 'name': '跑步运动音乐'},
-    {'dissid': '9282300617', 'name': '华语情歌精选'},
-    {'dissid': '9616083182', 'name': '抖音热门DJ'},
-    {'dissid': '9553767949', 'name': '钢琴轻音乐'},
-  ];
-
-  /// QQ 歌单列表：每次打开首页动态抓 QQ 音乐分类页（SSR 内嵌歌单数据，
-  /// 跟着官网更新，不再硬编码），再轻量拉每个歌单的封面 logo。
-  Future<List<Map<String, dynamic>>> qqPlaylists() async {
-    String html;
-    try {
-      final res = await http
-          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'), headers: _hQq)
-          .timeout(const Duration(seconds: 12));
-      html = utf8.decode(res.bodyBytes);
-    } catch (_) {
-      return const [];
-    }
-    // 从 SSR HTML 提取 (dissid, 歌单名)：<a href="/n/ryqq_v2/playlist/123">名称</a>
-    final pairs = <(String, String)>[];
-    final seen = <String>{};
-    for (final m in RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>')
-        .allMatches(html)) {
-      final id = m.group(1)!;
-      final name = m.group(2)!.trim();
-      if (name.isEmpty || seen.contains(id)) continue;
-      seen.add(id);
-      pairs.add((id, name));
-    }
-    final pool = pairs.take(30).toList();
-    final start = pool.length <= 8 ? 0 : DateTime.now().millisecond % (pool.length - 8);
-    final picks = pool.sublist(start, start + 8 > pool.length ? pool.length : start + 8);
-    final results = await Future.wait<Map<String, dynamic>>(picks.map((e) async {
-      var cover = '';
-      try {
-        final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-            .replace(queryParameters: {
-          'type': '1', 'utf8': '1', 'disstid': e.$1, 'format': 'json',
-          'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-          'platform': 'y.json', 'needNewCode': '0',
-          'loginUin': '0', 'hostUin': '0',
-          'song_num': '1', 'song_begin': '0',
-        });
-        final j = await _getRaw(uri, _hQq, timeoutSec: 10) as Map<String, dynamic>;
-        final cd = ((j['cdlist'] as List?) ?? const []).cast<Map>().firstOrNull;
-        cover = (cd?['logo'] ?? '').toString();
-      } catch (_) {}
-      return {
-        'dissid': e.$1,
-        'name': e.$2,
-        'coverImgUrl': cover.startsWith('http') ? cover : '',
-      };
-    }));
-    // 过滤掉私密/已删除（cdlist 为空、无封面也无歌曲的）
-    return results.where((m) => (m['coverImgUrl'] as String).isNotEmpty).toList();
-  }
-
-  /// QQ 歌单歌曲（qzone 老接口，匿名可用）。songlist 平铺字段：
-  /// songmid/songname/singer[].name/albumname/albummid/interval。
-  Future<List<Song>> qqPlaylistSongs(String dissid, {int limit = 100}) async {
-    if (dissid.trim().isEmpty) return const [];
-    final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-        .replace(queryParameters: {
-      'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
-      'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-      'platform': 'y.json', 'needNewCode': '0',
-      'loginUin': '0', 'hostUin': '0',
-    });
-    try {
-      final j = await _getRaw(uri, _hQq, timeoutSec: 15) as Map<String, dynamic>;
-      final cdlist = (j['cdlist'] as List?) ?? const [];
-      if (cdlist.isEmpty) return const [];
-      final songs = (cdlist.first as Map)['songlist'] as List? ?? const [];
-      return songs.cast<Map<String, dynamic>>().map((t) {
-        final singers = ((t['singer'] as List?) ?? [])
-            .map((s) => (s as Map)['name']?.toString() ?? '')
-            .where((s) => s.isNotEmpty)
-            .join(' / ');
-        final albumMid = (t['albummid'] ?? '').toString();
-        return Song(
-          id: (t['songmid'] ?? '').toString(),
-          title: (t['songname'] ?? '').toString(),
-          artist: singers.isEmpty ? '未知' : singers,
-          album: (t['albumname'] ?? '').toString(),
-          coverUrl: albumMid.isEmpty
-              ? null
-              : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
-          durationSec: (t['interval'] as num?)?.toInt(),
           fromExternal: true,
           externalSource: 'qq',
         );
@@ -881,11 +859,10 @@ class ExternalApi {
     }
   }
 
-  /// 酷我直连兜底：按歌名+歌手搜酷我并解析播放 URL，同时返回命中的曲目元数据。
-  /// [xmusic] 2026-09-24 修复"播放与显示/歌词对不上"：原实现只返回 URL 不返回曲目，
-  /// 上层队列仍显示原曲元数据、按原曲 ID 取歌词；现在返回 (url, 命中Song)，
-  /// 播放成功后上层把队列项同步成实际在播的这首歌（标题/歌手/专辑/封面/歌词源全部对齐）。
-  Future<(String, Song)?> matchKuwoMatched(String title, String artist) async {
+  /// 酷我直连兜底：按歌名+歌手搜酷我并解析播放 URL（QQ/B站 播放失败时用，实测可用）。
+  /// [xmusic] 2026-09-24 修复：antiserver 对 VIP 歌返回 /nf/ 试听（11秒），
+  /// kuwoStreamUrl 已把试听视为失败；此处命中同名歌后逐首尝试，全试听则返回 null。
+  Future<String?> matchKuwo(String title, String artist) async {
     try {
       final hits = await searchKuwo('$title $artist'.trim(), limit: 5);
       if (hits.isEmpty) return null;
@@ -895,8 +872,9 @@ class ExternalApi {
           .toLowerCase();
       final nt = norm(title);
       final na = norm(artist);
-      // 兜底换源必须歌名+歌手都匹配，否则宁可返回 null（上层继续其他源或失败提示），
-      // 绝不强行播放无关歌曲（原实现最后无条件返回 hits.first，导致播成同名/翻唱/别的歌）。
+      // [xmusic] 2026-09-24 修复"播放曲目与显示对不上号"：兜底换源必须歌名+歌手都匹配，
+      // 否则宁可返回 null（上层继续其他源或失败提示），绝不强行播放无关歌曲（原实现
+      // 最后无条件返回 hits.first，导致"素颜"播成同名/翻唱/别的歌）。
       for (final h in hits) {
         final hn = norm(h.title);
         final ha = norm(h.artist);
@@ -906,7 +884,7 @@ class ExternalApi {
             ha.contains(na.split(' ').first) || na.contains(ha.split(' ').first);
         if (titleOk && artOk) {
           final u = await kuwoStreamUrl(h.id);
-          if (u != null && u.isNotEmpty) return (u, h);
+          if (u != null && u.isNotEmpty) return u;
         }
       }
       return null; // 无歌名+歌手都匹配的条目，不强行兜底
