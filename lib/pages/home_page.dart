@@ -371,8 +371,8 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE85D4A), Color(0xFFF08A3E)],
+              gradient: LinearGradient(
+                colors: [theme.colorScheme.primary, theme.colorScheme.primary.withOpacity(0.7)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
