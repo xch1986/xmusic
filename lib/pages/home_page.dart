@@ -288,7 +288,7 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   mainAxisSpacing: isCarScreen(context) ? 12 : 10,
                   crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-                  childAspectRatio: isCarScreen(context) ? 0.92 : 1.1,
+                  childAspectRatio: isCarScreen(context) ? 0.92 : 0.82,
                   children: list.map((p) => _qqPlaylistCard(
                     p['name'] as String,
                     p['dissid'] as String,
