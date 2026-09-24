@@ -504,7 +504,9 @@ class ExternalApi {
       seen.add(id);
       pairs.add((id, name));
     }
-    final picks = pairs.take(10).toList();
+    final pool = pairs.take(30).toList();
+    final start = pool.length <= 8 ? 0 : DateTime.now().millisecond % (pool.length - 8);
+    final picks = pool.sublist(start, start + 8 > pool.length ? pool.length : start + 8);
     final results = await Future.wait<Map<String, dynamic>>(picks.map((e) async {
       var cover = '';
       try {
