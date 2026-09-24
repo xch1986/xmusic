@@ -43,22 +43,22 @@ class _HomePageState extends State<HomePage> {
     _localRec = _client.randomSongs(size: 20);
   }
 
-  /// 排行榜：网易云榜单 + （设置了 QQ cookie 时）QQ 榜单混排（网易云前8 + QQ前4）。
+  /// 排行榜：网易云榜单 + QQ 热榜/新歌榜/飙升榜/流行指数榜混排（网易云前8 + QQ前4）。
+  /// [xmusic] 2026-09-24 修复：QQ 榜单数据接口匿名可用（fcg_v8_toplist_cp），
+  /// 不再依赖 QQ cookie 才显示——车机/未填 cookie 也能看到 QQ 四大榜；
+  /// 有 cookie 时点进榜单走 QQ 音源播放，无 cookie 时由播放链网易云/酷我兜底。
   Future<List<Map<String, dynamic>>> _loadToplists() async {
     final ext = widget.controller.external;
     var lists = await ext
         .getToplists()
         .timeout(const Duration(seconds: 15))
         .catchError((_) => <Map<String, dynamic>>[]);
-    final cookie = widget.settings.qqCookie;
-    if (cookie.trim().isNotEmpty) {
-      final qq = await ext
-          .qqToplists(cookie: cookie)
-          .timeout(const Duration(seconds: 15))
-          .catchError((_) => <Map<String, dynamic>>[]);
-      if (qq.isNotEmpty) {
-        lists = [...lists, ...qq.map((m) => {...m, 'source': 'qq'})];
-      }
+    final qq = await ext
+        .qqToplists()
+        .timeout(const Duration(seconds: 15))
+        .catchError((_) => <Map<String, dynamic>>[]);
+    if (qq.isNotEmpty) {
+      lists = [...lists, ...qq.map((m) => {...m, 'source': 'qq'})];
     }
     return lists;
   }
