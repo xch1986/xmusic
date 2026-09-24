@@ -483,7 +483,7 @@ class ExternalApi {
 
   /// QQ 精选歌单列表：硬编码 dissid + 在线轻量拉真实封面（song_num=1，每个歌单 ~11KB）。
   Future<List<Map<String, dynamic>>> qqPlaylists() async {
-    final results = await Future.wait(_qqPlaylists.map((p) async {
+    final results = await Future.wait<Map<String, dynamic>>(_qqPlaylists.map((p) async {
       var cover = '';
       try {
         final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
