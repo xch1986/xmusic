@@ -348,7 +348,7 @@ class _PlayerPageState extends State<PlayerPage> {
                       children: [
                         Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                           style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: isCarScreen(context) ? 34 : 24)),
-                        const SizedBox(height: isCarScreen(context) ? 10 : 6),
+                        SizedBox(height: isCarScreen(context) ? 10 : 6),
                         Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: isCarScreen(context) ? 22 : 15)),
                       ],
