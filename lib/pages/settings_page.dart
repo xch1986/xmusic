@@ -384,8 +384,8 @@ class SettingsPage extends StatelessWidget {
             onTap: () async {
               var running = false;
               try {
-                // audio_service 0.18 无 isRunning() 静态方法，用 running 流当前值判断
-                running = AudioService.running.value;
+                // audio_service 0.18 无 isRunning() 静态方法；running 为 bool getter（runningStream 当前值）
+                running = AudioService.running;
               } catch (_) {}
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
