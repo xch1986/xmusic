@@ -488,6 +488,17 @@ class PlayerController extends ChangeNotifier {
         if (src == 'netease' && (result == null || result.lines.isEmpty)) {
           result = await external.lyricFor(s.id, source: 'netease');
         }
+        // 统一兜底：QQ直连/酷我没词时，按歌名+歌手搜网易云（车机用户反馈"歌单进去没歌词"）
+        if (result == null || result.lines.isEmpty) {
+          try {
+            final hits = await external
+                .searchNeteaseDirect('${s.title} ${s.artist}', limit: 3);
+            for (final cand in hits) {
+              final lr = await external.lyricFor(cand.id, source: 'netease');
+              if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+            }
+          } catch (_) {}
+        }
       } else {
         // 本地文件歌：优先同目录 .lrc；其次 Navidrome 歌词；最后按歌名+歌手搜网易云兜底
         result = null;
