@@ -893,6 +893,35 @@ class ExternalApi {
     }
   }
 
+  /// 带命中曲目返回的版本：上层用来同步队列元数据（标题/歌手/专辑/封面/歌词源）。
+  Future<(String, Song)?> matchKuwoMatched(String title, String artist) async {
+    try {
+      final hits = await searchKuwo('$title $artist'.trim(), limit: 5);
+      if (hits.isEmpty) return null;
+      String norm(String s) => s
+          .replaceAll(RegExp(r'[（(【\[].*?[）)】\]]'), '')
+          .replaceAll(RegExp(r'[\s\p{P}]'), '')
+          .toLowerCase();
+      final nt = norm(title);
+      final na = norm(artist);
+      for (final h in hits) {
+        final hn = norm(h.title);
+        final ha = norm(h.artist);
+        final titleOk = hn == nt || hn.contains(nt) || nt.contains(hn);
+        final artOk = na.isEmpty ||
+            ha == na || ha.contains(na) || na.contains(ha) ||
+            ha.contains(na.split(' ').first) || na.contains(ha.split(' ').first);
+        if (titleOk && artOk) {
+          final u = await kuwoStreamUrl(h.id);
+          if (u != null && u.isNotEmpty) return (u, h);
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ==================== B站直连 ====================
 
   /// B站热门视频（x/web-interface/popular，匿名可用，实测 code=0）。
