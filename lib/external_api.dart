@@ -732,8 +732,6 @@ class ExternalApi {
     // 每日换一批：日期做种子打乱
     final ds = DateTime.now();
     raw.shuffle(Random(ds.year * 10000 + ds.month * 100 + ds.day));
-    final ds = DateTime.now();
-    raw.shuffle(Random(ds.year * 10000 + ds.month * 100 + ds.day));
     final out = <Song>[];
     final seen = <String>{};
     for (final r in raw) {
