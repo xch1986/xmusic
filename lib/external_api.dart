@@ -421,89 +421,6 @@ class ExternalApi {
     return out;
   }
 
-  /// QQ 歌单列表：每次打开首页动态抓 QQ 音乐分类页 SSR（约20个），
-  /// 全部洗牌后随机取 8 个，再轻量拉每个歌单封面；刷新就换一批。
-  Future<List<Map<String, dynamic>>> qqPlaylists() async {
-    String html;
-    try {
-      final res = await http
-          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'), headers: _hQq)
-          .timeout(const Duration(seconds: 12));
-      html = utf8.decode(res.bodyBytes);
-    } catch (_) {
-      return const [];
-    }
-    final pairs = <(String, String)>[];
-    final seen = <String>{};
-    for (final m in RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>')
-        .allMatches(html)) {
-      final id = m.group(1)!;
-      final name = m.group(2)!.trim();
-      if (name.isEmpty || seen.contains(id)) continue;
-      seen.add(id);
-      pairs.add((id, name));
-    }
-    pairs.shuffle();
-    final picks = pairs.take(8).toList();
-    final results = await Future.wait<Map<String, dynamic>>(picks.map((e) async {
-      var cover = '';
-      try {
-        final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-            .replace(queryParameters: {
-          'type': '1', 'utf8': '1', 'disstid': e.$1, 'format': 'json',
-          'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-          'platform': 'y.json', 'needNewCode': '0',
-          'loginUin': '0', 'hostUin': '0',
-          'song_num': '1', 'song_begin': '0',
-        });
-        final j = await _getRaw(uri, _hQq, timeoutSec: 10) as Map<String, dynamic>;
-        final cd = ((j['cdlist'] as List?) ?? const []).cast<Map>().firstOrNull;
-        cover = (cd?['logo'] ?? '').toString();
-      } catch (_) {}
-      return {
-        'dissid': e.$1,
-        'name': e.$2,
-        'coverImgUrl': cover.startsWith('http') ? cover : '',
-      };
-    }));
-    return results.where((m) => (m['coverImgUrl'] as String).isNotEmpty).toList();
-  }
-
-  /// QQ 歌单歌曲（qzone 老接口，匿名可用）。
-  Future<List<Song>> qqPlaylistSongs(String dissid, {int limit = 100}) async {
-    if (dissid.trim().isEmpty) return const [];
-    final uri = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-        .replace(queryParameters: {
-      'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
-      'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-      'platform': 'y.json', 'needNewCode': '0',
-      'loginUin': '0', 'hostUin': '0',
-    });
-    try {
-      final j = await _getRaw(uri, _hQq, timeoutSec: 15) as Map<String, dynamic>;
-      final cd = ((j['cdlist'] as List?) ?? const []).cast<Map>().firstOrNull;
-      final list = ((cd?['songlist'] as List?) ?? const []);
-      return list.cast<Map>().map((s) {
-        final singers = ((s['singer'] as List?) ?? const [])
-            .map((x) => (x as Map)['name'].toString())
-            .join(' / ');
-        final am = (s['albummid'] ?? '').toString();
-        return Song(
-          id: (s['songmid'] ?? '').toString(),
-          title: (s['songname'] ?? '').toString(),
-          artist: singers.isEmpty ? '未知' : singers,
-          album: (s['albumname'] ?? '').toString(),
-          coverUrl: am.isEmpty ? null : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$am.jpg',
-          durationSec: (s['interval'] as num?)?.toInt(),
-          fromExternal: true,
-          externalSource: 'qq',
-        );
-      }).where((s) => s.id.isNotEmpty).take(limit).toList();
-    } catch (_) {
-      return const [];
-    }
-  }
-
   /// QQ 榜单歌曲（topid 榜单 id，songmid 作为 id）。
   /// 用 c.y.qq.com 老接口 fcg_v8_toplist_cp.fcg（匿名可用，2026-09 实测 code=0）。
   Future<List<Song>> qqToplistSongs(String chartId,
@@ -744,20 +661,19 @@ class ExternalApi {
     }
   }
 
-  /// 每日30首（无 QQ cookie 时）：酷狗 TOP500 + 飙升榜，按当天日期偏移取一批，每天不同。
+  /// 每日30首（无 QQ cookie 时）：酷狗 TOP500 → 网易云匹配播放。
   Future<List<Song>> daily30FromKugou({int count = 30}) async {
+    // [xmusic] 2026-09-24 优化：TOP500 + 飙升榜混合取歌（各一半），去重后匹配网易云，
+    // 更贴近"每日30首·飙升/新歌/原创推荐"文案，且减少与排行榜网格（QQ热歌榜）重复。
     final half = (count / 2).ceil();
-    // 按当天日期做偏移：每天从不同位置取歌，制造"每日更新"感
-    final now = DateTime.now();
-    final daySeed = DateTime(now.year, now.month, now.day).difference(DateTime(2026, 1, 1)).inDays;
-    final page = 1 + (daySeed % 5); // 1..5 页滚动
     final raw = <Map<String, String>>[];
     for (final rid in ['8888', '6666']) {
       try {
-        raw.addAll(await kugouRankRaw(rid, page: page, pagesize: half + 8));
+        raw.addAll(await kugouRankRaw(rid, page: 1, pagesize: half + 3));
       } catch (_) {}
     }
-    // 按当天 seed 打乱顺序，避免每次都是榜单前几名
+    // 每日换一批：用当天日期做种子打乱顺序（同一天内稳定，跨天自动换）
+    final daySeed = DateTime.now().year * 10000 + DateTime.now().month * 100 + DateTime.now().day;
     raw.shuffle(Random(daySeed));
     final out = <Song>[];
     final seen = <String>{};
@@ -766,7 +682,7 @@ class ExternalApi {
       final artist = r['artist'] ?? '';
       if (title.isEmpty) continue;
       final key = '$title|$artist';
-      if (!seen.add(key)) continue;
+      if (!seen.add(key)) continue; // 跨榜去重
       final s = await matchNetease(title, artist);
       if (s != null) {
         out.add(s);
@@ -892,35 +808,6 @@ class ExternalApi {
         }
       }
       return null; // 无歌名+歌手都匹配的条目，不强行兜底
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// 带命中曲目返回的版本：上层用来同步队列元数据（标题/歌手/专辑/封面/歌词源）。
-  Future<(String, Song)?> matchKuwoMatched(String title, String artist) async {
-    try {
-      final hits = await searchKuwo('$title $artist'.trim(), limit: 5);
-      if (hits.isEmpty) return null;
-      String norm(String s) => s
-          .replaceAll(RegExp(r'[（(【\[].*?[）)】\]]'), '')
-          .replaceAll(RegExp(r'[\s\p{P}]'), '')
-          .toLowerCase();
-      final nt = norm(title);
-      final na = norm(artist);
-      for (final h in hits) {
-        final hn = norm(h.title);
-        final ha = norm(h.artist);
-        final titleOk = hn == nt || hn.contains(nt) || nt.contains(hn);
-        final artOk = na.isEmpty ||
-            ha == na || ha.contains(na) || na.contains(ha) ||
-            ha.contains(na.split(' ').first) || na.contains(ha.split(' ').first);
-        if (titleOk && artOk) {
-          final u = await kuwoStreamUrl(h.id);
-          if (u != null && u.isNotEmpty) return (u, h);
-        }
-      }
-      return null;
     } catch (_) {
       return null;
     }
