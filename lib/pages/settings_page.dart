@@ -385,10 +385,19 @@ class SettingsPage extends StatelessWidget {
             onTap: () async {
               // 点自检时主动尝试拉起系统媒体服务（车机慢导致首次 init 失败时重试）
               await ensureSystemAudioHandler();
+              // 主动推一次 mediaItem，触发前台服务/MediaSession 注册
+              try {
+                audioHandler.setMediaItem(const MediaItem(
+                  id: 'selfcheck',
+                  title: '音素自检',
+                  artist: 'test',
+                  duration: Duration(seconds: 1),
+                ));
+              } catch (_) {}
               var running = false;
               try {
-              dynamic r = AudioService.running;
-              running = r is bool ? r : (r?.value == true);
+                dynamic r = AudioService.running;
+                running = r is bool ? r : (r?.value == true);
               } catch (_) {}
               if (!context.mounted) return;
               final msg = running
