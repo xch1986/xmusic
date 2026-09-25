@@ -832,22 +832,26 @@ class _CornerButton extends StatelessWidget {
     final isz = car ? 48.0 : 40.0;
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: theme.colorScheme.surface.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(s),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(s),
-          onTap: onTap,
-          child: Container(
-            width: s,
-            height: s,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(s),
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: theme.colorScheme.surface.withValues(alpha: 0.28),
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onTap,
+              child: Container(
+                width: s,
+                height: s,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Icon(icon, size: isz, color: theme.colorScheme.onSurface),
               ),
             ),
-            child: Icon(icon, size: isz, color: theme.colorScheme.onSurface),
           ),
         ),
       ),
