@@ -124,30 +124,6 @@ class _PlayerPageState extends State<PlayerPage> {
                       : landscape
                           ? _landscapeView(context, song)
                           : _portraitView(context, song),
-                  // 左上角：主页 + 返回（半透明玻璃按钮，不遮歌词/黑胶）
-                  Positioned(
-                    top: 4,
-                    left: 8,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _CornerButton(
-                          icon: Icons.home_rounded,
-                          tooltip: '主页',
-                          onTap: () {
-                            Navigator.of(context).popUntil((r) => r.isFirst);
-                            HomeShell.switchToHome();
-                          },
-                        ),
-                        const SizedBox(width: 6),
-                        _CornerButton(
-                          icon: Icons.arrow_back_ios_new_rounded,
-                          tooltip: '返回',
-                          onTap: () => Navigator.of(context).maybePop(),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -189,15 +165,27 @@ class _PlayerPageState extends State<PlayerPage> {
                         ),
                       ),
                       alignment: Alignment.center,
-                      child: Container(
-                        width: s, height: s,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                      child: StreamBuilder<bool>(
+                        stream: widget.controller.player.playingStream,
+                        builder: (context, snap) {
+                          final playing = snap.data ?? false;
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0, end: playing ? 1 : 0),
+                            duration: playing ? const Duration(seconds: 12) : Duration.zero,
+                            curve: Curves.linear,
+                            builder: (context, rot, child) => Transform.rotate(angle: rot * 6.2832, child: child),
+                            child: Container(
+                              width: s, height: s,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -222,11 +210,19 @@ class _PlayerPageState extends State<PlayerPage> {
             ],
           ),
         ),
-        // 歌名+歌手（放大居中，玻璃条承载）
+        // 歌名+歌手：左右各一个小玻璃按钮（首页/返回）
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-          child: Column(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
+                Navigator.of(context).popUntil((r) => r.isFirst);
+                HomeShell.switchToHome();
+              }),
+              Expanded(
+                child: Column(
+                  children: [
               Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800, fontSize: 26, height: 1.2)),
@@ -252,6 +248,10 @@ class _PlayerPageState extends State<PlayerPage> {
                   ],
                 ),
               ],
+                  ],
+                ),
+              ),
+              _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
             ],
           ),
         ),
@@ -832,25 +832,47 @@ class _CornerButton extends StatelessWidget {
     final isz = car ? 48.0 : 40.0;
     return Tooltip(
       message: tooltip,
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Material(
-            color: theme.colorScheme.surface.withValues(alpha: 0.12),
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onTap,
-              child: Container(
-                width: s,
-                height: s,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Icon(icon, size: isz, color: theme.colorScheme.onSurface),
+      child: Material(
+        color: theme.colorScheme.surface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(s),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(s),
+          onTap: onTap,
+          child: Container(
+            width: s,
+            height: s,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(s),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
               ),
+            ),
+            child: Icon(icon, size: isz, color: theme.colorScheme.onSurface),
+          ),
+        ),
+      ),
+    );
+  }
+}
+/// 小玻璃圆钮（歌名行两侧：首页/返回）
+class _MiniCornerButton extends StatelessWidget {
+  const _MiniCornerButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Material(
+          color: theme.colorScheme.surface.withValues(alpha: 0.18),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              width: 40, height: 40,
+              child: Icon(icon, size: 20, color: theme.colorScheme.onSurface),
             ),
           ),
         ),
