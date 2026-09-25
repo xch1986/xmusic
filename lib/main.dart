@@ -18,9 +18,6 @@ late MyAudioHandler audioHandler;
 /// 此时没有系统 MediaSession，车机桌面（迪友）枚举不到——首次播放前会重试。
 bool audioServiceReady = false;
 
-/// 最近一次 AudioService 初始化失败的错误（自检面板展示）。
-String audioServiceError = '';
-
 /// 重新初始化系统音频服务：仅当首次 init 失败时调用（播放前兜底）。
 Future<void> ensureSystemAudioHandler() async {
   if (audioServiceReady) return;
@@ -36,13 +33,11 @@ Future<void> ensureSystemAudioHandler() async {
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
       ),
-    ).timeout(const Duration(seconds: 90));
+    ).timeout(const Duration(seconds: 30));
     audioHandler = h;
     audioServiceReady = true;
-    audioServiceError = '';
     debugPrint('AudioService re-init OK');
   } catch (e) {
-    audioServiceError = e.toString();
     debugPrint('AudioService re-init failed: $e');
   }
 }
@@ -86,7 +81,7 @@ Future<void> main() async {
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
       ),
-    ).timeout(const Duration(seconds: 90));
+    ).timeout(const Duration(seconds: 30));
     audioServiceReady = true;
   } catch (e) {
     debugPrint('AudioService init failed: $e');
@@ -110,7 +105,7 @@ class MyApp extends StatelessWidget {
       listenable: settings,
       builder: (context, _) {
         return MaterialApp(
-          title: '音素',
+          title: '音素音乐',
           debugShowCheckedModeBanner: false,
           themeMode: switch (settings.themeMode) {
             AppThemeMode.system => ThemeMode.system,
