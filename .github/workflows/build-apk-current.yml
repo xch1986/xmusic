@@ -27,7 +27,7 @@ jobs:
       - name: Patch app label and package id
         run: |
           f=android/app/src/main/AndroidManifest.xml
-          sed -i 's|android:label="[^"]*"|android:label="音素音乐"|' "$f"
+          sed -i 's|android:label="[^"]*"|android:label="音浪"|' "$f"
           # Newer Flutter templates use build.gradle.kts, older use build.gradle.
           g=android/app/build.gradle
           if [ -f "$g" ]; then
