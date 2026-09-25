@@ -392,9 +392,10 @@ class SettingsPage extends StatelessWidget {
               } catch (_) {}
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  duration: const Duration(seconds: 6),
                   content: Text(running
                       ? '系统媒体服务运行中：车机桌面（迪友）应能枚举到音素'
-                      : '仍未运行：请先播放一首歌，再回车机桌面看迪友')));
+                      : '仍未运行。错误：${audioServiceError.isEmpty ? '未知/超时' : audioServiceError}\n请确保通知权限已开，并播放一首歌后重试')));
             },
           ),
           ListTile(
