@@ -6,6 +6,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../app_version.dart';
+import '../main.dart';
 import '../permissions.dart';
 import '../player_controller.dart';
 import '../settings.dart';
@@ -382,16 +383,18 @@ class SettingsPage extends StatelessWidget {
             title: const Text('媒体服务自检'),
             subtitle: const Text('点击检查系统媒体服务是否就绪（车机桌面识别的前提）'),
             onTap: () async {
+              // 点自检时主动尝试拉起系统媒体服务（车机慢导致首次 init 失败时重试）
+              await ensureSystemAudioHandler();
               var running = false;
               try {
-                // audio_service 0.18 无 isRunning() 静态方法；running 为 bool getter（runningStream 当前值）
-                running = AudioService.running;
+              dynamic r = AudioService.running;
+              running = r is bool ? r : (r?.value == true);
               } catch (_) {}
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(running
                       ? '系统媒体服务运行中：车机桌面（迪友）应能枚举到音素'
-                      : '媒体服务未运行：播放一首歌后自动拉起，再切车机桌面查看')));
+                      : '仍未运行：请先播放一首歌，再回车机桌面看迪友')));
             },
           ),
           ListTile(
