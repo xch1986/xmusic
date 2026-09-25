@@ -295,6 +295,16 @@ class _PlayerPageState extends State<PlayerPage> {
             icon: Icon(Icons.download_rounded, size: car ? 48 : 40),
             onPressed: () => _downloadMenu(context),
           ),
+          IconButton(
+            tooltip: '上传到NAS',
+            icon: Icon(Icons.cloud_upload_outlined, size: car ? 48 : 40),
+            onPressed: () async {
+              showTopToast(context, '正在上传到NAS…');
+              final msg = await widget.controller.uploadCurrentToNas();
+              if (!context.mounted) return;
+              showTopToast(context, msg, duration: const Duration(seconds: 2));
+            },
+          ),
         ],
       ),
     );
