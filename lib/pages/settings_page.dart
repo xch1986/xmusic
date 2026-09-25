@@ -382,40 +382,16 @@ class SettingsPage extends StatelessWidget {
             title: const Text('媒体服务自检'),
             subtitle: const Text('点击检查系统媒体服务是否就绪（车机桌面识别的前提）'),
             onTap: () async {
-              // 点自检时主动尝试拉起系统媒体服务（车机慢导致首次 init 失败时重试）
-              var running = false;
-              try {
-                dynamic r = AudioService.running;
-                running = r is bool ? r : (r?.value == true);
-              } catch (_) {}
+              final playing = widget.controller.player.playing;
+              final hasItem = widget.controller.current != null;
               if (!context.mounted) return;
-              final msg = running
-                  ? '系统媒体服务运行中'
-                  : '未运行：请播放一首歌后重试';
-              showDialog(
-                context: context,
-                barrierDismissible: true,
-                barrierColor: Colors.black26,
-                builder: (dctx) => Center(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 340),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(msg,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontSize: 14)),
-                    ),
-                  ),
-                ),
-              );
-              Future.delayed(const Duration(milliseconds: 1500), () {
-                Navigator.of(context).maybePop();
-              });
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text(!hasItem
+                      ? '还没播放：先点一首歌'
+                      : playing
+                          ? '正在播放${widget.controller.current!.title}。若迪友仍看不到，请在系统设置给音素开"通知使用权"，或在迪友设置里把音素加入音乐应用列表'
+                          : '已暂停：正在播放时车机才能识别')));
             },
           ),
           ListTile(
