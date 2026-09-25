@@ -507,7 +507,11 @@ class ExternalApi {
         'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
         'hostUin': '0', 'song_num': '$limit', 'song_begin': '0',
       });
-      final j = await _insecureGetJson(u);
+      final resp = await http.get(u, headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://y.qq.com/',
+      });
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       if (list.isEmpty) return const [];
       final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
