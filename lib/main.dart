@@ -36,7 +36,7 @@ Future<void> ensureSystemAudioHandler() async {
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
       ),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 90));
     audioHandler = h;
     audioServiceReady = true;
     audioServiceError = '';
@@ -86,7 +86,7 @@ Future<void> main() async {
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
       ),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 90));
     audioServiceReady = true;
   } catch (e) {
     debugPrint('AudioService init failed: $e');
