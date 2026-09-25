@@ -278,22 +278,22 @@ class _PlayerPageState extends State<PlayerPage> {
         children: [
           // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
           IconTheme(
-            data: IconThemeData(size: car ? 48 : 40),
+            data: IconThemeData(size: car ? 64 : 40),
             child: LyricSizeControls(settings: widget.settings),
           ),
           const SizedBox(height: 2),
           IconTheme(
-            data: IconThemeData(size: car ? 48 : 40),
+            data: IconThemeData(size: car ? 64 : 40),
             child: _FavoriteButton(controller: widget.controller),
           ),
           IconButton(
             tooltip: '下载',
-            icon: Icon(Icons.download_rounded, size: car ? 48 : 40),
+            icon: Icon(Icons.download_rounded, size: car ? 64 : 40),
             onPressed: () => _downloadMenu(context),
           ),
           IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 48 : 40),
+            icon: Icon(Icons.cloud_upload_outlined, size: car ? 64 : 40),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
