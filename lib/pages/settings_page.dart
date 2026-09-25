@@ -391,16 +391,33 @@ class SettingsPage extends StatelessWidget {
               running = r is bool ? r : (r?.value == true);
               } catch (_) {}
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  duration: const Duration(milliseconds: 1500),
-                  behavior: SnackBarBehavior.floating,
-                  width: 320,
-                  content: Text(
-                      running
-                          ? '系统媒体服务运行中：迪友应能枚举到音素'
-                          : '未运行：${audioServiceError.isEmpty ? '超时' : audioServiceError}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13))));
+              final msg = running
+                  ? '系统媒体服务运行中'
+                  : '未运行：${audioServiceError.isEmpty ? '超时' : audioServiceError}';
+              showDialog(
+                context: context,
+                barrierDismissible: true,
+                barrierColor: Colors.black26,
+                builder: (dctx) => Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 340),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(msg,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    ),
+                  ),
+                ),
+              );
+              Future.delayed(const Duration(milliseconds: 1500), () {
+                Navigator.of(context).maybePop();
+              });
             },
           ),
           ListTile(
