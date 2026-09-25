@@ -474,6 +474,63 @@ class ExternalApi {
     return songs;
   }
 
+  /// QQ 精选歌单：从 y.qq.com/n/ryqq_v2/category 抓歌单ID，每天 shuffle 取8个
+  Future<List<Map<String, dynamic>>> qqPlaylists() async {
+    try {
+      final html = await http
+          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'),
+              headers: {'User-Agent': 'Mozilla/5.0'})
+          .then((r) => r.body);
+      final re = RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>');
+      final maps = <Map<String, dynamic>>[];
+      final seen = <String>{};
+      for (final m in re.allMatches(html)) {
+        final id = m.group(1)!;
+        final name = m.group(2)!.trim();
+        if (!seen.add(id)) continue;
+        maps.add({'dissid': id, 'name': name});
+      }
+      maps.shuffle();
+      return maps.take(8).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// QQ 歌单歌曲（qzone 匿名接口）
+  Future<List<Song>> qqPlaylistSongs(String dissid, {int limit = 50}) async {
+    try {
+      final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+          .replace(queryParameters: {
+        'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+        'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+        'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
+        'hostUin': '0', 'song_num': '$limit', 'song_begin': '0',
+      });
+      final j = await _insecureGetJson(u);
+      final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (list.isEmpty) return const [];
+      final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return songs.map((m) {
+        final mid = (m['songmid'] ?? '').toString();
+        final title = (m['songname'] ?? '').toString();
+        final artist = (m['singer'] as List?)?.cast<Map>().map((s) => s['name']).join(' / ') ?? '';
+        final albummid = (m['albummid'] ?? '').toString();
+        return Song(
+          id: mid,
+          title: title,
+          artist: artist,
+          album: (m['albumname'] ?? '').toString(),
+          coverUrl: 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albummid.jpg',
+          fromExternal: true,
+          externalSource: 'qq',
+        );
+      }).where((s) => s.id.isNotEmpty).take(limit).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   // ==================== 酷狗榜单（mobilecdn 公开接口，无签名） ====================
 
   /// 酷狗榜单原始数据（rankid: 8888=TOP500, 6666=飙升榜 等）。
@@ -673,6 +730,8 @@ class ExternalApi {
       } catch (_) {}
     }
     // 每日换一批：日期做种子打乱
+    final ds = DateTime.now();
+    raw.shuffle(Random(ds.year * 10000 + ds.month * 100 + ds.day));
     final ds = DateTime.now();
     raw.shuffle(Random(ds.year * 10000 + ds.month * 100 + ds.day));
     final out = <Song>[];
