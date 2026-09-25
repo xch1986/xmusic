@@ -168,12 +168,8 @@ class _PlayerPageState extends State<PlayerPage> {
                       child: StreamBuilder<bool>(
                         stream: widget.controller.player.playingStream,
                         builder: (context, snap) {
-                          final playing = snap.data ?? false;
-                          return TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0, end: playing ? 1 : 0),
-                            duration: playing ? const Duration(seconds: 12) : Duration.zero,
-                            curve: Curves.linear,
-                            builder: (context, rot, child) => Transform.rotate(angle: rot * 6.2832, child: child),
+                          return _SpinRotator(
+                            spinning: snap.data ?? false,
                             child: Container(
                               width: s, height: s,
                               decoration: BoxDecoration(
@@ -863,6 +859,29 @@ class _CornerButton extends StatelessWidget {
       ),
     );
   }
+}
+/// 黑胶唱片旋转：播放时匀速转一圈12秒，暂停时停在当前角度
+class _SpinRotator extends StatefulWidget {
+  const _SpinRotator({required this.spinning, required this.child});
+  final bool spinning;
+  final Widget child;
+  @override
+  State<_SpinRotator> createState() => _SpinRotatorState();
+}
+class _SpinRotatorState extends State<_SpinRotator> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 12));
+  @override
+  void initState() { super.initState(); if (widget.spinning) _c.repeat(); }
+  @override
+  void didUpdateWidget(covariant _SpinRotator old) {
+    super.didUpdateWidget(old);
+    if (widget.spinning && !_c.isAnimating) _c.repeat();
+    else if (!widget.spinning && _c.isAnimating) _c.stop();
+  }
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
 }
 /// 小玻璃圆钮（歌名行两侧：首页/返回）
 class _MiniCornerButton extends StatelessWidget {
