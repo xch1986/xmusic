@@ -382,15 +382,15 @@ class SettingsPage extends StatelessWidget {
             title: const Text('媒体服务自检'),
             subtitle: const Text('点击检查系统媒体服务是否就绪（车机桌面识别的前提）'),
             onTap: () async {
-              final playing = widget.controller.player.playing;
-              final hasItem = widget.controller.current != null;
+              final playing = controller.player.playing;
+              final hasItem = controller.current != null;
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   duration: const Duration(seconds: 2),
                   content: Text(!hasItem
                       ? '还没播放：先点一首歌'
                       : playing
-                          ? '正在播放${widget.controller.current!.title}。若迪友仍看不到，请在系统设置给音素开"通知使用权"，或在迪友设置里把音素加入音乐应用列表'
+                          ? '正在播放${controller.current!.title}。若迪友仍看不到，请在系统设置给音素开"通知使用权"，或在迪友设置里把音素加入音乐应用列表'
                           : '已暂停：正在播放时车机才能识别')));
             },
           ),
