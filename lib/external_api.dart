@@ -744,17 +744,21 @@ class ExternalApi {
     }
   }
 
-  /// 每日30首（无 QQ cookie 时）：酷狗 TOP500 → 网易云匹配播放。
+  /// 每日30首（无 QQ cookie 时）：酷狗 TOP500 + 飙升榜，按当天日期偏移取一批，每天不同。
   Future<List<Song>> daily30FromKugou({int count = 30}) async {
-    // [xmusic] 2026-09-24 优化：TOP500 + 飙升榜混合取歌（各一半），去重后匹配网易云，
-    // 更贴近"每日30首·飙升/新歌/原创推荐"文案，且减少与排行榜网格（QQ热歌榜）重复。
     final half = (count / 2).ceil();
+    // 按当天日期做偏移：每天从不同位置取歌，制造"每日更新"感
+    final now = DateTime.now();
+    final daySeed = DateTime(now.year, now.month, now.day).difference(DateTime(2026, 1, 1)).inDays;
+    final page = 1 + (daySeed % 5); // 1..5 页滚动
     final raw = <Map<String, String>>[];
     for (final rid in ['8888', '6666']) {
       try {
-        raw.addAll(await kugouRankRaw(rid, page: 1, pagesize: half + 3));
+        raw.addAll(await kugouRankRaw(rid, page: page, pagesize: half + 8));
       } catch (_) {}
     }
+    // 按当天 seed 打乱顺序，避免每次都是榜单前几名
+    raw.shuffle(Random(daySeed));
     final out = <Song>[];
     final seen = <String>{};
     for (final r in raw) {
@@ -762,7 +766,7 @@ class ExternalApi {
       final artist = r['artist'] ?? '';
       if (title.isEmpty) continue;
       final key = '$title|$artist';
-      if (!seen.add(key)) continue; // 跨榜去重
+      if (!seen.add(key)) continue;
       final s = await matchNetease(title, artist);
       if (s != null) {
         out.add(s);
