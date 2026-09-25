@@ -836,7 +836,7 @@ class _CornerButton extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Material(
-            color: theme.colorScheme.surface.withValues(alpha: 0.28),
+            color: theme.colorScheme.surface.withValues(alpha: 0.12),
             shape: const CircleBorder(),
             child: InkWell(
               onTap: onTap,
