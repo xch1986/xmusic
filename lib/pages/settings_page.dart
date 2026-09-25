@@ -400,7 +400,7 @@ class SettingsPage extends StatelessWidget {
                           ? '系统媒体服务运行中：迪友应能枚举到音素'
                           : '未运行：${audioServiceError.isEmpty ? '超时' : audioServiceError}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13)));
+                      style: const TextStyle(fontSize: 13))));
             },
           ),
           ListTile(
