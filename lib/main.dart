@@ -18,6 +18,9 @@ late MyAudioHandler audioHandler;
 /// 此时没有系统 MediaSession，车机桌面（迪友）枚举不到——首次播放前会重试。
 bool audioServiceReady = false;
 
+/// 最近一次 AudioService 初始化失败的错误（自检面板展示）。
+String audioServiceError = '';
+
 /// 重新初始化系统音频服务：仅当首次 init 失败时调用（播放前兜底）。
 Future<void> ensureSystemAudioHandler() async {
   if (audioServiceReady) return;
@@ -36,8 +39,10 @@ Future<void> ensureSystemAudioHandler() async {
     ).timeout(const Duration(seconds: 30));
     audioHandler = h;
     audioServiceReady = true;
+    audioServiceError = '';
     debugPrint('AudioService re-init OK');
   } catch (e) {
+    audioServiceError = e.toString();
     debugPrint('AudioService re-init failed: $e');
   }
 }
