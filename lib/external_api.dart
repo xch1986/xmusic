@@ -672,9 +672,9 @@ class ExternalApi {
         raw.addAll(await kugouRankRaw(rid, page: 1, pagesize: half + 3));
       } catch (_) {}
     }
-    // 每日换一批：用当天日期做种子打乱顺序（同一天内稳定，跨天自动换）
-    final daySeed = DateTime.now().year * 10000 + DateTime.now().month * 100 + DateTime.now().day;
-    raw.shuffle(Random(daySeed));
+    // 每日换一批：日期做种子打乱
+    final ds = DateTime.now();
+    raw.shuffle(Random(ds.year * 10000 + ds.month * 100 + ds.day));
     final out = <Song>[];
     final seen = <String>{};
     for (final r in raw) {
