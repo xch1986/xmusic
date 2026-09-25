@@ -506,7 +506,7 @@ class ExternalApi {
             'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
           final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
           final cd = (j['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
-          if (cd != null && cd['logo'] != null) pl['cover'] = cd['logo'].toString();
+          if (cd != null && cd['logo'] != null) pl['coverImgUrl'] = cd['logo'].toString();
         } catch (_) {}
       }));
       return pick;
