@@ -491,7 +491,25 @@ class ExternalApi {
         maps.add({'dissid': id, 'name': name});
       }
       maps.shuffle();
-      return maps.take(8).toList();
+      final pick = maps.take(8).toList();
+      // 并行拉封面
+      await Future.wait(pick.map((pl) async {
+        try {
+          final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+              .replace(queryParameters: {
+            'type': '1', 'utf8': '1', 'disstid': pl['dissid'], 'format': 'json',
+            'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+            'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
+            'hostUin': '0', 'song_num': '1', 'song_begin': '0',
+          });
+          final resp = await http.get(u, headers: {
+            'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
+          final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+          final cd = (j['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
+          if (cd != null && cd['logo'] != null) pl['cover'] = cd['logo'].toString();
+        } catch (_) {}
+      }));
+      return pick;
     } catch (_) {
       return const [];
     }
