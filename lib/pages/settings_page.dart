@@ -392,7 +392,7 @@ class SettingsPage extends StatelessWidget {
               } catch (_) {}
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  duration: const Duration(seconds: 3),
+                  duration: const Duration(milliseconds: 1500),
                   behavior: SnackBarBehavior.floating,
                   width: 320,
                   content: Text(
