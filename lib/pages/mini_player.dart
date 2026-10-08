@@ -57,7 +57,7 @@ class MiniPlayer extends StatelessWidget {
             child: Padding(
               // 车机横屏直接用固定抬高值；手机用系统手势条 padding
               padding: EdgeInsets.only(
-                bottom: isLandscape && isCarScreen
+                bottom: isLandscape && isCarLandscape
                     ? bottomPad
                     : mq.padding.bottom.clamp(0.0, bottomPad),
               ),
