@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'audio_handler.dart';
 import 'external_api.dart';
 import 'lyrics.dart';
+import 'lyric_overlay.dart';
 import 'local_library.dart';
 import 'main.dart';
 import 'settings.dart';
@@ -34,6 +36,9 @@ class PlayerController extends ChangeNotifier {
       _lastPosTime = DateTime.now();
     });
     _stuckTimer = Timer.periodic(const Duration(seconds: 3), (_) => _checkStuck());
+    // 睡前模式：监听设置变化，启停倒计时
+    settings.addListener(_startSleep);
+    _startSleep();
     // 通知栏/车机的 next/prev 按键回调。
     audioHandler.onSkipNext = next;
     audioHandler.onSkipPrevious = previous;
@@ -42,27 +47,77 @@ class PlayerController extends ChangeNotifier {
     audioHandler.allowPlay = true;
   }
 
-  final SubsonicClient client;
+  final SubsonicClient? client; // 未配置 Navidrome 时为 null（首页/榜单/搜索仍可用）
   final AppSettings settings;
   AudioPlayer get player => audioHandler.player;
 
   ExternalApi get external => ExternalApi(settings.externalApiUrl);
 
   List<Song> queue = const [];
+  /// 当前队列来源（歌单/榜单/电台/专辑名），播放页展示路径用。
+  String? queueSource;
   int index = -1;
   Lyrics? lyrics;
   bool lyricsLoading = false;
+  ui.Color? coverTint; // 当前播放封面主色（全局封面玻璃背景，随切歌更新）
   // 默认随机播放（用户要求：播放界面控制栏默认随机）
   PlayMode _repeat = PlayMode.shuffle;
   final Random _rnd = Random();
+  /// 最近播放过的歌曲 ID（避免随机重复，按歌曲身份排除，不受歌单切换影响）。
+  static const int _recentLimit = 10;
+  final List<String> _recentIds = [];
+  /// 洗牌顺序（标准 shuffle：播完一轮才重新洗牌，不重复）；队列变化时按长度自动失效。
+  List<int> _shuffleOrder = [];
+  int _shufflePos = 0;
 
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<Duration> _positionSub;
   late final Timer _stuckTimer;
+  // ---- 睡前模式 ----
+  Timer? _sleepTimer;
+  Timer? _fadeTimer;
+  double _baseVolume = 1.0;
+  DateTime? _sleepEndAt;
+  void _cancelSleep() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
+    _sleepEndAt = null;
+    unawaited(player.setVolume(_baseVolume));
+  }
+  void _startSleep() {
+    _cancelSleep();
+    if (!settings.sleepEnabled) return;
+    final total = Duration(minutes: settings.sleepMinutes);
+    _baseVolume = player.volume;
+    _sleepEndAt = DateTime.now().add(total);
+    _sleepTimer = Timer(total, () async {
+      await player.pause();
+      unawaited(player.setVolume(_baseVolume));
+      _sleepEndAt = null;
+    });
+    if (settings.sleepFade) {
+      // 从总时长50%开始线性渐弱到0，到点正好静音
+      final fadeStartMs = total.inMilliseconds ~/ 2;
+      _fadeTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+        final end = _sleepEndAt;
+        if (end == null) return;
+        final remain = end.difference(DateTime.now()).inMilliseconds;
+        final totalMs = total.inMilliseconds;
+        final elapsed = totalMs - remain;
+        if (elapsed < fadeStartMs) return;
+        final t = (elapsed - fadeStartMs) / (totalMs - fadeStartMs); // 0→1
+        final v = (_baseVolume * (1 - t)).clamp(0.0, _baseVolume);
+        unawaited(player.setVolume(v));
+      });
+    }
+  }
   Duration _lastPos = Duration.zero;
   DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
+  /// 已推送到悬浮窗的歌词行号（避免重复推送）。
   /// 播放加载令牌：快速连点切歌/自动播放时，只允许最新一次加载真正生效，
   /// 旧加载在关键节点放弃，避免两次 setUrl 相互覆盖造成竞态。
   int _playToken = 0;
@@ -82,6 +137,7 @@ class PlayerController extends ChangeNotifier {
     try {
       final f = await _stateFile;
       await f.writeAsString(jsonEncode({
+        'queueSource': queueSource,
         'index': index,
         'position': player.position.inMilliseconds,
         'queue': queue.map((s) => {
@@ -98,6 +154,7 @@ class PlayerController extends ChangeNotifier {
       final f = await _stateFile;
       if (!await f.exists()) return;
       final m = jsonDecode(await f.readAsString()) as Map;
+      queueSource = (m['queueSource'] as String?) ?? '';
       final list = (m['queue'] as List?) ?? [];
       if (list.isEmpty) return;
       queue = list.map((e) => Song(
@@ -231,7 +288,7 @@ class PlayerController extends ChangeNotifier {
       } catch (_) {}
       return '';
     }
-    return client.streamUrl(s.id).toString();
+    return client?.streamUrl(s.id)?.toString() ?? '';
   }
 
   /// 更新通知栏/锁屏显示的歌曲元数据。
@@ -241,7 +298,7 @@ class PlayerController extends ChangeNotifier {
       if (s.coverUrl != null && s.coverUrl!.isNotEmpty) {
         art = Uri.tryParse(s.coverUrl!);
       } else if (s.coverArt != null) {
-        art = client.coverUrl(s.coverArt!, size: 500);
+        art = client?.coverUrl(s.coverArt!, size: 500);
       }
       audioHandler.setMediaItem(MediaItem(
         id: s.id,
@@ -329,6 +386,12 @@ class PlayerController extends ChangeNotifier {
     if (token != _playToken) return;
     index = i;
     notifyListeners();
+    // 记录最近播放（顺序/随机/点列表都算），随机切歌按歌曲 ID 避开最近播过的
+    final _rid = queue[i].id;
+    _recentIds.remove(_rid);
+    _recentIds.add(_rid);
+    if (_recentIds.length > _recentLimit) _recentIds.removeAt(0);
+    unawaited(refreshCoverTint());
     _applyLoopMode();
     _loadLyrics();
     // 开始播放时若歌曲无封面，自动按歌名+歌手搜索封面（网易云），成功后刷新播放页/通知栏
@@ -339,7 +402,7 @@ class PlayerController extends ChangeNotifier {
     // [xmusic] 2026-09-24 试听片段检测（用户反馈：排行榜/每日30首部分歌只有 11/30 秒）：
     // 酷我 /nf/ 试听已在 external_api.kuwoStreamUrl 拦截；这里兜底检测"声明时长>60s
     // 但实际可播时长<40s"的试听（如 QQ vkey 非会员 30s 试听），自动换 GDStudio 网易云完整版重播。
-    if (s.fromExternal && (s.durationSec ?? 0) > 60 && token == _playToken) {
+    if (s.fromExternal && token == _playToken) {
       try {
         await player.processingStateStream.firstWhere(
           (st) => st == ProcessingState.ready,
@@ -378,6 +441,7 @@ class PlayerController extends ChangeNotifier {
               await player.setUrl(u2);
               index = i;
               notifyListeners();
+              unawaited(refreshCoverTint());
               _applyLoopMode();
               _loadLyrics();
               if (autoplay) await player.play();
@@ -403,10 +467,13 @@ class PlayerController extends ChangeNotifier {
     _prevStuckPos = now;
   }
 
-  Future<void> playQueue(List<Song> songs, int startIndex) async {
+  Future<void> playQueue(List<Song> songs, int startIndex,
+      {String? source}) async {
     queue = List.of(songs);
+    queueSource = source;
     index = startIndex;
     notifyListeners();
+    unawaited(refreshCoverTint());
     try {
       await _loadAndPlay(startIndex, autoplay: true);
     } catch (e) {
@@ -428,6 +495,45 @@ class PlayerController extends ChangeNotifier {
     } catch (e) { lastError = e.toString(); notifyListeners(); }
   }
 
+  /// 提取当前播放封面主色到 coverTint（全局封面玻璃背景），失败静默（保持原值）。
+  Future<void> refreshCoverTint() async {
+    final s = current;
+    if (s == null) return;
+    String? url;
+    try {
+      url = s.coverUrl?.isNotEmpty == true
+          ? s.coverUrl!
+          : client?.coverUrl(s.coverArt, size: 600)?.toString();
+    } catch (_) { url = null; }
+    if (url == null || url.isEmpty) return;
+    try {
+      final resp = await http.get(Uri.parse(url), headers: const {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://music.163.com/',
+      }).timeout(const Duration(seconds: 8));
+      if (resp.statusCode != 200) return;
+      final codec = await ui.instantiateImageCodec(resp.bodyBytes);
+      final frame = await codec.getNextFrame();
+      final img = frame.image;
+      final bd = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (bd == null) return;
+      final bytes = bd.buffer.asUint8List();
+      int r = 0, g = 0, b = 0, n = 0;
+      final w = img.width, h = img.height;
+      final step = max(1, (w * h) ~/ 4000);
+      for (int y = 0; y < h; y += step) {
+        for (int x = 0; x < w; x += step) {
+          final i = (y * w + x) * 4;
+          if (i + 2 >= bytes.length) continue;
+          r += bytes[i]; g += bytes[i + 1]; b += bytes[i + 2]; n++;
+        }
+      }
+      if (n == 0) return;
+      final tint = ui.Color.fromARGB(255, r ~/ n, g ~/ n, b ~/ n);
+      if (coverTint != tint) { coverTint = tint; notifyListeners(); }
+    } catch (_) {}
+  }
+
   void _onCompleted() {
     if (_repeat == PlayMode.repeatOne) return;
     next();
@@ -435,9 +541,21 @@ class PlayerController extends ChangeNotifier {
 
   void _playRandom() {
     if (queue.length <= 1) return;
-    var ni = index;
-    while (ni == index) { ni = _rnd.nextInt(queue.length); }
-    unawaited(_loadAndPlay(ni));
+    // 标准洗牌：洗牌顺序为空/队列长度变化/已播到末尾 → 重新洗牌（首项避开当前曲目）；
+    // 否则按洗牌顺序推进，播完一轮才重复。
+    if (_shuffleOrder.isEmpty ||
+        _shuffleOrder.length != queue.length ||
+        _shufflePos >= _shuffleOrder.length - 1) {
+      _shuffleOrder = List.generate(queue.length, (i) => i)..shuffle(_rnd);
+      if (_shuffleOrder.isNotEmpty && _shuffleOrder.first == index) {
+        _shuffleOrder[0] = _shuffleOrder.removeLast();
+      }
+      _shufflePos = 0;
+    } else {
+      _shufflePos++;
+    }
+    if (_shufflePos >= _shuffleOrder.length) _shufflePos = _shuffleOrder.length - 1;
+    unawaited(_loadAndPlay(_shuffleOrder[_shufflePos]));
   }
 
   Future<void> _loadLyrics() async {
@@ -450,7 +568,47 @@ class PlayerController extends ChangeNotifier {
     try {
       var result;
       final src = s.externalSource;
-      if (src == 'qq') {
+      if (lyricSourceIndex > 0) {
+        // 备用源：跨源按 歌名+歌手 搜索取词（1网易云 / 2QQ / 3LX）
+        try {
+          final kw = '${s.title} ${s.artist}';
+          if (lyricSourceIndex == 1) {
+            final hits = await external.searchNeteaseDirect(kw, limit: 3);
+            for (final cand in hits) {
+              final lr = await external.lyricFor(cand.id, source: 'netease');
+              if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+            }
+          } else if (lyricSourceIndex == 2) {
+            // QQ 源：当前歌曲本身是 QQ 源直接取词；否则搜索；均无词则网易云兜底
+            if (s.externalSource == 'qq') {
+              final lr = await external.qqLyric(s.id);
+              if (lr != null && lr.lines.isNotEmpty) { result = lr; }
+            }
+            if (result == null) {
+              final hits = await external.searchQq(kw, limit: 3);
+              for (final cand in hits) {
+                final lr = await external.qqLyric(cand.id);
+                if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+              }
+            }
+            if (result == null) {
+              final nh = await external.searchNeteaseDirect(kw, limit: 3);
+              for (final cand in nh) {
+                final lr = await external.lyricFor(cand.id, source: 'netease');
+                if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+              }
+            }
+          } else if (lyricSourceIndex == 3) {
+            final hits = await external.lxSearch(kw, limit: 3);
+            for (final cand in hits) {
+              if (cand.lrcUrl != null && cand.lrcUrl!.isNotEmpty) {
+                final lr = await external.lxLrc(cand.lrcUrl!);
+                if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+              }
+            }
+          }
+        } catch (_) {}
+      } else if (src == 'qq') {
         result = await external.qqLyric(s.id);
         // QQ 没词时按歌名+歌手搜网易云兜底（车机用户反馈"播放没歌词"）
         if (result == null || result.lines.isEmpty) {
@@ -463,6 +621,9 @@ class PlayerController extends ChangeNotifier {
             }
           } catch (_) {}
         }
+      } else if (s.lrcUrl != null && s.lrcUrl!.isNotEmpty) {
+        // 外源歌曲自带歌词直链（LX/meting 的 lrc）：直接用直链拉词，不走通用歌词查询。
+        result = await external.lxLrc(s.lrcUrl!);
       } else if (s.fromExternal) {
         // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
         // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）
@@ -481,7 +642,7 @@ class PlayerController extends ChangeNotifier {
             }
           } catch (_) {}
         }
-        result ??= await client.lyricsFor(s);
+        result ??= await client?.lyricsFor(s);
         if (result == null || result.lines.isEmpty) {
           try {
             final hits = await external
@@ -505,7 +666,18 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void reloadLyrics() => _loadLyrics();
+  /// 歌词源索引：0默认 / 1网易云 / 2QQ / 3LX。双击刷新时 +1 循环切换。
+  int lyricSourceIndex = 0;
+  String get lyricSourceName => switch (lyricSourceIndex) {
+        0 => '默认',
+        1 => '网易云',
+        2 => 'QQ音乐',
+        _ => 'LX',
+      };
+  void reloadLyrics({bool switchSource = false}) {
+    if (switchSource) lyricSourceIndex = (lyricSourceIndex + 1) % 4;
+    _loadLyrics();
+  }
 
   // ---- 下载 ----
 
@@ -533,7 +705,7 @@ class PlayerController extends ChangeNotifier {
     } catch (_) {
       return '无法创建目录 $base，请在系统设置中授予存储权限';
     }
-    final safe = _safeName('${s.artist} - ${s.title}');
+    final safe = _safeName('${s.title} - ${s.artist}');
     final file = File('${dir.path}/$safe.mp3');
     try {
       await file.writeAsBytes(bytes.bodyBytes);
@@ -543,7 +715,7 @@ class PlayerController extends ChangeNotifier {
     return '已保存到 ${file.path}';
   }
 
-  Future<String> uploadSongToNas(Song s) async {
+  Future<String> uploadSongToNas(Song s, {String? folder}) async {
     if (!settings.webdavConfigured) return '未配置 NAS (WebDAV) 地址';
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) return '无法获取下载地址';
@@ -551,7 +723,11 @@ class PlayerController extends ChangeNotifier {
     if (media.statusCode != 200) return '获取歌曲失败 HTTP ${media.statusCode}';
     final base = settings.webdavUrl.replaceAll(RegExp(r'/+$'), '');
     final sub = (settings.webdavPath.trim().isEmpty ? 'Music/xmusic' : settings.webdavPath.trim()).replaceAll(RegExp(r'^/|/$'), '');
-    final path = '$base/$sub/${_safeName("${s.artist} - ${s.title}")}.mp3';
+    // 文件命名：歌曲-歌手；下载整个歌单时外层加歌单名文件夹
+    final dir = (folder == null || folder.trim().isEmpty)
+        ? ''
+        : '${_safeName(folder.trim())}/';
+    final path = '$base/$sub/$dir${_safeName('${s.title} - ${s.artist}')}.mp3';
     final auth = '${settings.webdavUser}:${settings.webdavPass}';
     final encoded = base64Encode(utf8.encode(auth));
     final resp = await http.put(
@@ -602,10 +778,6 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> previous() async {
-    if (player.position > const Duration(seconds: 3)) {
-      await player.seek(Duration.zero);
-      return;
-    }
     if (queue.isEmpty) return;
     final n = queue.length;
     var i = index <= 0 ? n - 1 : index - 1;
@@ -654,13 +826,68 @@ class PlayerController extends ChangeNotifier {
     if (s.fromExternal) return;
     try {
       if (nowStarred) {
-        await client.starSong(s.id);
+        await client?.starSong(s.id);
       } else {
-        await client.unstarSong(s.id);
+        await client?.unstarSong(s.id);
       }
     } catch (e) {
       debugPrint('star toggle failed: $e');
     }
+  }
+
+  /// 收藏/取消收藏队列里第 i 首（播放列表面板左滑/右侧图标）
+  Future<void> toggleStarAt(int i) async {
+    if (i < 0 || i >= queue.length) return;
+    final s = queue[i];
+    final nowStarred = !s.starred;
+    queue[i] = Song(
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      albumId: s.albumId,
+      durationSec: s.durationSec,
+      coverArt: s.coverArt,
+      starred: nowStarred,
+      coverUrl: s.coverUrl,
+      streamUrl: s.streamUrl,
+      fromExternal: s.fromExternal,
+      externalSource: s.externalSource,
+    );
+    notifyListeners();
+    if (s.fromExternal) return;
+    try {
+      if (nowStarred) {
+        await client?.starSong(s.id);
+      } else {
+        await client?.unstarSong(s.id);
+      }
+    } catch (e) {
+      debugPrint('star toggle at failed: $e');
+    }
+  }
+
+  /// 从播放队列移除第 i 首（删除当前歌则跳到下一首继续）
+  Future<void> removeFromQueue(int i) async {
+    if (i < 0 || i >= queue.length) return;
+    final wasCurrent = i == index;
+    final q = List.of(queue)..removeAt(i);
+    if (wasCurrent) {
+      if (q.isEmpty) {
+        queue = q;
+        index = 0;
+        notifyListeners();
+        return;
+      }
+      index = index.clamp(0, q.length - 1);
+      queue = q;
+      notifyListeners();
+      await playAt(index);
+      return;
+    }
+    queue = q;
+    if (i < index) index--;
+    notifyListeners();
   }
 
   @override
@@ -669,6 +896,8 @@ class PlayerController extends ChangeNotifier {
     _playingSub.cancel();
     _positionSub.cancel();
     _stuckTimer.cancel();
+    settings.removeListener(_startSleep);
+    _cancelSleep();
     super.dispose();
   }
 }

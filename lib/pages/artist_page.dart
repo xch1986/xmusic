@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../toast.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'album_page.dart';
 import 'player_page.dart';
 import 'mini_player.dart';
@@ -30,28 +32,30 @@ class ArtistPage extends StatefulWidget {
 class _ArtistPageState extends State<ArtistPage> {
   late Future<List<Album>> _future;
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
 
   @override
   void initState() {
     super.initState();
-    _future = _client.artistAlbums(widget.artist.id);
+    _future = _client?.artistAlbums(widget.artist.id) ??
+        Future.value(<Album>[]);
   }
 
   Future<void> _playAll({bool shuffle = false}) async {
+    final c = _client;
+    if (c == null) {
+      if (!mounted) return;
+      showTopToast(context, '未配置 Navidrome，请到 设置-源 中配置服务器');
+      return;
+    }
     try {
-      final songs = await _client.artistSongs(widget.artist.name);
+      final songs = await c.artistSongs(widget.artist.name);
       if (!mounted) return;
       if (shuffle) songs.shuffle();
-      await widget.controller.playQueue(songs, 0);
+      await widget.controller.playQueue(songs, 0, source: '歌手 · ${widget.artist.name}');
       if (mounted) setState(() {});
       if (context.mounted) {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => PlayerPage(
-            settings: widget.settings,
-            controller: widget.controller,
-          ),
-        ));
+        await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
       }
     } catch (e) {
       if (!mounted) return;
@@ -71,11 +75,26 @@ class _ArtistPageState extends State<ArtistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: Text(widget.artist.name)),
-      body: Column(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BigScreenText(
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        // 状态栏透明+图标颜色跟随主题：避免深色主题下状态栏变黑（AnnotatedRegion 双保险）
+        value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+            .copyWith(
+                statusBarColor: widget.settings.coverColorBg
+                    ? Colors.transparent
+                    : Theme.of(context).colorScheme.surfaceContainer),
+        child: PageBackground(
+          controller: widget.controller,
+          settings: widget.settings,
+          child: Scaffold(
+          // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
+          // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            title: Text(widget.artist.name)),
+          body: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Album>>(
@@ -93,7 +112,8 @@ class _ArtistPageState extends State<ArtistPage> {
                         const SizedBox(height: 12),
                         FilledButton(
                           onPressed: () => setState(() =>
-                              _future = _client.artistAlbums(widget.artist.id)),
+                              _future = _client?.artistAlbums(widget.artist.id) ??
+                                  Future.value(<Album>[])),
                           child: const Text('重试'),
                         ),
                       ],
@@ -181,7 +201,8 @@ class _ArtistPageState extends State<ArtistPage> {
             controller: widget.controller,
           ),
         ],
+      )),
       ),
-    );
+    ));
   }
 }

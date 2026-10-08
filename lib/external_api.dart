@@ -26,8 +26,28 @@ class ExternalApi {
     'Referer': 'https://www.bilibili.com/',
   };
 
+  /// 将各源发行时间/年份（毫秒或秒时间戳、或 4 位年份）解析为年份，失败返回 null。
+  static int? _yearOf(dynamic v) {
+    if (v == null) return null;
+    if (v is num) {
+      final n = v.toInt();
+      if (n > 9999) {
+        final ms = n > 100000000000 ? n : n * 1000;
+        return DateTime.fromMillisecondsSinceEpoch(ms).year;
+      }
+      return n;
+    }
+    final str = v.toString().trim();
+    final m = RegExp(r'^\d{4}').firstMatch(str);
+    return m == null ? null : int.parse(m.group(0)!);
+  }
+
   bool get isConfigured => baseUrl.trim().isNotEmpty;
-  String get _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  /// 内置默认聚合 API（gdstudio）；「外部API地址」留空时自动使用。
+  static const String defaultAggregate = 'https://music-api.gdstudio.xyz';
+  String get _root =>
+      (baseUrl.trim().isEmpty ? defaultAggregate : baseUrl.trim())
+          .replaceAll(RegExp(r'/+$'), '');
 
   Future<dynamic> _getJson(String types, String source, Map<String, String> params) async {
     final uri = Uri.parse('$_root/api.php').replace(queryParameters: {
@@ -118,6 +138,8 @@ class ExternalApi {
         durationSec: null,
         fromExternal: true,
         externalSource: source,
+        year: _yearOf(it['publishTime'] ??
+            (it['album'] is Map ? (it['album'] as Map)['publishTime'] : null)),
       ));
     }
     return out;
@@ -188,6 +210,7 @@ class ExternalApi {
           durationSec: (t['duration'] as num?) != null ? ((t['duration'] as num) / 1000).round() : null,
           fromExternal: true,
           externalSource: 'netease',
+          year: _yearOf((t['album'] as Map?)?['publishTime']),
         );
       }).toList();
     } catch (_) {
@@ -225,6 +248,7 @@ class ExternalApi {
               : null,
           fromExternal: true,
           externalSource: 'netease',
+          year: _yearOf(t['publishTime'] ?? (t['album'] as Map?)?['publishTime']),
         );
       }).toList();
     } catch (_) {
@@ -266,6 +290,7 @@ class ExternalApi {
           durationSec: (t['interval'] as num?)?.toInt(),
           fromExternal: true,
           externalSource: 'qq',
+          year: _yearOf(t['time'] ?? t['pubtime']),
         );
       }).toList();
     } catch (_) {
@@ -380,18 +405,18 @@ class ExternalApi {
   }
 
   /// QQ 排行榜列表（老接口匿名可用，无需 cookie）。返回 {id, name, coverImgUrl}。
-  /// topid: 4=热歌榜 27=新歌榜 62=飙升榜 26=流行指数 5=内地 6=香港 3=欧美 16=韩国 17=日本 201=抖音热歌。
+  /// topid: 4=流行指数榜 26=QQ热歌榜 27=新歌榜 62=飙升榜 5=内地 6=香港 3=欧美 16=韩国 17=日本 60=抖音热歌。
   static const List<Map<String, String>> _qqCharts = [
-    {'id': '4', 'name': 'QQ热歌榜', 'cover': ''},
+    {'id': '4', 'name': '流行指数榜', 'cover': ''},
     {'id': '27', 'name': '新歌榜', 'cover': ''},
     {'id': '62', 'name': '飙升榜', 'cover': ''},
-    {'id': '26', 'name': '流行指数榜', 'cover': ''},
+    {'id': '26', 'name': 'QQ热歌榜', 'cover': ''},
     {'id': '5', 'name': '内地榜', 'cover': ''},
     {'id': '6', 'name': '香港榜', 'cover': ''},
     {'id': '3', 'name': '欧美榜', 'cover': ''},
     {'id': '16', 'name': '韩国榜', 'cover': ''},
     {'id': '17', 'name': '日本榜', 'cover': ''},
-    {'id': '201', 'name': '抖音热歌榜', 'cover': ''},
+    {'id': '60', 'name': '抖音热歌榜', 'cover': ''},
   ];
 
   Future<List<Map<String, dynamic>>> qqToplists({String cookie = ''}) async {
@@ -460,6 +485,7 @@ class ExternalApi {
           durationSec: (d['interval'] as num?)?.toInt(),
           fromExternal: true,
           externalSource: 'qq',
+          year: _yearOf(d['pubtime'] ?? d['time']),
         );
       }).where((s) => s.id.isNotEmpty).take(limit).toList();
     } catch (_) {
@@ -467,51 +493,299 @@ class ExternalApi {
     }
   }
 
-  /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
-  Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
-    final songs = await qqToplistCp('4', limit: count);
-    if (songs.isEmpty) return daily30FromKugou(count: count); // 榜单接口异常时兜底
-    return songs;
+  // ===== LX 音乐源（通用网易云/QQ 兼容 API）=====
+  // 默认源可在设置页配置；榜单/歌单/搜索都走这里。
+  static String lxBase = 'https://music-api.gdstudio.xyz';
+  static const List<String> lxBases = [
+    'https://music-api.gdstudio.xyz',
+    'https://api.injahow.cn/meting',
+    'https://lxmusic-api.deno.dev',
+  ];
+
+  Map<String, String> get _hlx => {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://music.163.com/',
+      };
+
+  /// LX 搜索
+  Future<List<Song>> lxSearch(String kw, {int limit = 30}) async {
+    for (final base in lxBases) {
+      try {
+        final uri = Uri.parse('$base/api/search').replace(queryParameters: {
+          'keywords': kw, 'limit': '$limit',
+        });
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 10));
+        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final list = ((j['result'] as Map?)?['songs'] as List?) ?? [];
+        return list.cast<Map>().map((s) {
+          final al = (s['al'] as Map?) ?? {};
+          return Song(
+            id: 'lx_${s['id']}',
+            title: (s['name'] ?? '').toString(),
+            artist: ((s['ar'] as List?) ?? []).map((a) => a['name']).join(' / '),
+            album: (al['name'] ?? '').toString(),
+            coverUrl: (al['picUrl'] ?? '').toString(),
+            durationSec: ((s['dt'] as num?)! / 1000).round(),
+            fromExternal: true, externalSource: 'lx',
+            year: _yearOf(s['publishTime']),
+          );
+        }).toList();
+      } catch (_) { continue; }
+    }
+    return const [];
   }
 
-  /// QQ 精选歌单：从 y.qq.com/n/ryqq_v2/category 抓歌单ID，每天 shuffle 取8个
-  Future<List<Map<String, dynamic>>> qqPlaylists() async {
+  /// LX 歌单详情
+  Future<List<Song>> lxPlaylistSongs(String id) async {
+    for (final base in lxBases) {
+      try {
+        final uri = Uri.parse('$base/api/playlist/detail').replace(queryParameters: {'id': id});
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 10));
+        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final list = ((j['playlist'] as Map?)?['tracks'] as List?) ?? [];
+        return list.cast<Map>().map((s) {
+          final al = (s['al'] as Map?) ?? {};
+          return Song(
+            id: 'lx_${s['id']}',
+            title: (s['name'] ?? '').toString(),
+            artist: ((s['ar'] as List?) ?? []).map((a) => a['name']).join(' / '),
+            album: (al['name'] ?? '').toString(),
+            coverUrl: (al['picUrl'] ?? '').toString(),
+            durationSec: ((s['dt'] as num? ?? 0) / 1000).round(),
+            fromExternal: true, externalSource: 'lx',
+            year: _yearOf(s['publishTime']),
+          );
+        }).toList();
+      } catch (_) { continue; }
+    }
+    return const [];
+  }
+
+  /// LX 播放地址
+  Future<String?> lxUrl(String songId) async {
+    final sid = songId.replaceFirst('lx_', '');
+    for (final base in lxBases) {
+      try {
+        final uri = Uri.parse('$base/api/song/url').replace(queryParameters: {
+          'id': sid, 'br': '320000',
+        });
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 10));
+        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final data = (j['data'] as List?)?.cast<Map>() ?? [];
+        if (data.isNotEmpty && data[0]['url'] != null) return data[0]['url'].toString();
+      } catch (_) { continue; }
+    }
+    return null;
+  }
+  /// LX 先行版（meting，已验证可用）：网易云歌单/榜单拉取。
+  /// meting 返回数组 [{name, artist, url, pic, lrc}]，url 即直链、pic 即封面。
+  /// id 为网易云歌单/榜单 id。歌曲直接带 streamUrl，播放不再二次解析。
+  Future<List<Song>> lxMetingPlaylistSongs(String id) async {
+    for (final b in <String>['https://api.injahow.cn/meting', lxBase]) {
+      try {
+        final uri = Uri.parse(b).replace(queryParameters: {'type': 'playlist', 'id': id});
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 12));
+        final j = jsonDecode(utf8.decode(r.bodyBytes));
+        if (j is! List) continue;
+        final list = j.cast<Map<String, dynamic>>();
+        if (list.isEmpty) continue;
+        final out = <Song>[];
+        for (final s in list) {
+          final title = (s['name'] ?? '').toString();
+          if (title.isEmpty) continue;
+          out.add(Song(
+            id: 'lx_' + (s['url']?.toString() ?? ''),
+            title: title,
+            artist: (s['artist'] ?? '').toString(),
+            album: (s['album'] ?? '').toString(),
+            coverUrl: (s['pic'] ?? '').toString(),
+            streamUrl: (s['url'] ?? '').toString(),
+            lrcUrl: (s['lrc'] ?? '').toString(),
+            durationSec: int.tryParse(s['interval']?.toString() ?? '') ?? 0,
+            fromExternal: true, externalSource: 'lx',
+          ));
+        }
+        if (out.isNotEmpty) return out;
+      } catch (_) { continue; }
+    }
+    return const [];
+  }
+
+  /// LX/meting 歌词直链：拉取 LRC 文本并解析为 Lyrics（失败/无词返回 null）。
+  Future<Lyrics?> lxLrc(String lrcUrl) async {
     try {
-      final html = await http
-          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'),
-              headers: {'User-Agent': 'Mozilla/5.0'})
-          .then((r) => r.body);
-      final re = RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>');
+      final r = await http.get(Uri.parse(lrcUrl), headers: _hlx).timeout(const Duration(seconds: 12));
+      final raw = utf8.decode(r.bodyBytes);
+      if (raw.trim().isEmpty) return null;
+      return Lyrics.fromLrc(raw);
+    } catch (_) { return null; }
+  }
+  /// LX 先行版预置：网易云榜单/精选歌单（id 已实测非空可拉）。
+  static const List<Map<String, String>> lxPresets = [
+    {'id': '19723756', 'name': '飙升榜', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951172568091306'},
+    {'id': '3778678', 'name': '热歌榜', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951170483263672'},
+    {'id': '3779629', 'name': '新歌榜', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951173820334666'},
+    {'id': '2884035', 'name': '原创榜', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951173951926165'},
+    {'id': '3136952023', 'name': '华语精选', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951165418603915'},
+    {'id': '1978921795', 'name': '抖音热歌', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951173554809216'},
+    {'id': '2809577409', 'name': '欧美热歌', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951173998585253'},
+    {'id': '2250011882', 'name': '抖音热门', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951165647093663'},
+  ];  /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
+  Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
+    // 每日30首：填了有效 QQ cookie 优先走账号个性化推荐（按爱听）；否则兜底。
+    if (cookie.trim().isNotEmpty) {
+      try {
+        final rec = await qqDailyRecommend(cookie, count: count);
+        if (rec.isNotEmpty) return rec;
+      } catch (_) {}
+    }
+    // FM 接口对多数 cookie 会 500003（登录态受限），静默回退到固定热歌榜导致"每天不变"。
+    // 改为：合并多个 QQ 榜单，按日期种子随机取 count 首，保证每天变化且是真实歌曲。
+    final byId = <String, Song>{};
+    for (final id in const ['27', '62', '4', '26']) {
+      // 27=新歌榜 62=飙升榜 4=流行指数榜 26=热歌榜
+      try {
+        for (final s in await qqToplistCp(id, limit: count)) {
+          byId[s.id] = s;
+        }
+      } catch (_) {}
+    }
+    final list = byId.values.toList();
+    if (list.isEmpty) return daily30FromKugou(count: count);
+    final days = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
+    list.shuffle(Random(days));
+    return list.take(count).toList();
+  }
+
+  /// QQ 每日推荐（账号个性化，GetRecommendSong）：依赖登录 cookie，按账号爱听推荐。
+  /// 返回歌曲带直链封面/时长；若接口不可用或字段解析失败会抛异常由调用方兜底。
+  Future<List<Song>> qqDailyRecommend(String cookie, {int count = 30}) async {
+    final uinNum = int.tryParse(_uinFromCookie(cookie).replaceAll('o', '')) ?? 0;
+    final body = {
+      'comm': {'ct': 24, 'cv': 0, 'uin': uinNum, 'format': 'json', 'inCharset': 'utf-8'},
+      'req_0': {
+        'module': 'v8.FM',
+        'method': 'GetFmList',
+        'param': {
+          'songCount': count, 'uin': uinNum, 'playAction': 'default',
+        },
+      },
+    };
+    final j = await _qqFcg(body, cookie: cookie);
+    final data = j['req_0']?['data'];
+    final list = (data?['songInfo'] as List?) ?? (data?['songList'] as List?) ?? const [];
+    return list.cast<Map>().map((t) {
+      final album = (t['album'] as Map?) ?? const {};
+      final albumMid = (album['mid'] ?? '').toString();
+      final singers = ((t['singer'] as List?) ?? const [])
+          .map((x) => ((x as Map?) ?? const {})['name']?.toString() ?? '')
+          .where((x) => x.isNotEmpty)
+          .join(' / ');
+      return Song(
+        id: (t['mid'] ?? '').toString(),
+        title: (t['name'] ?? '').toString(),
+        artist: singers.isEmpty ? '未知' : singers,
+        album: (album['name'] ?? '').toString(),
+        coverUrl: albumMid.isEmpty ? null : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+        durationSec: (t['interval'] as num?)?.toInt(),
+        fromExternal: true,
+        externalSource: 'qq',
+        year: _yearOf(t['time'] ?? t['pubtime']),
+      );
+    }).where((x) => x.id.isNotEmpty).take(count).toList();
+  }
+
+  /// QQ 精选歌单（新版 musicu.fcg 接口）：
+  /// - categoryId == 0（全部）：music.playlist.PlaylistSquare/GetRecommendWhole 推荐歌单
+  /// - categoryId > 0（风格分类，如流行3152/电子45/轻音乐49/民谣48/说唱42/摇滚41/古风61）：
+  ///   music.playlist.PlayListCategory/get_category_content
+  /// 实测各风格分类均有独立数据（total≈1000），封面/播放量/创建者齐全，无需兜底合并。
+  Future<List<Map<String, dynamic>>> qqPlaylists({int categoryId = 0, int take = 12}) async {
+    try {
+      final Map<String, dynamic> req1 = categoryId == 0
+          ? {
+              'module': 'music.playlist.PlaylistSquare',
+              'method': 'GetRecommendWhole',
+              'param': {'IsReqFeed': true, 'FeedReq': {'From': 0, 'Size': 50}},
+            }
+          : {
+              'module': 'music.playlist.PlayListCategory',
+              'method': 'get_category_content',
+              'param': {
+                'caller': '474769524', // 固定 uin，接口仅用于识别调用方，无需登录态
+                'category_id': categoryId,
+                'size': 50,
+                'page': 0,
+                'use_page': 1,
+              },
+            };
+      final data = {'comm': {'ct': 24, 'cv': 0}, 'req_1': req1};
+      final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg').replace(
+          queryParameters: {'format': 'json', 'data': jsonEncode(data)});
+      final resp = await http.get(uri, headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
+        'Referer': 'https://y.qq.com/n/ryqq_v2/category',
+        'Origin': 'https://y.qq.com',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      }).timeout(const Duration(seconds: 15));
+      if (resp.statusCode != 200) {
+        throw StateError('QQ 歌单广场接口 HTTP ${resp.statusCode}');
+      }
+      Map<String, dynamic>? j;
+      try {
+        j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      } catch (_) {
+        try {
+          j = jsonDecode(utf8.decode(gzip.decode(resp.bodyBytes))) as Map<String, dynamic>;
+        } catch (_) {
+          final txt = utf8.decode(resp.bodyBytes, allowMalformed: true);
+          final m = RegExp(r'\{"code".*?\}', dotAll: true).firstMatch(txt);
+          if (m != null) j = jsonDecode(m.group(0)!) as Map<String, dynamic>;
+        }
+      }
+      final r1 = j?['req_1'] as Map?;
+      if (j == null || j['code'] != 0 || r1 == null || r1['code'] != 0) {
+        throw StateError('QQ 歌单广场接口异常 code=${j?['code']} req=${r1?['code']}');
+      }
+      final body = (r1['data'] as Map?) ?? const {};
+      final List<dynamic> items = categoryId == 0
+          ? (((body['FeedRsp'] as Map?)?['List']) as List?) ?? const []
+          : (((body['content'] as Map?)?['v_item']) as List?) ?? const [];
       final maps = <Map<String, dynamic>>[];
       final seen = <String>{};
-      for (final m in re.allMatches(html)) {
-        final id = m.group(1)!;
-        final name = m.group(2)!.trim();
-        if (!seen.add(id)) continue;
-        maps.add({'dissid': id, 'name': name});
+      for (final raw in items.cast<Map>()) {
+        final Map basic;
+        if (categoryId == 0) {
+          final p = (raw['Playlist'] as Map?) ?? const {};
+          basic = (p['basic'] as Map?) ?? const {};
+        } else {
+          basic = (raw['basic'] as Map?) ?? const {};
+        }
+        final id = basic['tid']?.toString() ?? '';
+        if (id.isEmpty || !seen.add(id)) continue;
+        final cover = basic['cover'] as Map?;
+        var img = cover?['default_url']?.toString() ?? '';
+        if (img.isEmpty) img = cover?['pic_url2']?.toString() ?? '';
+        if (img.startsWith('http://')) img = 'https://' + img.substring(7);
+        final creator = basic['creator'] as Map?;
+        maps.add({
+          'dissid': id,
+          'name': basic['title']?.toString() ?? '歌单',
+          'coverImgUrl': img,
+          'listennum': (basic['play_cnt'] as num?)?.toInt() ?? 0,
+          'creator': creator?['nick']?.toString() ?? '',
+        });
       }
-      maps.shuffle();
-      final pick = maps.take(8).toList();
-      // 并行拉封面
-      await Future.wait(pick.map((pl) async {
-        try {
-          final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-              .replace(queryParameters: {
-            'type': '1', 'utf8': '1', 'disstid': pl['dissid'], 'format': 'json',
-            'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-            'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
-            'hostUin': '0', 'song_num': '1', 'song_begin': '0',
-          });
-          final resp = await http.get(u, headers: {
-            'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
-          final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-          final cd = (j['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
-          if (cd != null && cd['logo'] != null) pl['coverImgUrl'] = cd['logo'].toString();
-        } catch (_) {}
-      }));
-      return pick;
-    } catch (_) {
-      return const [];
+      if (maps.isEmpty) {
+        throw StateError('QQ 歌单广场接口返回空列表（分类$categoryId）');
+      }
+      // 按收听数降序，取前 take 个（车机6列2行/手机3列4行）
+      maps.sort((a, b) =>
+          ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
+      return maps.take(take).toList();
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -550,6 +824,193 @@ class ExternalApi {
       }).where((s) => s.id.isNotEmpty).take(limit).toList();
     } catch (_) {
       return const [];
+    }
+  }
+
+  /// QQ 电台列表（fcg_v8_radiolist 匿名接口）：返回按组分组的结构
+  /// [{groupName, radios: [{id, name, coverUrl, listenNum}]}]
+  Future<List<Map<String, dynamic>>> qqRadios() async {
+    final uri = Uri.parse('https://c.y.qq.com/v8/fcg-bin/fcg_v8_radiolist.fcg')
+        .replace(queryParameters: {
+      'channel': 'radio', 'page': 'index', 'tpl': 'wk', 'new': '1',
+      'p': '1', 'format': 'json', 'outCharset': 'utf-8',
+    });
+    final resp = await http.get(uri, headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Referer': 'https://y.qq.com/',
+    }).timeout(const Duration(seconds: 15));
+    final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+    final groupList = (j['data']?['data']?['groupList'] as List?) ?? const [];
+    final out = <Map<String, dynamic>>[];
+    for (final g in groupList.cast<Map>()) {
+      final gname = (g['groupName'] ?? g['name'] ?? '').toString().trim();
+      final radios = (g['radioList'] as List?) ?? const [];
+      final items = <Map<String, dynamic>>[];
+      for (final r in radios.cast<Map>()) {
+        final id = r['radioId'];
+        final name = (r['radioName'] ?? '').toString();
+        if (id == null || name.isEmpty) continue;
+        final img = (r['radioImg'] ?? '').toString();
+        items.add({
+          'id': id,
+          'name': name,
+          'coverUrl': img.startsWith('http')
+              ? img.replaceFirst('http://', 'https://')
+              : null,
+          'listenNum': (r['listenNum'] ?? 0),
+        });
+      }
+      if (items.isEmpty) continue;
+      out.add({
+        'groupName': gname.isEmpty ? '电台' : gname,
+        'radios': items,
+      });
+    }
+    return out;
+  }
+
+  /// QQ 电台歌曲（musicu get_radio_track，匿名可用）：单次固定返回 5 首，
+  /// 循环拉取按 mid 去重凑 ~30 首；个性电台（code 1000）需登录态，明确抛错。
+  Future<List<Song>> qqRadioSongs(int radioId) async {
+    final headers = {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
+      'Referer': 'https://y.qq.com/',
+    };
+    final seen = <String>{};
+    final songs = <Song>[];
+    int? lastCode;
+    for (var i = 0; i < 6 && songs.length < 30; i++) {
+      final body = {
+        'comm': {'ct': 24, 'cv': 0},
+        'songlist': {
+          'module': 'mb_track_radio_svr',
+          'method': 'get_radio_track',
+          'param': {'id': radioId, 'firstplay': 1, 'num': 30},
+        },
+      };
+      final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg')
+          .replace(queryParameters: {'format': 'json', 'data': jsonEncode(body)});
+      final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final code = j['code'] ?? j['songlist']?['code'];
+      lastCode = code;
+      // QQ 封死匿名拉取（代理/个别网络下）：明确抛错，避免显示"没有歌曲数据"误导。
+      if (code == 500001) {
+        throw StateError('QQ需登录态');
+      }
+      final tracks = (j['songlist']?['data']?['tracks'] as List?) ?? const [];
+      // 个性电台（id=99 等）匿名返回 code 1000 且 tracks 为空：需登录态个性化推荐
+      if (tracks.isEmpty && code == 1000) {
+        throw StateError('个性电台需登录态');
+      }
+      for (final t in tracks.cast<Map>()) {
+        final mid = (t['mid'] ?? '').toString();
+        if (mid.isEmpty || !seen.add(mid)) continue;
+        final album = (t['album'] as Map?) ?? const {};
+        final albumMid = (album['mid'] ?? '').toString();
+        final singers = ((t['singer'] as List?) ?? const [])
+            .map((x) => ((x as Map?) ?? const {})['name']?.toString() ?? '')
+            .where((x) => x.isNotEmpty)
+            .join(' / ');
+        songs.add(Song(
+          id: mid,
+          title: (t['name'] ?? t['title'] ?? '').toString(),
+          artist: singers.isEmpty ? '未知' : singers,
+          album: (album['name'] ?? '').toString(),
+          coverUrl: albumMid.isEmpty
+              ? null
+              : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+          durationSec: (t['interval'] as num?)?.toInt(),
+          fromExternal: true,
+          externalSource: 'qq',
+        ));
+      }
+    }
+    if (songs.isEmpty) {
+      // 循环结束仍无歌曲：QQ 已封死匿名拉取电台（含"个性电台"需登录态），
+      // 明确抛错（带实际 code 便于定位），避免上层显示"没有歌曲数据"误导。
+      throw StateError('QQ电台接口无歌曲（code=$lastCode，需登录态，已限制匿名拉取）');
+    }
+    return songs;
+  }
+
+  /// QQ 歌单详情：歌单名 + 歌曲列表（qzone 匿名接口，song_num 上限约 1000）。
+  /// 用于音乐库"导入歌单"：输入歌单 ID 拉取歌曲（不足 1000 首的歌单可拉全）。
+  Future<(String, List<Song>, String)> qqPlaylistDetail(String dissid,
+      {int limit = 1000}) async {
+    try {
+      final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+          .replace(queryParameters: {
+        'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+        'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+        'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
+        'hostUin': '0', 'song_num': '$limit', 'song_begin': '0',
+      });
+      final resp = await http.get(u, headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://y.qq.com/',
+      });
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (list.isEmpty) return ('', const <Song>[], '');
+      final name = (list.first['dissname'] ?? '').toString();
+      final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? <Map<String, dynamic>>[];
+      final cover = (list.first['pic'] ??
+                  list.first['pic_url'] ??
+                  list.first['logo'] ??
+                  list.first['imgurl'] ??
+                  '')
+              .toString()
+          .replaceAll('http://', 'https://');
+      return (name, songs.map<Song>((m) {
+        final mid = (m['songmid'] ?? '').toString();
+        final title = (m['songname'] ?? '').toString();
+        final artist =
+            (m['singer'] as List?)?.cast<Map>().map((s) => s['name']).join(' / ') ?? '';
+        final albummid = (m['albummid'] ?? '').toString();
+        return Song(
+          id: mid,
+          title: title,
+          artist: artist,
+          album: (m['albumname'] ?? '').toString(),
+          coverUrl: 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albummid.jpg',
+          fromExternal: true,
+          externalSource: 'qq',
+        );
+      }).where((s) => s.id.isNotEmpty).take(limit).toList(), cover);
+    } catch (_) {
+      return ('', const <Song>[], '');
+    }
+  }
+
+  /// 轻量取歌单封面（复用 qzone 详情接口，song_num=1 只解析封面，不拉歌曲列表）。
+  /// 用于 ID 歌单补封面：旧版导入的歌单无 cover 字段，进页面时懒加载回写。
+  Future<String> qqPlaylistCover(String dissid) async {
+    try {
+      final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+          .replace(queryParameters: {
+        'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+        'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+        'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
+        'hostUin': '0', 'song_num': '1', 'song_begin': '0',
+      });
+      final resp = await http.get(u, headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://y.qq.com/',
+      });
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (list.isEmpty) return '';
+      final c = (list.first['pic'] ??
+                  list.first['pic_url'] ??
+                  list.first['logo'] ??
+                  list.first['imgurl'] ??
+                  '')
+              .toString()
+          .replaceAll('http://', 'https://');
+      return c;
+    } catch (_) {
+      return '';
     }
   }
 

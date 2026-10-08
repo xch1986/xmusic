@@ -4,6 +4,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'mini_player.dart';
 
 class AlbumPage extends StatefulWidget {
@@ -25,17 +26,18 @@ class AlbumPage extends StatefulWidget {
 class _AlbumPageState extends State<AlbumPage> {
   late Future<List<Song>> _future;
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
 
   @override
   void initState() {
     super.initState();
-    _future = _client.albumSongs(widget.album.id);
+    _future = _client?.albumSongs(widget.album.id) ??
+        Future.value(<Song>[]);
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
     // 只播放不跳转：底部全局迷你播放条立即出现（车机/列表场景）
-    await widget.controller.playQueue(songs, index);
+    await widget.controller.playQueue(songs, index, source: '专辑 · ${widget.album.name}');
     if (mounted) setState(() {});
   }
 
@@ -43,10 +45,15 @@ class _AlbumPageState extends State<AlbumPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final album = widget.album;
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+    return BigScreenText(
+      child: Scaffold(
+      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(album.name)),
-      body: Column(
+      body: PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
@@ -64,7 +71,8 @@ class _AlbumPageState extends State<AlbumPage> {
                   const SizedBox(height: 12),
                   FilledButton(
                     onPressed: () => setState(
-                        () => _future = _client.albumSongs(widget.album.id)),
+                        () => _future = _client?.albumSongs(widget.album.id) ??
+                            Future.value(<Song>[])),
                     child: const Text('重试'),
                   ),
                 ],
@@ -158,6 +166,29 @@ class _AlbumPageState extends State<AlbumPage> {
                       ),
                     ),
                     onTap: () => _playSongs(songs, i),
+                    onFavorite: () async {
+                      final s = songs[i];
+                      final v = !s.starred;
+                      if (mounted) {
+                        setState(() => songs[i] = withStarred(s, v));
+                      }
+                      if (!s.fromExternal) {
+                        try {
+                          v
+                              ? await _client?.starSong(s.id)
+                              : await _client?.unstarSong(s.id);
+                        } catch (_) {}
+                      }
+                    },
+                    blacklisted: widget.settings.isBlacklisted(songs[i]),
+                    onBlacklist: () async {
+                      final s = songs[i];
+                      if (widget.settings.isBlacklisted(s)) {
+                        await widget.settings.removeBlacklist(s);
+                      } else {
+                        await widget.settings.addBlacklist(s);
+                      }
+                    },
                   ),
                 ),
             ],
@@ -171,7 +202,7 @@ class _AlbumPageState extends State<AlbumPage> {
             controller: widget.controller,
           ),
         ],
-      ),
-    );
+      )),
+    ));
   }
 }

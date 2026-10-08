@@ -5,6 +5,9 @@ import '../settings.dart';
 import '../widgets.dart';
 import 'player_page.dart';
 
+/// 迷你播放栏：完全透明（背景透出外层 PageBackground/CoverGlassBackground），
+/// 与首页/音乐库/导航栏统一由设置的主题开关控制；内容跟随主题色。
+/// 车机横屏（landscape）时整体压缩尺寸，避免占横向空间。
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key, required this.settings, required this.controller});
 
@@ -19,21 +22,28 @@ class MiniPlayer extends StatelessWidget {
         final song = controller.current;
         final cs = Theme.of(context).colorScheme;
 
-        // 注意：不用 BackdropFilter 毛玻璃——透明窗口/车机上会渲染成拉伸色块；
-        // 用半透明纯色 + 顶部细边 + 柔和阴影，兼顾质感与车机兼容。
+        // 横竖屏都加宽加高、字体加大
+        final mq = MediaQuery.of(context);
+        final isLandscape = mq.size.width > mq.size.height;
+        final isCarScreen = mq.size.shortestSide >= 480;
+        // 车机横屏底部抬高，避开车机系统导航条（BYD 车机系统栏约70-80dp）；手机横屏贴底；竖屏避让手势条
+        final bottomPad = isLandscape
+            ? (isCarScreen ? 80.0 : 4.0)
+            : 48.0;
+        final coverSize = isLandscape ? 54.0 : 56.0;
+        final hPad = isLandscape ? 20.0 : 16.0;
+        final vPad = isLandscape ? 10.0 : 12.0;
+        final gap = isLandscape ? 16.0 : 16.0;
+        final iconSize = isLandscape ? 30.0 : 32.0;
+        final titleSize = isLandscape ? 18.0 : 18.0;
+        final artistSize = isLandscape ? 14.0 : 14.0;
+
         return Container(
+          // 仅一条跟随主题的细分隔线；不画背景色——透出 PageBackground，与全局主题统一
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHigh.withValues(alpha: 0.88),
-            boxShadow: [
-              BoxShadow(
-                color: cs.shadow.withValues(alpha: 0.10),
-                blurRadius: 14,
-                offset: const Offset(0, -3),
-              ),
-            ],
             border: Border(
               top: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.45),
+                color: cs.outlineVariant.withValues(alpha: 0.25),
                 width: 0.5,
               ),
             ),
@@ -44,44 +54,39 @@ class MiniPlayer extends StatelessWidget {
                   PlayerPage(settings: settings, controller: controller),
             )),
             child: Padding(
-              // 底部避让系统手势条：用 clamp 限制最大高度。
-              // 某些设备/透明窗口下 MediaQuery.padding.bottom 会被撑到近全屏，
-              // 若直接 SafeArea 会让迷你条高度暴涨、把详情页列表挤没（历史 bug 根因）。
+              // 车机横屏直接用固定抬高值；手机用系统手势条 padding
               padding: EdgeInsets.only(
-                bottom: MediaQuery.paddingOf(context).bottom.clamp(0.0, 48.0),
+                bottom: isLandscape && isCarScreen
+                    ? bottomPad
+                    : mq.padding.bottom.clamp(0.0, bottomPad),
               ),
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                 child: song == null
-                    // 常驻底栏：未播放时显示占位（音符 + 未在播放），
-                    // 保证榜单/专辑/歌手等详情页一进去底部就有“全局小播放栏”，
-                    // 点按进入播放页（提示当前无播放）。
+                    // 常驻底栏：未播放时显示占位（音符 + 未在播放）
                     ? Row(
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
+                            width: coverSize,
+                            height: coverSize,
                             decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.6),
+                              color: cs.onSurface.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(Icons.music_note_rounded,
-                                color: cs.onSurfaceVariant),
+                                color: cs.onSurfaceVariant, size: iconSize),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: gap),
                           Expanded(
                             child: Text('未在播放',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                        color: cs.onSurfaceVariant)),
+                                style: TextStyle(
+                                    color: cs.onSurfaceVariant,
+                                    fontSize: titleSize)),
                           ),
                           Icon(Icons.play_circle_outline_rounded,
-                              color: cs.onSurfaceVariant),
-                          const SizedBox(width: 8),
+                              color: cs.onSurfaceVariant, size: iconSize),
+                          SizedBox(width: gap),
                         ],
                       )
                     : Row(
@@ -90,36 +95,45 @@ class MiniPlayer extends StatelessWidget {
                             client: controller.client,
                             coverId: song.coverArt,
                             coverUrl: song.coverUrl,
-                            size: 44,
+                            size: coverSize,
                             radius: 8,
                             requestSize: 120,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: gap),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(song.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style:
-                                        Theme.of(context).textTheme.titleSmall),
+                                    style: TextStyle(
+                                        color: cs.onSurface,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: titleSize)),
                                 Text(song.artist,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall),
+                                    style: TextStyle(
+                                        color: cs.onSurfaceVariant,
+                                        fontSize: artistSize)),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: Icon(controller.playing
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded),
+                            iconSize: iconSize,
+                            icon: Icon(
+                                controller.playing
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                color: cs.onSurface),
                             onPressed: controller.togglePlay,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.skip_next_rounded),
+                            iconSize: iconSize,
+                            icon: Icon(Icons.skip_next_rounded,
+                                color: cs.onSurface),
                             onPressed:
                                 controller.hasNext ? controller.next : null,
                           ),

@@ -1,11 +1,59 @@
+import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+
+/// 全局共享均衡器：AndroidEqualizer 经 AudioPipeline 挂在共享 player 上，
+/// 播放页/设置页直接调 applyEqualizer 应用预设或自定义增益。
+final AndroidEqualizer sharedEqualizer = AndroidEqualizer();
+final AudioPlayer sharedPlayer = AudioPlayer(
+  audioPipeline: AudioPipeline(androidAudioEffects: [sharedEqualizer]),
+);
+
+/// EQ 预设 → 5 段参考增益（低→高）。AndroidEqualizer 频段数由设备决定，
+/// 多于 5 段时循环复用，少于 5 段取前 N。
+const Map<String, List<double>> _kEqPresets = {
+  'pop': [2.5, 1.0, -0.5, 1.0, 2.0], // 流行
+  'rock': [3.0, 1.5, -1.0, 1.5, 3.0], // 摇滚
+  'electronic': [2.0, 0.5, 1.5, 0.5, 2.0], // 电子
+  'classical': [2.0, 1.0, 0.0, 1.0, 2.0], // 古典
+  'bass': [6.0, 4.0, 1.0, -2.0, -1.0], // 低音增强
+  'vocal': [-1.5, 1.5, 4.0, 1.5, -1.5], // 人声
+  'stereo': [4.0, 1.0, -2.0, 1.0, 4.0], // 立体声
+};
+
+/// 应用 EQ：preset = off/pop/rock/electronic/classical/bass/vocal/custom；
+/// custom 时 gains 为逗号分隔的 dB（如 "3,1,-1,1,3"）。非 Android 静默忽略。
+Future<void> applyEqualizer(String preset, String gains) async {
+  try {
+    if (preset == 'off' || preset.isEmpty) {
+      await sharedEqualizer.setEnabled(false);
+      return;
+    }
+    await sharedEqualizer.setEnabled(true);
+    final params = await sharedEqualizer.parameters;
+    if (params.bands.isEmpty) return;
+    List<double> src;
+    if (preset == 'custom') {
+      src = gains
+          .split(',')
+          .map((e) => double.tryParse(e.trim()) ?? 0.0)
+          .toList();
+    } else {
+      src = _kEqPresets[preset] ?? const [];
+    }
+    final n = params.bands.length;
+    for (var i = 0; i < n; i++) {
+      final g = src.length > i ? src[i] : (src.isNotEmpty ? src.last : 0.0);
+      await params.bands[i]
+          .setGain(g.clamp(params.minDecibels, params.maxDecibels).toDouble());
+    }
+  } catch (_) {}
+}
 
 /// 全局唯一的 AudioPlayer 实例（双播问题根因修复）。
 /// audio_service 在 Android 上可能因服务重建而创建第二个 MyAudioHandler 实例，
 /// 若每个实例都 new 一个 AudioPlayer，会出现两首歌同时播放、进度不同的双播。
 /// 所有 handler 共享同一个 player，即可杜绝该问题。
-final AudioPlayer sharedPlayer = AudioPlayer();
 
 /// AudioService handler：把 just_audio 的播放状态桥接到系统通知栏/锁屏/车机。
 class MyAudioHandler extends BaseAudioHandler with SeekHandler {

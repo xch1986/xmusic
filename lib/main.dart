@@ -119,9 +119,14 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             final mq = MediaQuery.of(context);
             final size = mq.size;
-            final isCarScreen = size.width > size.height && size.shortestSide >= 480;
+            // 大屏（横竖）整体放大：车机横屏 1.5x / 竖屏大屏 1.3x，手机保持收敛区间
+            // 注意：车机放大必须用乘法(raw*系数)，否则 raw≈1.0 会被 clamp 只抬到下限 1.15，字号依旧偏小。
+            final isBig = size.shortestSide >= 480;
+            final isLand = size.width > size.height;
             final raw = mq.textScaler.scale(14);
-            final scale = isCarScreen ? raw.clamp(1.15, 1.3) : raw.clamp(0.9, 1.2);
+            final scale = isBig
+                ? (raw * (isLand ? 1.5 : 1.6)).clamp(1.2, 2.2)
+                : raw.clamp(0.9, 1.2);
             return MediaQuery(
               data: mq.copyWith(textScaler: TextScaler.linear(scale)),
               child: child!,
@@ -204,10 +209,16 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   void _sync() {
     final s = widget.settings;
     if (!s.hasLogin) {
-      _controller?.dispose();
-      _controller = null;
-      _client = null;
+      // 未配置 Navidrome：保留/创建占位 controller（client=null），
+      // 首页榜单/歌单广场/搜索/ID歌单/本地仍可用；播放与 NAS 歌单需先配置（首次进入弹窗引导）。
+      if (_client != null) {
+        _controller?.dispose();
+        _controller = null;
+        _client = null;
+      }
+      _controller ??= PlayerController(null, s);
     } else if (_client == null) {
+      if (_controller != null) _controller!.dispose(); // 替换占位 controller
       _client = s.buildClient();
       _controller = PlayerController(_client!, s);
       _controller!.restoreLastState();
@@ -230,6 +241,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final controller = _controller;
     if (controller == null) return LoginPage(settings: widget.settings);
+    // 未配置 Navidrome 时也进入首页（占位 controller），首次进入会弹窗引导配置。
     return HomeShell(settings: widget.settings, controller: controller);
   }
 }

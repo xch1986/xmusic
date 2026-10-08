@@ -63,6 +63,47 @@ class SettingsPage extends StatelessWidget {
   /// 取色弹窗文字细描边：弹窗内白字在浅色/自定义背景上可读（不压字）
   static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle());
 
+  void _showBlacklistEditor(BuildContext context, AppSettings settings) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('黑名单管理'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 360,
+            child: StatefulBuilder(
+              builder: (ctx, setState) {
+                final cur = settings.blacklistItems;
+                if (cur.isEmpty) {
+                  return const Center(child: Text('暂无黑名单'));
+                }
+                return ListView.builder(
+                  itemCount: cur.length,
+                  itemBuilder: (_, i) => ListTile(
+                    dense: true,
+                    title: Text(cur[i]),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await settings.removeBlacklistKey(cur[i]);
+                        if (ctx.mounted) setState(() {});
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(), child: const Text('关闭')),
+          ],
+        );
+      },
+    );
+  }
+
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
@@ -205,38 +246,43 @@ class SettingsPage extends StatelessWidget {
     final theme = Theme.of(context);
     final _mq = MediaQuery.of(context);
     final _car = isCarScreen(context);
+    // 车机（横/竖）设置页字号再加大一档，列表文字更清晰
+    final _scale = _car ? (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height ? 1.6 : 1.5) : bigScreenTextScale(context);
     return MediaQuery(
-      data: _car ? _mq.copyWith(textScaler: const TextScaler.linear(1.35)) : _mq,
+      data: _scale > 1.0 ? _mq.copyWith(textScaler: TextScaler.linear(_scale)) : _mq,
       child: Builder(
         builder: (ctx) {
           return IconTheme(
         // [xmusic] 2026-09-24 车机图标适配：设置页列表图标整体放大
         data: IconThemeData(size: _car ? 28 : 24),
         child: Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+          // [xmusic] 2026-09-28 设置页透明：透出全局封面玻璃背景（之前是初始底色）
+          backgroundColor: Colors.transparent,
+      appBar: AppBar(),
       body: ListView(
         children: [
-          // ===== 个性化（主题 + 歌词） =====
-          _sectionTitle(theme, '个性化'),
+          // ===== 主题 =====
+          _sectionTitle(theme, '主题'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
             title: const Text('主题模式'),
             subtitle: Text(_themeName(settings.themeMode)),
             onTap: () => _showThemeModeDialog(context),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.wallpaper_rounded),
+            title: const Text('用当前歌曲封面透出背景'),
+            subtitle: const Text('开启后全App背景自动透出当前封面的模糊色彩（跟随深浅主题）'),
+            value: settings.coverColorBg,
+            onChanged: (v) => settings.setCoverColorBg(v),
+          ),
           ListTile(
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
             trailing: settings.bgColor != 0
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
-                : const Text('默认'),
-            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: true),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.play_circle_outline_rounded),
-            title: const Text('启动时自动播放'),
-            value: settings.autoPlay,
-            onChanged: (v) => settings.setAutoPlay(v),
+                : const Icon(Icons.chevron_right),
+            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: false),
           ),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
@@ -273,7 +319,93 @@ class SettingsPage extends StatelessWidget {
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.lyricFuture), borderRadius: BorderRadius.circular(4)))
                 : const Text('默认'),
             onTap: () => _showColorPicker(context, '未唱行颜色', settings.lyricFuture, (c) => settings.setLyricColors(future: c)),
-          ),          const Divider(),
+          ),
+          const Divider(),
+
+          // ===== 个性化 =====
+          _sectionTitle(theme, '个性化'),
+          SwitchListTile(
+            secondary: const Icon(Icons.play_circle_outline_rounded),
+            title: const Text('启动时自动播放'),
+            value: settings.autoPlay,
+            onChanged: (v) => settings.setAutoPlay(v),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.sync_rounded),
+            title: const Text('同步黑名单到 NAS'),
+            subtitle: const Text('开启后黑名单和 ID 歌单自动通过 WebDAV 同步手机/车机'),
+            value: settings.syncNas,
+            onChanged: (v) => settings.setSyncNas(v),
+          ),
+          ListTile(
+            leading: const Icon(Icons.playlist_remove_rounded),
+            title: const Text('黑名单管理'),
+            subtitle: Text('${settings.blacklistItems.length} 条（歌手/歌名），点开查看和删减'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showBlacklistEditor(context, settings),
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_sync_rounded),
+            title: const Text('立即同步到 NAS'),
+            subtitle: const Text('把黑名单和 ID 歌单立即上传；失败会显示原因'),
+            trailing: const Icon(Icons.sync_rounded),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.showSnackBar(const SnackBar(content: Text('同步中…')));
+              final err = await settings.syncBlacklistPush();
+              if (!context.mounted) return;
+              messenger.showSnackBar(SnackBar(
+                  content: Text(err == null
+                      ? '同步成功（黑名单 + ID 歌单已上传）'
+                      : err)));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_download_outlined),
+            title: const Text('NAS'),
+            subtitle: Text(settings.webdavConfigured ? settings.webdavUrl : '未配置'),
+            onTap: () => _showWebdavDialog(context),
+          ),
+          // ===== 睡前模式 =====
+          SwitchListTile(
+            secondary: const Icon(Icons.bedtime_rounded),
+            title: const Text('睡前模式'),
+            subtitle: Text(settings.sleepEnabled
+                ? '${settings.sleepMinutes} 分钟后自动停止${settings.sleepFade ? '，音量渐弱' : ''}'
+                : '定时自动停止播放（10~90 分钟可设）'),
+            value: settings.sleepEnabled,
+            onChanged: (v) => settings.setSleepEnabled(v),
+          ),
+          if (settings.sleepEnabled) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 20),
+                  Expanded(
+                    child: Slider(
+                      min: 10,
+                      max: 90,
+                      divisions: 16,
+                      value: settings.sleepMinutes.toDouble(),
+                      label: '${settings.sleepMinutes} 分钟',
+                      onChanged: (v) => settings.setSleepMinutes(v.round()),
+                    ),
+                  ),
+                  Text('${settings.sleepMinutes} 分钟',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.volume_down_rounded),
+              title: const Text('结束前渐弱音量'),
+              subtitle: const Text('从一半时间开始逐渐降低音量，到点正好静音并停止'),
+              value: settings.sleepFade,
+              onChanged: (v) => settings.setSleepFade(v),
+            ),
+          ],
+          const Divider(),
 
           // ===== 源 =====
           _sectionTitle(theme, '源'),
@@ -288,7 +420,9 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.api_rounded),
             title: const Text('外部API地址'),
-            subtitle: Text(settings.externalApiUrl),
+            subtitle: Text(settings.externalApiUrl.trim().isEmpty
+                ? '默认使用内置聚合接口，一般无需修改'
+                : settings.externalApiUrl),
             onTap: () => _showExternalApiDialog(context),
           ),
           // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源），
@@ -296,131 +430,32 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.public_rounded),
             title: const Text('外网搜索源'),
-            subtitle: const Text('自动聚合：网易云 / B站 / QQ / 聚合API\nQQ 播放受版权/VIP 限制，点击查看详情'),
+            subtitle: const Text('LX(网易云/QQ聚合) + 网易云直连 + QQ + 酷我 + 聚合API\n已移除 B站；播放按来源分发，点击查看详情'),
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
-            title: const Text('QQ音乐 Cookie'),
-            subtitle: Text(settings.qqCookie.trim().isEmpty
-                ? '未设置：每日30首用酷狗+网易云兜底\n设置后解锁 QQ 榜单与播放（点击查看获取方法）'
-                : '已设置：每日30首/QQ榜单自动启用\n点击可修改（Cookie 含登录态，勿外泄）'),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQqCookieDialog(context),
-          ),
-
           const Divider(),
 
-          // ===== 权限 =====
-          _sectionTitle(theme, '权限'),          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('权限检查'),
-            subtitle: const Text('通知 / 存储 / 音乐 / 图片 缺失权限一键补全\n（车机识别与通知栏媒体控制需要通知权限）'),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              final missing = await ensureAppPermissions();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(missing.isEmpty
-                    ? '所有权限已授予'
-                    : '以下权限未授予：' + missing.join('、')),
-              ));
-            },
-          ),
-          // [xmusic] 2026-09-24 悬浮窗权限入口：车机能识别的音乐应用(如 MobiMusic)通常有此权限，
-          // 提供入口可手动开启，排除该变量。
-          ListTile(
-            leading: const Icon(Icons.picture_in_picture_alt_outlined),
-            title: const Text('允许出现在其他应用上（悬浮窗）'),
-            subtitle: const Text('车机能识别的音乐应用普遍开启，点击前往系统设置开启'),
-            onTap: () async {
-              try {
-                final st = await Permission.systemAlertWindow.status;
-                if (st.isGranted) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('悬浮窗权限已开启')));
-                } else {
-                  final res = await Permission.systemAlertWindow.request();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(res.isGranted
-                          ? '悬浮窗权限已开启'
-                          : '未开启：请在系统设置-应用-音素-允许出现在其他应用上 中手动打开')));
-                }
-              } catch (_) {}
-            },
-          ),
-          // [xmusic] 2026-09-24 通知权限 + 媒体服务自检：车机识别排查入口
-          ListTile(
-            leading: const Icon(Icons.notifications_active_outlined),
-            title: const Text('通知权限（媒体控制）'),
-            subtitle: const Text('通知栏播放控制需要；Android 12- 自动授予不弹框，点击检查状态'),
-            onTap: () async {
-              try {
-                final granted = await notificationGranted();
-                if (!context.mounted) return;
-                if (granted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('通知权限已授予，通知栏会显示播放控制')));
-                } else {
-                  final missing = await ensureAppPermissions();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(missing.contains('通知')
-                          ? '通知未授权：请在系统设置-应用-音素-通知 中手动打开'
-                          : '通知权限已授予')));
-                }
-              } catch (_) {}
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_remote_outlined),
-            title: const Text('媒体服务自检'),
-            subtitle: const Text('点击检查系统媒体服务是否就绪（车机桌面识别的前提）'),
-            onTap: () async {
-              final playing = controller.player.playing;
-              final hasItem = controller.current != null;
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  duration: const Duration(seconds: 2),
-                  content: Text(!hasItem
-                      ? '还没播放：先点一首歌'
-                      : playing
-                          ? '正在播放${controller.current!.title}。若迪友仍看不到，请在系统设置给音素开"通知使用权"，或在迪友设置里把音素加入音乐应用列表'
-                          : '已暂停：正在播放时车机才能识别')));
-            },
-          ),
+          // ===== 下载 =====
+          _sectionTitle(theme, '下载'),
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
-            subtitle: const Text('Android 11+ 写入公共目录需要（如 /Music）'),
+            subtitle: const Text('访问本地音乐需要'),
             onTap: () async {
-              final status = await Permission.manageExternalStorage.request();
+              final status = await Permission.audio.request();
               if (!context.mounted) return;
               final msg = status.isGranted
                   ? '已授予存储权限'
-                  : '未授予，请在系统设置-应用-音素-权限中手动开启"所有文件访问"';
+                  : '未授予，请在系统设置-应用-音素-权限中手动开启';
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
             },
-          ),          const Divider(),
-          // ===== 下载 =====
-          _sectionTitle(theme, '下载'),
+          ),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: const Text('本地下载路径'),
             subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music（默认）' : settings.downloadPath),
             onTap: () => _pickDownloadDirectory(context),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.cloud_download_outlined),
-            title: const Text('WebDAV (NAS)'),
-            subtitle: Text(settings.webdavConfigured ? settings.webdavUrl : '未配置'),
-            onTap: () => _showWebdavDialog(context),
           ),
           const Divider(),
 
@@ -513,13 +548,17 @@ class SettingsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _srcRow('聚合API（当前）', settings.externalApiUrl),
+              _srcRow('聚合API', settings.externalApiUrl.trim().isEmpty
+                  ? 'https://music-api.gdstudio.xyz（内置默认）'
+                  : settings.externalApiUrl),
+              _srcRow('LX（网易云/QQ聚合）', 'music-api.gdstudio.xyz / injahow'),
               _srcRow('网易云直连', 'https://music.163.com'),
-              _srcRow('B站直连', 'https://api.bilibili.com'),
               _srcRow('QQ音乐', 'https://c.y.qq.com（播放受版权/VIP限制）'),
+              _srcRow('酷我(KW)', 'http://www.kuwo.cn'),
               const SizedBox(height: 8),
-              Text('搜索外网时自动聚合以上全部源，播放按歌曲来源分发；'
-                  '聚合API地址可在上方“外部API地址”填写修改。',
+              Text('搜索在线歌曲时自动聚合：LX + 网易云直连 + QQ + 酷我 + 聚合API（gdstudio 内置，已移除 B站）。'
+                  '播放按歌曲来源分发、受版权/VIP 自动切换音源；'
+                  '如需自定义聚合，可在上方「外部API地址」填写第三方地址。',
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                       color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
             ],
