@@ -187,7 +187,11 @@ class _HomeShellState extends State<HomeShell> {
                 ),
               ),
             ),
-            child: NavigationBarTheme(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: isCarScreen && isLandscape ? 56 : 0,
+              ),
+              child: NavigationBarTheme(
             // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
             // NavigationBar 无 iconSize 参数，图标尺寸由 NavigationBarThemeData.iconTheme 控制
             data: NavigationBarThemeData(
@@ -229,6 +233,7 @@ class _HomeShellState extends State<HomeShell> {
                 label: '设置',
               ),
             ],
+          ),
           ),
           ),
           ),
