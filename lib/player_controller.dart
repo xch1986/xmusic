@@ -467,15 +467,45 @@ class PlayerController extends ChangeNotifier {
     _prevStuckPos = now;
   }
 
+  /// 过滤掉 live/现场/演唱会/伴唱/伴奏 版本的歌曲
+  static bool _isFilteredSong(Song s) {
+    final text = '${s.title} ${s.album} ${s.artist}'.toLowerCase();
+    const bad = [
+      'live', '现场', '演唱会', 'concert',
+      '伴唱', '伴奏', 'instrumental', 'karaoke', 'ktv', '卡拉',
+      '不插电', 'unplugged',
+    ];
+    return bad.any(text.contains);
+  }
+
   Future<void> playQueue(List<Song> songs, int startIndex,
       {String? source}) async {
-    queue = List.of(songs);
+    // 过滤掉 live/现场/伴唱 等版本
+    final filtered = <Song>[];
+    var adjustedIndex = startIndex;
+    for (var i = 0; i < songs.length; i++) {
+      if (_isFilteredSong(songs[i])) {
+        if (i < startIndex) adjustedIndex--;
+      } else {
+        filtered.add(songs[i]);
+      }
+    }
+    if (filtered.isEmpty) {
+      queue = const [];
+      queueSource = source;
+      index = 0;
+      notifyListeners();
+      return;
+    }
+    if (adjustedIndex < 0) adjustedIndex = 0;
+    if (adjustedIndex >= filtered.length) adjustedIndex = filtered.length - 1;
+    queue = filtered;
     queueSource = source;
-    index = startIndex;
+    index = adjustedIndex;
     notifyListeners();
     unawaited(refreshCoverTint());
     try {
-      await _loadAndPlay(startIndex, autoplay: true);
+      await _loadAndPlay(adjustedIndex, autoplay: true);
     } catch (e) {
       debugPrint('playQueue failed: $e');
       lastError = e.toString();

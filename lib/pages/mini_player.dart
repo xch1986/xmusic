@@ -26,9 +26,9 @@ class MiniPlayer extends StatelessWidget {
         final mq = MediaQuery.of(context);
         final isLandscape = mq.size.width > mq.size.height;
         final isCarScreen = mq.size.shortestSide >= 480;
-        // 车机横屏底部抬高，避开车机系统导航条（BYD 车机系统栏约70-80dp）；手机横屏贴底；竖屏避让手势条
+        // 车机横屏底部抬高，避开车机系统导航条；手机横屏贴底；竖屏避让手势条
         final bottomPad = isLandscape
-            ? (isCarScreen ? 80.0 : 4.0)
+            ? (isCarScreen ? 56.0 : 4.0)
             : 48.0;
         final coverSize = isLandscape ? 54.0 : 56.0;
         final hPad = isLandscape ? 20.0 : 16.0;
