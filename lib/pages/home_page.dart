@@ -30,24 +30,24 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
   late Future<List<Map<String, dynamic>>> _qqRadios;
-  int _qqCategoryId = 3152; // QQ歌单分类：3152流行/41摇滚/48民谣/45电子/42说唱/61古风/49纯音乐/46爵士/43R&B/47古典
-  int _qqRadioGroupIdx = 0; // QQ电台分组下拉当前选中组索引
+  int _qqCategoryId = 3152; // QQ姝屽崟鍒嗙被锛?152娴佽/41鎽囨粴/48姘戣埃/45鐢靛瓙/42璇村敱/61鍙ら/49绾煶涔?46鐖靛＋/43R&B/47鍙ゅ吀
+  int _qqRadioGroupIdx = 0; // QQ鐢靛彴鍒嗙粍涓嬫媺褰撳墠閫変腑缁勭储寮?
   static const List<Map<String, dynamic>> _qqCategories = [
-    {'id': 3152, 'name': '流行'},
-    {'id': 41, 'name': '摇滚'},
-    {'id': 48, 'name': '民谣'},
-    {'id': 45, 'name': '电子'},
-    {'id': 61, 'name': '古风'},
-    {'id': 49, 'name': '轻音乐'},
-    {'id': 46, 'name': '爵士'},
+    {'id': 3152, 'name': '娴佽'},
+    {'id': 41, 'name': '鎽囨粴'},
+    {'id': 48, 'name': '姘戣埃'},
+    {'id': 45, 'name': '鐢靛瓙'},
+    {'id': 61, 'name': '鍙ら'},
+    {'id': 49, 'name': '杞婚煶涔?},
+    {'id': 46, 'name': '鐖靛＋'},
     {'id': 43, 'name': 'R&B'},
-    {'id': 47, 'name': '古典'},
-    {'id': 68, 'name': '中国风'},
-    {'id': 59, 'name': '经典'},
-    {'id': 44, 'name': '乡村'},
-    {'id': 51, 'name': '蓝调'},
-    {'id': 53, 'name': '新世纪'},
-    {'id': 64, 'name': 'KTV热歌'},
+    {'id': 47, 'name': '鍙ゅ吀'},
+    {'id': 68, 'name': '涓浗椋?},
+    {'id': 59, 'name': '缁忓吀'},
+    {'id': 44, 'name': '涔℃潙'},
+    {'id': 51, 'name': '钃濊皟'},
+    {'id': 53, 'name': '鏂颁笘绾?},
+    {'id': 64, 'name': 'KTV鐑瓕'},
   ];
   late Future<List<Song>> _localRec;
 
@@ -64,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     _loadPrefs();
   }
 
-  /// 恢复歌单广场分类 / QQ电台分组的下拉选择（用户要求下次启动记住）
+  /// 鎭㈠姝屽崟骞垮満鍒嗙被 / QQ鐢靛彴鍒嗙粍鐨勪笅鎷夐€夋嫨锛堢敤鎴疯姹備笅娆″惎鍔ㄨ浣忥級
   Future<void> _loadPrefs() async {
     try {
       final p = await SharedPreferences.getInstance();
@@ -95,20 +95,20 @@ class _HomePageState extends State<HomePage> {
 
   void _load() {
     final ext = widget.controller.external;
-    // 真实排行榜：网易云 + （有QQ cookie时）QQ 榜单
+    // 鐪熷疄鎺掕姒滐細缃戞槗浜?+ 锛堟湁QQ cookie鏃讹級QQ 姒滃崟
     _toplists = _loadToplists();
-    // QQ 歌单广场（按当前分类加载，默认流行）
+    // QQ 姝屽崟骞垮満锛堟寜褰撳墠鍒嗙被鍔犺浇锛岄粯璁ゆ祦琛岋級
     _qqPlaylists = ext.qqPlaylists(categoryId: _qqCategoryId);
-    // QQ 电台列表（匿名接口）
+    // QQ 鐢靛彴鍒楄〃锛堝尶鍚嶆帴鍙ｏ級
     _qqRadios = ext.qqRadios();
-    // 本地推荐
+    // 鏈湴鎺ㄨ崘
     _localRec = _dailyLocalRec();
   }
 
-  /// 排行榜：网易云榜单 + QQ 热榜/新歌榜/飙升榜/流行指数榜混排（网易云前8 + QQ前4）。
-  /// [xmusic] 2026-09-24 修复：QQ 榜单数据接口匿名可用（fcg_v8_toplist_cp），
-  /// 不再依赖 QQ cookie 才显示——车机/未填 cookie 也能看到 QQ 四大榜；
-  /// 有 cookie 时点进榜单走 QQ 音源播放，无 cookie 时由播放链网易云/酷我兜底。
+  /// 鎺掕姒滐細缃戞槗浜戞鍗?+ QQ 鐑/鏂版瓕姒?椋欏崌姒?娴佽鎸囨暟姒滄贩鎺掞紙缃戞槗浜戝墠8 + QQ鍓?锛夈€?
+  /// [xmusic] 2026-09-24 淇锛歈Q 姒滃崟鏁版嵁鎺ュ彛鍖垮悕鍙敤锛坒cg_v8_toplist_cp锛夛紝
+  /// 涓嶅啀渚濊禆 QQ cookie 鎵嶆樉绀衡€斺€旇溅鏈?鏈～ cookie 涔熻兘鐪嬪埌 QQ 鍥涘ぇ姒滐紱
+  /// 鏈?cookie 鏃剁偣杩涙鍗曡蛋 QQ 闊虫簮鎾斁锛屾棤 cookie 鏃剁敱鎾斁閾剧綉鏄撲簯/閰锋垜鍏滃簳銆?
   Future<List<Map<String, dynamic>>> _loadToplists() async {
     final ext = widget.controller.external;
     var lists = await ext
@@ -125,11 +125,11 @@ class _HomePageState extends State<HomePage> {
     return lists;
   }
 
-  /// 每日30首：设置了 QQ cookie 用 QQ 热歌榜（播放走 QQ）；否则酷狗TOP500 → 网易云匹配播放。
-  /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
+  /// 姣忔棩30棣栵細璁剧疆浜?QQ cookie 鐢?QQ 鐑瓕姒滐紙鎾斁璧?QQ锛夛紱鍚﹀垯閰风嫍TOP500 鈫?缃戞槗浜戝尮閰嶆挱鏀俱€?
+  /// 杩囨护鑰佹瓕锛堝紑鍏冲紑 + 骞翠唤鍙‘璁や笖鏃╀簬闃堝€兼椂鍓旈櫎锛夈€?
   List<Song> _filterOld(List<Song> songs) =>
       songs.where((s) => !widget.settings.isOld(s)).toList();
-  /// 风格为 DJ 的曲目（歌名/歌手/专辑任一带 dj，大小写不敏感）全部过滤，用于榜单/歌单。
+  /// 椋庢牸涓?DJ 鐨勬洸鐩紙姝屽悕/姝屾墜/涓撹緫浠讳竴甯?dj锛屽ぇ灏忓啓涓嶆晱鎰燂級鍏ㄩ儴杩囨护锛岀敤浜庢鍗?姝屽崟銆?
   bool _isDj(Song s) {
     bool hit(String? v) {
       if (v == null || v.isEmpty) return false;
@@ -143,7 +143,7 @@ class _HomePageState extends State<HomePage> {
           .where((s) => !widget.settings.isBlacklisted(s) && !_isDj(s))
           .toList();
 
-  /// 本地推荐：按日期播种 + 当天缓存，每天变化（同日内稳定）。
+  /// 鏈湴鎺ㄨ崘锛氭寜鏃ユ湡鎾 + 褰撳ぉ缂撳瓨锛屾瘡澶╁彉鍖栵紙鍚屾棩鍐呯ǔ瀹氾級銆?
   DateTime _localRecDay = DateTime(2000);
   List<Song> _localRecCached = const [];
   Future<List<Song>> _dailyLocalRec() async {
@@ -163,7 +163,7 @@ class _HomePageState extends State<HomePage> {
   void _onSettingsChanged() {
     if (widget.settings.blacklistRev != _lastBlRev) {
       _lastBlRev = widget.settings.blacklistRev;
-      _reload(); // 黑名单变化 → 重载每日30首/榜单/歌单
+      _reload(); // 榛戝悕鍗曞彉鍖?鈫?閲嶈浇姣忔棩30棣?姒滃崟/姝屽崟
     }
   }
 
@@ -179,23 +179,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index, {String? source}) async {
-    // 先触发跳播放界面（不阻塞），再并行设置队列并播放。
-    // 避免 playQueue 偶发解析卡住时 await 阻塞导致"点了歌不跳转"。
+    // 鍏堣Е鍙戣烦鎾斁鐣岄潰锛堜笉闃诲锛夛紝鍐嶅苟琛岃缃槦鍒楀苟鎾斁銆?
+    // 閬垮厤 playQueue 鍋跺彂瑙ｆ瀽鍗′綇鏃?await 闃诲瀵艰嚧"鐐逛簡姝屼笉璺宠浆"銆?
     if (context.mounted) {
       unawaited(openPlayerPage(
           context, settings: widget.settings, controller: widget.controller));
     }
     try {
-      await widget.controller.playQueue(songs, index, source: source ?? 'QQ音乐');
+      await widget.controller.playQueue(songs, index, source: source ?? 'QQ闊充箰');
     } catch (_) {
-      // 播放失败也继续进播放界面，避免卡在列表页
+      // 鎾斁澶辫触涔熺户缁繘鎾斁鐣岄潰锛岄伩鍏嶅崱鍦ㄥ垪琛ㄩ〉
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _openPlaylist(String name, String playlistId,
       {String? coverUrl, List<Song>? songs}) async {
-    // 已有数据（如热歌榜大卡片首页已加载）：直接进详情页，秒开不转圈、不再二次请求
+    // 宸叉湁鏁版嵁锛堝鐑瓕姒滃ぇ鍗＄墖棣栭〉宸插姞杞斤級锛氱洿鎺ヨ繘璇︽儏椤碉紝绉掑紑涓嶈浆鍦堛€佷笉鍐嶄簩娆¤姹?
     if (songs != null) {
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => _PlaylistDetail(
@@ -218,12 +218,12 @@ class _HomePageState extends State<HomePage> {
       fetched = _filterBlacklist(_filterOld(await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20))));
     } catch (e) {
       fetched = const [];
-      error = '加载失败（$e）';
+      error = '鍔犺浇澶辫触锛?e锛?;
     }
-    if (fetched.isEmpty && error == null) error = '没有歌曲数据';
+    if (fetched.isEmpty && error == null) error = '娌℃湁姝屾洸鏁版嵁';
     if (!mounted) return;
     Navigator.pop(context); // dismiss loading
-    // 无论成败都进入详情页：失败显示原因+重试，绝不空白页或无声返回
+    // 鏃犺鎴愯触閮借繘鍏ヨ鎯呴〉锛氬け璐ユ樉绀哄師鍥?閲嶈瘯锛岀粷涓嶇┖鐧介〉鎴栨棤澹拌繑鍥?
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
         title: name,
@@ -239,7 +239,7 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
-  /// QQ 榜单详情：拉 QQ 榜单歌曲（songmid），进列表页，播放走 QQ（带 cookie）。
+  /// QQ 姒滃崟璇︽儏锛氭媺 QQ 姒滃崟姝屾洸锛坰ongmid锛夛紝杩涘垪琛ㄩ〉锛屾挱鏀捐蛋 QQ锛堝甫 cookie锛夈€?
   Future<void> _openQqToplist(String name, String id, String? coverUrl) async {
     final ext = widget.controller.external;
     final cookie = widget.settings.qqCookie;
@@ -258,7 +258,7 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
-  /// QQ 精选歌单详情：qzone 老接口拉歌曲（songmid），进列表页，播放走 QQ→网易云/酷我兜底。
+  /// QQ 绮鹃€夋瓕鍗曡鎯咃細qzone 鑰佹帴鍙ｆ媺姝屾洸锛坰ongmid锛夛紝杩涘垪琛ㄩ〉锛屾挱鏀捐蛋 QQ鈫掔綉鏄撲簯/閰锋垜鍏滃簳銆?
   Future<void> _openQqPlaylist(String name, String dissid, [String? coverUrl]) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
@@ -268,9 +268,9 @@ class _HomePageState extends State<HomePage> {
       songs = _filterBlacklist(_filterOld(await ext.qqPlaylistSongs(dissid, limit: 100).timeout(const Duration(seconds: 20))));
     } catch (e) {
       songs = const [];
-      error = '加载失败（$e）';
+      error = '鍔犺浇澶辫触锛?e锛?;
     }
-    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (songs.isEmpty && error == null) error = '娌℃湁姝屾洸鏁版嵁';
     if (!mounted) return;
     Navigator.pop(context);
     await Navigator.of(context).push(MaterialPageRoute(
@@ -288,7 +288,7 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
-  /// QQ 电台：拉电台推荐歌曲（匿名接口，每电台固定5首），进列表页播放。
+  /// QQ 鐢靛彴锛氭媺鐢靛彴鎺ㄨ崘姝屾洸锛堝尶鍚嶆帴鍙ｏ紝姣忕數鍙板浐瀹?棣栵級锛岃繘鍒楄〃椤垫挱鏀俱€?
   Future<void> _openQqRadio(String name, int radioId, {bool replace = false, String? coverUrl}) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
@@ -298,9 +298,9 @@ class _HomePageState extends State<HomePage> {
       songs = _filterBlacklist(await ext.qqRadioSongs(radioId).timeout(const Duration(seconds: 20)));
     } catch (e) {
       songs = const [];
-      error = '电台歌曲加载失败：$e';
+      error = '鐢靛彴姝屾洸鍔犺浇澶辫触锛?e';
     }
-    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (songs.isEmpty && error == null) error = '娌℃湁姝屾洸鏁版嵁';
     if (!mounted) return;
     Navigator.pop(context);
     final route = MaterialPageRoute(
@@ -313,10 +313,10 @@ class _HomePageState extends State<HomePage> {
         coverUrl: coverUrl,
         error: error,
         onRetry: () => _openQqRadio(name, radioId, replace: true, coverUrl: coverUrl),
-        onPlay: (i) => _playSongs(songs, i, source: 'QQ电台 · $name'),
+        onPlay: (i) => _playSongs(songs, i, source: 'QQ鐢靛彴 路 $name'),
       ),
     );
-    // 重试时替换当前失败页，避免叠加页面导致返回两次
+    // 閲嶈瘯鏃舵浛鎹㈠綋鍓嶅け璐ラ〉锛岄伩鍏嶅彔鍔犻〉闈㈠鑷磋繑鍥炰袱娆?
     if (replace) {
       Navigator.of(context).pushReplacement(route);
     } else {
@@ -324,18 +324,18 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// 每日30首·本地：每天随机30首本地歌，点卡先进歌单列表页。
+  /// 姣忔棩30棣柭锋湰鍦帮細姣忓ぉ闅忔満30棣栨湰鍦版瓕锛岀偣鍗″厛杩涙瓕鍗曞垪琛ㄩ〉銆?
   Future<void> _openDailyLocal() async {
     final songs = await _dailyLocalRec();
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
-        title: '每日30首·本地',
+        title: '姣忔棩30棣柭锋湰鍦?,
         songs: songs,
         client: _client,
         settings: widget.settings,
         controller: widget.controller,
-        onPlay: (i) => _playSongs(songs, i, source: '每日30首·本地'),
+        onPlay: (i) => _playSongs(songs, i, source: '姣忔棩30棣柭锋湰鍦?),
       ),
     ));
   }
@@ -346,40 +346,49 @@ class _HomePageState extends State<HomePage> {
       final mq = MediaQuery.of(context);
       final car = isCarScreen(context);
       final carP = car && mq.size.width < mq.size.height;
+      final carLand = car && mq.size.width > mq.size.height;
       final scale = carP ? 1.6 : mq.textScaler.scale(14) / 14;
       return MediaQuery(
         data: mq.copyWith(textScaler: TextScaler.linear(scale)),
         child: BigScreenText(
       child: Scaffold(
       backgroundColor: Colors.transparent,
+      // 杞︽満妯睆锛欰ppBar 楂樺害鍘嬪埌 0锛屽唴瀹瑰欢浼稿埌灞忓箷椤堕儴锛堣溅鏈虹郴缁熸爮鍦?App 澶栵級
       appBar: AppBar(
-        actions: [
-          IconButton(
-            tooltip: '搜索',
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => SearchPage(settings: widget.settings, controller: widget.controller),
-            )),
-          ),
-        ],
+        toolbarHeight: carLand ? 0 : kToolbarHeight,
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        actions: carLand
+            ? []
+            : [
+                IconButton(
+                  tooltip: '鎼滅储',
+                  icon: const Icon(Icons.search_rounded),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => SearchPage(settings: widget.settings, controller: widget.controller),
+                  )),
+                ),
+              ],
       ),
-      body: RefreshIndicator(
+      body: Stack(
+        children: [
+      RefreshIndicator(
         onRefresh: _reload,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            // QQ 电台（匿名接口：电台列表 → 点进拉 5 首推荐歌曲）
+            // QQ 鐢靛彴锛堝尶鍚嶆帴鍙ｏ細鐢靛彴鍒楄〃 鈫?鐐硅繘鎷?5 棣栨帹鑽愭瓕鏇诧級
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('QQ电台',
+                    child: Text('QQ鐢靛彴',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700)),
                   ),
                   IconButton(
-                    tooltip: '刷新电台',
+                    tooltip: '鍒锋柊鐢靛彴',
                     icon: const Icon(Icons.refresh_rounded, size: 20),
                     onPressed: () {
                       setState(() => _qqRadios =
@@ -401,7 +410,7 @@ class _HomePageState extends State<HomePage> {
                             size: 18, color: Colors.orange),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text('电台加载失败：${snap.error}',
+                          child: Text('鐢靛彴鍔犺浇澶辫触锛?{snap.error}',
                               maxLines: 2, overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                   color: Colors.orange, fontSize: 13)),
@@ -410,12 +419,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 }
-                // 电台按组渲染：下拉菜单选择分组（选择持久化），下方网格卡片（与歌单广场同尺寸同排列）
+                // 鐢靛彴鎸夌粍娓叉煋锛氫笅鎷夎彍鍗曢€夋嫨鍒嗙粍锛堥€夋嫨鎸佷箙鍖栵級锛屼笅鏂圭綉鏍煎崱鐗囷紙涓庢瓕鍗曞箍鍦哄悓灏哄鍚屾帓鍒楋級
                 final groups = snap.data ?? const <Map<String, dynamic>>[];
                 if (groups.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Text('电台暂无数据',
+                    child: Text('鐢靛彴鏆傛棤鏁版嵁',
                         style: TextStyle(color: Colors.grey, fontSize: 13)),
                   );
                 }
@@ -445,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                                   value: i,
                                   child: Text(
                                       ((groups[i]['groupName'] as String?) ??
-                                          '电台'),
+                                          '鐢靛彴'),
                                       style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600)),
@@ -490,20 +499,20 @@ class _HomePageState extends State<HomePage> {
               },
             ),
 
-            // QQ 精选歌单（用户强烈要求；硬编码 dissid，点进才拉歌曲）
+            // QQ 绮鹃€夋瓕鍗曪紙鐢ㄦ埛寮虹儓瑕佹眰锛涚‖缂栫爜 dissid锛岀偣杩涙墠鎷夋瓕鏇诧級
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('QQ歌单',
+                    child: Text('QQ姝屽崟',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
             ),
-            // QQ歌单分类切换（歌单广场）：下拉菜单选择分类
+            // QQ姝屽崟鍒嗙被鍒囨崲锛堟瓕鍗曞箍鍦猴級锛氫笅鎷夎彍鍗曢€夋嫨鍒嗙被
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
@@ -539,8 +548,8 @@ class _HomePageState extends State<HomePage> {
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _qqPlaylists,
               builder: (context, snap) {
-                // [xmusic] 2026-09-30 接口失败时显示原因（便于定位网络/风控/解析问题），
-                // 无数据时显示占位提示，绝不回退到用户个人歌单。
+                // [xmusic] 2026-09-30 鎺ュ彛澶辫触鏃舵樉绀哄師鍥狅紙渚夸簬瀹氫綅缃戠粶/椋庢帶/瑙ｆ瀽闂锛夛紝
+                // 鏃犳暟鎹椂鏄剧ず鍗犱綅鎻愮ず锛岀粷涓嶅洖閫€鍒扮敤鎴蜂釜浜烘瓕鍗曘€?
                 if (snap.hasError) {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -550,7 +559,7 @@ class _HomePageState extends State<HomePage> {
                             size: 18, color: Colors.orange),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text('歌单广场加载失败：${snap.error}',
+                          child: Text('姝屽崟骞垮満鍔犺浇澶辫触锛?{snap.error}',
                               maxLines: 2, overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                   color: Colors.orange, fontSize: 13)),
@@ -568,7 +577,7 @@ class _HomePageState extends State<HomePage> {
                         Icon(Icons.cloud_off_outlined, size: 18, color: Colors.grey),
                         SizedBox(width: 8),
                         Expanded(
-                          child: Text('歌单广场暂无数据，点右上角刷新重试',
+                          child: Text('姝屽崟骞垮満鏆傛棤鏁版嵁锛岀偣鍙充笂瑙掑埛鏂伴噸璇?,
                               style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ),
                       ],
@@ -593,12 +602,12 @@ class _HomePageState extends State<HomePage> {
               },
             ),
 
-            // 排行榜网格（QQ音乐榜 → lx精选 → 网易云榜，无总标题）
+            // 鎺掕姒滅綉鏍硷紙QQ闊充箰姒?鈫?lx绮鹃€?鈫?缃戞槗浜戞锛屾棤鎬绘爣棰橈級
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _toplists,
               builder: (context, snap) {
                 if (!snap.hasData || snap.data!.isEmpty) {
-                  // 后台加载中：先渲染占位图标卡（渐变底+榜单图标），数据加载完成自动填充，不再空白/转圈
+                  // 鍚庡彴鍔犺浇涓細鍏堟覆鏌撳崰浣嶅浘鏍囧崱锛堟笎鍙樺簳+姒滃崟鍥炬爣锛夛紝鏁版嵁鍔犺浇瀹屾垚鑷姩濉厖锛屼笉鍐嶇┖鐧?杞湀
                   final car = isCarScreen(context);
                   final carP = car && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
                   return GridView(
@@ -632,7 +641,7 @@ class _HomePageState extends State<HomePage> {
                     }),
                   );
                 }
-                // 网易云前8 + QQ前4，分两个子板块并标注来源
+                // 缃戞槗浜戝墠8 + QQ鍓?锛屽垎涓や釜瀛愭澘鍧楀苟鏍囨敞鏉ユ簮
                 final ne = snap.data!.where((t) => t['source'] != 'qq').take(8).toList();
                 final qq = snap.data!.where((t) => t['source'] == 'qq').take(4).toList();
                 final car = isCarScreen(context);
@@ -663,11 +672,11 @@ class _HomePageState extends State<HomePage> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    sectionTitle('QQ音乐榜'),
+                    sectionTitle('QQ闊充箰姒?),
                     grid(qq, 'qq'),
-                    sectionTitle('网易云榜'),
+                    sectionTitle('缃戞槗浜戞'),
                     grid(ne, 'ne'),
-                    sectionTitle('LX精选'),
+                    sectionTitle('LX绮鹃€?),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: GridView(
@@ -686,12 +695,26 @@ class _HomePageState extends State<HomePage> {
           ],
           ),
       ),
+          // 杞︽満妯睆锛氭悳绱㈡寜閽诞鍦ㄥ彸涓婅锛圓ppBar 楂樺害涓?0 鍚庯級
+          if (carLand)
+            Positioned(
+              top: 8, right: 8,
+              child: IconButton(
+                tooltip: '鎼滅储',
+                icon: const Icon(Icons.search_rounded),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => SearchPage(settings: widget.settings, controller: widget.controller),
+                )),
+              ),
+            ),
+        ],
+      ),
     )),
       );
     });
   }
 
-  /// 每日30首小卡（在线/本地两栏）：渐变底 + 图标 + 标题副标题，点击进对应歌单。
+  /// 姣忔棩30棣栧皬鍗★紙鍦ㄧ嚎/鏈湴涓ゆ爮锛夛細娓愬彉搴?+ 鍥炬爣 + 鏍囬鍓爣棰橈紝鐐瑰嚮杩涘搴旀瓕鍗曘€?
   Widget _daily30Card({
     required String title,
     required String subtitle,
@@ -742,7 +765,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 半宽歌单卡（本地推荐）：渐变底 + 图标 + 标题 + 副标题，点击进歌单页。
+  /// 鍗婂姝屽崟鍗★紙鏈湴鎺ㄨ崘锛夛細娓愬彉搴?+ 鍥炬爣 + 鏍囬 + 鍓爣棰橈紝鐐瑰嚮杩涙瓕鍗曢〉銆?
   Widget _miniCard({
     required String title,
     required String subtitle,
@@ -793,8 +816,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _toplistCard(String name, String id, String? coverUrl,
       {String source = ''}) {
-    // 来源角标文案（网易云/QQ音乐）
-    final srcLabel = source == 'qq' ? 'QQ音乐' : '网易云';
+    // 鏉ユ簮瑙掓爣鏂囨锛堢綉鏄撲簯/QQ闊充箰锛?
+    final srcLabel = source == 'qq' ? 'QQ闊充箰' : '缃戞槗浜?;
     Widget srcBadge() => Positioned(
       left: 4, top: 4,
       child: Container(
@@ -807,7 +830,7 @@ class _HomePageState extends State<HomePage> {
             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
       ),
     );
-    // [xmusic] 车机横屏参考网易云车机版：方封面 + 下方标题；手机保持原铺满卡。
+    // [xmusic] 杞︽満妯睆鍙傝€冪綉鏄撲簯杞︽満鐗堬細鏂瑰皝闈?+ 涓嬫柟鏍囬锛涙墜鏈轰繚鎸佸師閾烘弧鍗°€?
     if (isCarScreen(context)) {
       final carP = isCarScreen(context) &&
           MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
@@ -919,7 +942,7 @@ class _HomePageState extends State<HomePage> {
                   errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
                 )
               else
-                // QQ 榜单等无封面：渐变底 + 榜单名文字，不再只显示灰块
+                // QQ 姒滃崟绛夋棤灏侀潰锛氭笎鍙樺簳 + 姒滃崟鍚嶆枃瀛楋紝涓嶅啀鍙樉绀虹伆鍧?
                 Container(
                   color: theme.colorScheme.surfaceContainerHighest,
                   alignment: Alignment.center,
@@ -949,8 +972,8 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  /// QQ 精选歌单卡：方形圆角封面 + 下方标题（文字放图下完整显示，不叠在图上截断；横竖屏同排布）。
-  /// QQ 电台卡（与歌单广场同尺寸同排列）：圆角方块封面 + 下方电台名，点击进电台歌曲。
+  /// QQ 绮鹃€夋瓕鍗曞崱锛氭柟褰㈠渾瑙掑皝闈?+ 涓嬫柟鏍囬锛堟枃瀛楁斁鍥句笅瀹屾暣鏄剧ず锛屼笉鍙犲湪鍥句笂鎴柇锛涙í绔栧睆鍚屾帓甯冿級銆?
+  /// QQ 鐢靛彴鍗★紙涓庢瓕鍗曞箍鍦哄悓灏哄鍚屾帓鍒楋級锛氬渾瑙掓柟鍧楀皝闈?+ 涓嬫柟鐢靛彴鍚嶏紝鐐瑰嚮杩涚數鍙版瓕鏇层€?
   Widget _radioCard(String name, int id, String? coverUrl) {
     final theme = Theme.of(context);
     final carP = isCarScreen(context) &&
@@ -1075,7 +1098,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// LX 精选卡（网易云榜单/精选歌单，meting 先行版）：真实封面(可回退渐变) + 下方标题。
+  /// LX 绮鹃€夊崱锛堢綉鏄撲簯姒滃崟/绮鹃€夋瓕鍗曪紝meting 鍏堣鐗堬級锛氱湡瀹炲皝闈?鍙洖閫€娓愬彉) + 涓嬫柟鏍囬銆?
   Widget _lxCard(String name, String id, String? coverUrl) {
     final theme = Theme.of(context);
     final carP = isCarScreen(context) &&
@@ -1162,7 +1185,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// LX 精选歌单/榜单详情：meting 拉歌曲（已带直链），进列表页直接播放。
+  /// LX 绮鹃€夋瓕鍗?姒滃崟璇︽儏锛歮eting 鎷夋瓕鏇诧紙宸插甫鐩撮摼锛夛紝杩涘垪琛ㄩ〉鐩存帴鎾斁銆?
   Future<void> _openLxPlaylist(String name, String id) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
@@ -1172,9 +1195,9 @@ class _HomePageState extends State<HomePage> {
       songs = await ext.lxMetingPlaylistSongs(id).timeout(const Duration(seconds: 20));
     } catch (e) {
       songs = const [];
-      error = '加载失败（$e）';
+      error = '鍔犺浇澶辫触锛?e锛?;
     }
-    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (songs.isEmpty && error == null) error = '娌℃湁姝屾洸鏁版嵁';
     if (!mounted) return;
     Navigator.pop(context);
     await Navigator.of(context).push(MaterialPageRoute(
@@ -1194,7 +1217,7 @@ class _HomePageState extends State<HomePage> {
 
 }
 
-/// 歌单详情页（支持左滑删除歌曲，移除记录按歌单名本地持久化）
+/// 姝屽崟璇︽儏椤碉紙鏀寔宸︽粦鍒犻櫎姝屾洸锛岀Щ闄よ褰曟寜姝屽崟鍚嶆湰鍦版寔涔呭寲锛?
 class _PlaylistDetail extends StatefulWidget {
   const _PlaylistDetail({
     required this.title,
@@ -1250,7 +1273,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     } catch (_) {}
   }
 
-  /// 未被移除的歌曲在原始列表中的索引（onPlay 需要原始索引）
+  /// 鏈绉婚櫎鐨勬瓕鏇插湪鍘熷鍒楄〃涓殑绱㈠紩锛坥nPlay 闇€瑕佸師濮嬬储寮曪級
   List<int> get _visibleIndices {
     final out = <int>[];
     for (var i = 0; i < widget.songs.length; i++) {
@@ -1259,11 +1282,11 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     return out;
   }
 
-  /// 下载整个歌单到 NAS（WebDAV）：逐首上传，对话框显示进度，结束汇总结果。
+  /// 涓嬭浇鏁翠釜姝屽崟鍒?NAS锛圵ebDAV锛夛細閫愰涓婁紶锛屽璇濇鏄剧ず杩涘害锛岀粨鏉熸眹鎬荤粨鏋溿€?
   Future<void> _downloadAllToNas() async {
     if (!widget.settings.webdavConfigured) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('未配置 NAS (WebDAV)，请到 设置-个性化 中配置')));
+          content: Text('鏈厤缃?NAS (WebDAV)锛岃鍒?璁剧疆-涓€у寲 涓厤缃?)));
       return;
     }
     final songs = widget.songs
@@ -1274,7 +1297,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     var ok = 0;
     String? firstErr;
     void Function(void Function())? setDlg;
-    // 弹出进度对话框（StatefulBuilder 让进度能刷新）
+    // 寮瑰嚭杩涘害瀵硅瘽妗嗭紙StatefulBuilder 璁╄繘搴﹁兘鍒锋柊锛?
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1282,7 +1305,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         builder: (ctx, set) {
           setDlg = set;
           return AlertDialog(
-            title: const Text('下载到 NAS'),
+            title: const Text('涓嬭浇鍒?NAS'),
             content: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1291,7 +1314,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                   child: CircularProgressIndicator(strokeWidth: 2.5),
                 ),
                 const SizedBox(width: 16),
-                Text('正在上传 $done/${songs.length}…'),
+                Text('姝ｅ湪涓婁紶 $done/${songs.length}鈥?),
               ],
             ),
           );
@@ -1301,7 +1324,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     for (final s in songs) {
       final r = await widget.controller.uploadSongToNas(s, folder: widget.title);
       done++;
-      if (r.startsWith('已上传')) {
+      if (r.startsWith('宸蹭笂浼?)) {
         ok++;
       } else {
         firstErr ??= r;
@@ -1309,11 +1332,11 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
       setDlg?.call(() {});
     }
     if (!mounted) return;
-    Navigator.of(context).pop(); // 关闭进度框
+    Navigator.of(context).pop(); // 鍏抽棴杩涘害妗?
     final summary = ok == songs.length
-        ? '已上传全部 $ok 首到 NAS'
-        : '完成：成功 $ok/${songs.length} 首' +
-            (firstErr != null ? '，失败示例：$firstErr' : '');
+        ? '宸蹭笂浼犲叏閮?$ok 棣栧埌 NAS'
+        : '瀹屾垚锛氭垚鍔?$ok/${songs.length} 棣? +
+            (firstErr != null ? '锛屽け璐ョず渚嬶細$firstErr' : '');
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(summary)));
   }
@@ -1329,9 +1352,9 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
-    // 背景封面：列表第一首有封面歌曲优先，入口封面兜底。
-    // QQ 封面 URL 带尺寸段（T002R80x80 等），小封面全屏模糊后颜色极淡、观感接近纯白，
-    // 统一放大到 T002R500x500，保证模糊背景颜色明显（与音乐库当前歌曲大封面观感一致）。
+    // 鑳屾櫙灏侀潰锛氬垪琛ㄧ涓€棣栨湁灏侀潰姝屾洸浼樺厛锛屽叆鍙ｅ皝闈㈠厹搴曘€?
+    // QQ 灏侀潰 URL 甯﹀昂瀵告锛圱002R80x80 绛夛級锛屽皬灏侀潰鍏ㄥ睆妯＄硦鍚庨鑹叉瀬娣°€佽鎰熸帴杩戠函鐧斤紝
+    // 缁熶竴鏀惧ぇ鍒?T002R500x500锛屼繚璇佹ā绯婅儗鏅鑹叉槑鏄撅紙涓庨煶涔愬簱褰撳墠姝屾洸澶у皝闈㈣鎰熶竴鑷达級銆?
     final fbUrl = songs.isNotEmpty
         ? (songs.first.coverUrl != null && songs.first.coverUrl!.isNotEmpty
             ? songs.first.coverUrl
@@ -1346,8 +1369,8 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     }
 
     final bgUrl = bigCover(fbUrl ?? coverUrl);
-    // [xmusic] 背景与全局统一：PageBackground（当前播放封面模糊玻璃），
-    // 与音乐库/搜索/歌手等页面完全一致；fallback 用歌单封面兜底。
+    // [xmusic] 鑳屾櫙涓庡叏灞€缁熶竴锛歅ageBackground锛堝綋鍓嶆挱鏀惧皝闈㈡ā绯婄幓鐠冿級锛?
+    // 涓庨煶涔愬簱/鎼滅储/姝屾墜绛夐〉闈㈠畬鍏ㄤ竴鑷达紱fallback 鐢ㄦ瓕鍗曞皝闈㈠厹搴曘€?
     return PageBackground(
       controller: controller,
       settings: settings,
@@ -1389,7 +1412,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                       children: [
                         Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
-                        Text('共 ${_visibleIndices.length} 首', style: Theme.of(context).textTheme.bodyMedium),
+                        Text('鍏?${_visibleIndices.length} 棣?, style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),
                   ),
@@ -1406,7 +1429,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                     onPlay(0);
                   },
                   icon: const Icon(Icons.shuffle_rounded, size: 20),
-                  label: const Text('随机'),
+                  label: const Text('闅忔満'),
                   style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(horizontal: 10)),
@@ -1415,7 +1438,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                 TextButton.icon(
                   onPressed: _visibleIndices.isEmpty || error != null ? null : () => onPlay(0),
                   icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                  label: const Text('顺序'),
+                  label: const Text('椤哄簭'),
                   style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(horizontal: 10)),
@@ -1427,7 +1450,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                         ? null
                         : _downloadAllToNas,
                     icon: const Icon(Icons.cloud_download_rounded, size: 20),
-                    label: const Text('全部下载'),
+                    label: const Text('鍏ㄩ儴涓嬭浇'),
                     style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 10)),
@@ -1450,13 +1473,13 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                         FilledButton.icon(
                           onPressed: onRetry,
                           icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('重试'),
+                          label: const Text('閲嶈瘯'),
                         ),
                     ],
                   ),
                 )
               : _visibleIndices.isEmpty
-                ? const Center(child: Text('已全部移除'))
+                ? const Center(child: Text('宸插叏閮ㄧЩ闄?))
                 : ListView.builder(
                     itemCount: _visibleIndices.length,
                     itemBuilder: (context, k) {
@@ -1493,8 +1516,8 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
             ],
           ),
         ),
-        // 迷你播放条放 body 底部而不是 bottomNavigationBar：
-        // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
+        // 杩蜂綘鎾斁鏉℃斁 body 搴曢儴鑰屼笉鏄?bottomNavigationBar锛?
+        // 閬垮厤涓埆璁惧涓?bottomNavigationBar 妲戒綅鎶婅糠浣犳潯鎾戞弧鍏ㄥ睆銆佹尋娌″垪琛紙0.2.x 淇鍥炲綊锛?
         MiniPlayer(settings: settings, controller: controller),
       ],
         )),
