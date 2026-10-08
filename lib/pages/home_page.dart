@@ -371,8 +371,11 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
       ),
-      body: Stack(
-        children: [
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: Stack(
+          children: [
       RefreshIndicator(
         onRefresh: _reload,
         child: ListView(
@@ -708,7 +711,8 @@ class _HomePageState extends State<HomePage> {
                 )),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     )),
       );
