@@ -353,6 +353,7 @@ class _HomePageState extends State<HomePage> {
         child: BigScreenText(
       child: Scaffold(
       backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       // 车机横屏：AppBar 高度压到 0，内容延伸到屏幕顶部（车机系统栏在 App 外）
       appBar: AppBar(
         toolbarHeight: carLand ? 0 : kToolbarHeight,
