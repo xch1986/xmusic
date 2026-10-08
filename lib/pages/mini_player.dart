@@ -5,10 +5,8 @@ import '../settings.dart';
 import '../widgets.dart';
 import 'player_page.dart';
 
-/// 迷你播放栏：完全透明（背景透出外层 PageBackground/CoverGlassBackground），
-/// 与首页/音乐库/导航栏统一由设置的主题开关控制；内容跟随主题色。
-/// 车机横屏（landscape）时整体压缩尺寸，避免占横向空间。
-class MiniPlayer extends StatelessWidget {
+/// 杩蜂綘鎾斁鏍忥細瀹屽叏閫忔槑锛堣儗鏅€忓嚭澶栧眰 PageBackground/CoverGlassBackground锛夛紝
+/// 涓庨椤?闊充箰搴?瀵艰埅鏍忕粺涓€鐢辫缃殑涓婚寮€鍏虫帶鍒讹紱鍐呭璺熼殢涓婚鑹层€?/// 杞︽満妯睆锛坙andscape锛夋椂鏁翠綋鍘嬬缉灏哄锛岄伩鍏嶅崰妯悜绌洪棿銆?class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key, required this.settings, required this.controller});
 
   final AppSettings settings;
@@ -22,13 +20,11 @@ class MiniPlayer extends StatelessWidget {
         final song = controller.current;
         final cs = Theme.of(context).colorScheme;
 
-        // 横竖屏都加宽加高、字体加大
-        final mq = MediaQuery.of(context);
+        // 妯珫灞忛兘鍔犲鍔犻珮銆佸瓧浣撳姞澶?        final mq = MediaQuery.of(context);
         final isLandscape = mq.size.width > mq.size.height;
         final isCarScreen = mq.size.shortestSide >= 480;
-        // 车机横屏底部抬高56dp
-        final bottomPad = isLandscape
-            ? (isCarScreen ? 56.0 : 4.0)
+        // 杞︽満妯睆搴曢儴鎶珮鐢?home_shell 缁熶竴鎺у埗锛堥伩鍏嶄笌瀵艰埅鏍弍adding鍙犲姞锛?        final bottomPad = isLandscape
+            ? (isCarScreen ? 0.0 : 4.0)
             : 48.0;
         final coverSize = isLandscape ? 54.0 : 56.0;
         final hPad = isLandscape ? 20.0 : 16.0;
@@ -39,7 +35,7 @@ class MiniPlayer extends StatelessWidget {
         final artistSize = isLandscape ? 14.0 : 14.0;
 
         return Container(
-          // 仅一条跟随主题的细分隔线；不画背景色——透出 PageBackground，与全局主题统一
+          // 浠呬竴鏉¤窡闅忎富棰樼殑缁嗗垎闅旂嚎锛涗笉鐢昏儗鏅壊鈥斺€旈€忓嚭 PageBackground锛屼笌鍏ㄥ眬涓婚缁熶竴
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
@@ -54,7 +50,7 @@ class MiniPlayer extends StatelessWidget {
                   PlayerPage(settings: settings, controller: controller),
             )),
             child: Padding(
-              // 车机横屏直接用固定抬高值；手机用系统手势条 padding
+              // 杞︽満妯睆鐩存帴鐢ㄥ浐瀹氭姮楂樺€硷紱鎵嬫満鐢ㄧ郴缁熸墜鍔挎潯 padding
               padding: EdgeInsets.only(
                 bottom: isLandscape && isCarScreen
                     ? bottomPad
@@ -64,8 +60,7 @@ class MiniPlayer extends StatelessWidget {
                 padding:
                     EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                 child: song == null
-                    // 常驻底栏：未播放时显示占位（音符 + 未在播放）
-                    ? Row(
+                    // 甯搁┗搴曟爮锛氭湭鎾斁鏃舵樉绀哄崰浣嶏紙闊崇 + 鏈湪鎾斁锛?                    ? Row(
                         children: [
                           Container(
                             width: coverSize,
@@ -79,7 +74,7 @@ class MiniPlayer extends StatelessWidget {
                           ),
                           SizedBox(width: gap),
                           Expanded(
-                            child: Text('未在播放',
+                            child: Text('鏈湪鎾斁',
                                 style: TextStyle(
                                     color: cs.onSurfaceVariant,
                                     fontSize: titleSize)),
