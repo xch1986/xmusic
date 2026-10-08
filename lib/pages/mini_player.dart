@@ -26,10 +26,9 @@ class MiniPlayer extends StatelessWidget {
         final mq = MediaQuery.of(context);
         final isLandscape = mq.size.width > mq.size.height;
         final isCarScreen = mq.size.shortestSide >= 480;
-        // 车机横屏比例很宽(>2.2)，单独判断，不依赖shortestSide
-        final isCarLandscape = isLandscape && (mq.size.width / mq.size.height) > 2.2;
+        // 车机横屏底部抬高56dp
         final bottomPad = isLandscape
-            ? (isCarLandscape ? 56.0 : 4.0)
+            ? (isCarScreen ? 56.0 : 4.0)
             : 48.0;
         final coverSize = isLandscape ? 54.0 : 56.0;
         final hPad = isLandscape ? 20.0 : 16.0;
@@ -57,7 +56,7 @@ class MiniPlayer extends StatelessWidget {
             child: Padding(
               // 车机横屏直接用固定抬高值；手机用系统手势条 padding
               padding: EdgeInsets.only(
-                bottom: isLandscape && isCarLandscape
+                bottom: isLandscape && isCarScreen
                     ? bottomPad
                     : mq.padding.bottom.clamp(0.0, bottomPad),
               ),

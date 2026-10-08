@@ -484,8 +484,8 @@ class _PlayerPageState extends State<PlayerPage> {
                   // 歌名/歌手/专辑 + 首页/返回：下移到底部，与播放控制栏齐平
                   Padding(
                     padding: EdgeInsets.fromLTRB(16, 10, 16,
-                        MediaQuery.of(context).orientation == Orientation.landscape &&
-                        (MediaQuery.sizeOf(context).width / MediaQuery.sizeOf(context).height) > 2.2 ? 56 : 16),
+                        isCarScreen(context) &&
+                        MediaQuery.of(context).orientation == Orientation.landscape ? 56 : 16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -538,8 +538,8 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
               Padding(
                 padding: EdgeInsets.fromLTRB(0, 2, 8,
-                    MediaQuery.of(context).orientation == Orientation.landscape &&
-                    (MediaQuery.sizeOf(context).width / MediaQuery.sizeOf(context).height) > 2.2 ? 56 : 14),
+                    isCarScreen(context) &&
+                    MediaQuery.of(context).orientation == Orientation.landscape ? 56 : 14),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
