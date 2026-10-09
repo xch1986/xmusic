@@ -1011,14 +1011,14 @@ class _LyricsViewState extends State<LyricsView> {
           builder: (context, constraints) {
             // 已唱占1行、当前占1行、余下给未唱：当前行锚在顶部 padding+1行已唱 处
             final _rowH = (_baseFontSize * 1.4 + 18) * scale;
-            _anchor = ((constraints.maxHeight * 0.45) + 1.5 * _rowH) / constraints.maxHeight;
-            _anchor = _anchor.clamp(0.04, 0.70);
+            _anchor = ((constraints.maxHeight * 0.05) + 1.5 * _rowH) / constraints.maxHeight;
+            _anchor = _anchor.clamp(0.04, 0.30);
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,
               padding: EdgeInsets.symmetric(
                 horizontal: 24,
-                vertical: constraints.maxHeight * 0.03,
+                vertical: constraints.maxHeight * 0.35,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
