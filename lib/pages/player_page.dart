@@ -331,16 +331,13 @@ class _PlayerPageState extends State<PlayerPage> {
     final double side = _landP ? 18 : 30;
     final double _gap = _landP ? 2.0 : 6.0;
     if (car) {
-      // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸同样式
+      // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸；Column占满高度spaceEvenly均匀分布
       return Container(
         width: 72,
         margin: const EdgeInsets.only(right: 8),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
             _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
             ListenableBuilder(
@@ -367,7 +364,6 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
           ],
-          ),
         ),
       );
     }

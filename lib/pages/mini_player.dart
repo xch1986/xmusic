@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../player_controller.dart';
@@ -5,8 +6,7 @@ import '../settings.dart';
 import '../widgets.dart';
 import 'player_page.dart';
 
-/// 迷你播放栏：完全透明（背景透出外层 PageBackground/CoverGlassBackground），
-/// 与首页/音乐库/导航栏统一由设置的主题开关控制；内容跟随主题色。
+/// 迷你播放栏：液态玻璃（BackdropFilter模糊+半透明），与首页/音乐库/导航栏统一由设置的主题开关控制；内容跟随主题色。
 /// 车机横屏（landscape）时整体压缩尺寸，避免占横向空间。
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key, required this.settings, required this.controller});
@@ -38,14 +38,11 @@ class MiniPlayer extends StatelessWidget {
         final titleSize = isLandscape ? 28.0 : 22.0;
         final artistSize = isLandscape ? 21.0 : 18.0;
 
-        return Container(
-          // 四周细描边，与其他卡片统一
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: cs.onSurface.withValues(alpha: 0.35),
-              width: 1.2,
-            ),
-          ),
+        return ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              color: cs.surface.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.28),
           child: InkWell(
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) =>
@@ -140,6 +137,9 @@ class MiniPlayer extends StatelessWidget {
               ),
             ),
           ),
+        ),
+        ),
+      ),
         );
       },
     );

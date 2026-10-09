@@ -194,7 +194,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
             child: Padding(
               padding: EdgeInsets.only(
-                bottom: isCarScreen && isLandscape ? 100 : 0,
+                bottom: isCarScreen && isLandscape ? 60 : 0,
               ),
               child: NavigationBarTheme(
             // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
