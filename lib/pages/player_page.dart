@@ -339,12 +339,9 @@ class _PlayerPageState extends State<PlayerPage> {
           fit: BoxFit.scaleDown,
           alignment: Alignment.center,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
-            const SizedBox(height: 12),
-            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
-            const SizedBox(height: 12),
             ListenableBuilder(
               listenable: widget.controller,
               builder: (context, _) {
@@ -356,8 +353,6 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
-
-            const SizedBox(height: 12),
             ListenableBuilder(
               listenable: widget.controller,
               builder: (context, _) {
@@ -370,6 +365,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
+            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
           ],
           ),
         ),
@@ -514,12 +510,14 @@ class _PlayerPageState extends State<PlayerPage> {
             },
           ),
         ),
-        // 右侧：五行歌词（右按钮栏） + 下方进度条+播放控制栏
+        // 右侧：五行歌词（右按钮栏） + 下方留空 + 底部进度条+播放控制栏
         Expanded(
           flex: 6,
           child: Column(
             children: [
-              Expanded(
+              // 歌词区：占上方约55%，不再Expanded顶到进度条
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.55,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -528,7 +526,7 @@ class _PlayerPageState extends State<PlayerPage> {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(0, 14, 0, 4),
                         child: Center(
-                          child: _lyricsAreaFixed(context, song.id, visibleLines: 5),
+                          child: _lyricsAreaFixed(context, song.id, visibleLines: 7),
                         ),
                       ),
                     ),
@@ -536,6 +534,8 @@ class _PlayerPageState extends State<PlayerPage> {
                   ],
                 ),
               ),
+              // 中间大面积空置（把进度条+控制栏推到底部）
+              const Spacer(),
               Padding(
                 padding: EdgeInsets.fromLTRB(0, 2, 8,
                     isCarScreen(context) &&
