@@ -155,7 +155,12 @@ class _HomeShellState extends State<HomeShell> {
               statusBarColor: coverBg ? Colors.transparent : cs.surfaceContainer),
       child: Scaffold(
       backgroundColor: Colors.transparent,
-      body: IndexedStack(index: _tab, children: pages),
+      body: Padding(
+        padding: EdgeInsets.only(
+          top: isCarScreen && isLandscape ? 28 : 0,
+        ),
+        child: IndexedStack(index: _tab, children: pages),
+      ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -189,7 +194,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
             child: Padding(
               padding: EdgeInsets.only(
-                bottom: isCarScreen && isLandscape ? 72 : 0,
+                bottom: isCarScreen && isLandscape ? 100 : 0,
               ),
               child: NavigationBarTheme(
             // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
