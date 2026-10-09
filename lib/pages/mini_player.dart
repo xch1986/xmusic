@@ -39,13 +39,11 @@ class MiniPlayer extends StatelessWidget {
         final artistSize = isLandscape ? 21.0 : 18.0;
 
         return Container(
-          // 仅一条跟随主题的细分隔线；不画背景色——透出 PageBackground，与全局主题统一
+          // 四周细描边，与其他卡片统一
           decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.25),
-                width: 0.5,
-              ),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.35),
+              width: 0.5,
             ),
           ),
           child: InkWell(
