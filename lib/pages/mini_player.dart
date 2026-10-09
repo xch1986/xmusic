@@ -30,13 +30,13 @@ class MiniPlayer extends StatelessWidget {
         final bottomPad = isLandscape
             ? (isCarScreen ? 0.0 : 4.0)
             : 48.0;
-        final coverSize = isLandscape ? 54.0 : 56.0;
-        final hPad = isLandscape ? 20.0 : 16.0;
-        final vPad = isLandscape ? 10.0 : 12.0;
-        final gap = isLandscape ? 16.0 : 16.0;
-        final iconSize = isLandscape ? 30.0 : 32.0;
-        final titleSize = isLandscape ? 18.0 : 18.0;
-        final artistSize = isLandscape ? 14.0 : 14.0;
+        final coverSize = isLandscape ? 64.0 : 64.0;
+        final hPad = isLandscape ? 24.0 : 20.0;
+        final vPad = isLandscape ? 14.0 : 16.0;
+        final gap = isLandscape ? 20.0 : 20.0;
+        final iconSize = isLandscape ? 34.0 : 36.0;
+        final titleSize = isLandscape ? 22.0 : 20.0;
+        final artistSize = isLandscape ? 17.0 : 16.0;
 
         return Container(
           // 仅一条跟随主题的细分隔线；不画背景色——透出 PageBackground，与全局主题统一
