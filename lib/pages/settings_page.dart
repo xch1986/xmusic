@@ -10,6 +10,7 @@ import '../permissions.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 import '../widgets.dart';
+import 'login_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -413,6 +414,11 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.dns_rounded),
             title: const Text('Navidrome 服务器'),
             subtitle: Text(settings.hasLogin ? '${settings.username}@${settings.serverUrl}' : '未登录'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => LoginPage(settings: settings)),
+              );
+            },
             trailing: settings.hasLogin
                 ? TextButton(onPressed: () => settings.clearLogin(), child: const Text('退出'))
                 : const Icon(Icons.chevron_right),
