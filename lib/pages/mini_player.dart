@@ -42,8 +42,8 @@ class MiniPlayer extends StatelessWidget {
           // 四周细描边，与其他卡片统一
           decoration: BoxDecoration(
             border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              width: 0.5,
+              color: cs.outlineVariant.withValues(alpha: 0.55),
+              width: 1.0,
             ),
           ),
           child: InkWell(

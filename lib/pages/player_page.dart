@@ -523,9 +523,9 @@ class _PlayerPageState extends State<PlayerPage> {
                     _actionSidebarLeft(context),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 14, 0, 4),
+                        padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
                         child: Center(
-                          child: _lyricsAreaFixed(context, song.id, visibleLines: 7),
+                          child: _lyricsAreaFixed(context, song.id, visibleLines: 9),
                         ),
                       ),
                     ),
