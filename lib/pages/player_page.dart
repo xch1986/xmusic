@@ -950,7 +950,7 @@ class LyricsView extends StatefulWidget {
 
 class _LyricsViewState extends State<LyricsView> {
   static const double _baseFontSize = 22;
-  double _anchor = 0.55; // 当前行锚点，按已唱1行动态算
+  double _anchor = 0.70; // 当前行锚点，按已唱1行动态算
 
   final ItemScrollController _scroll = ItemScrollController();
   StreamSubscription<Duration>? _positionSub;
