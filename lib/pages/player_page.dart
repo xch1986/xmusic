@@ -152,7 +152,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 children: [
                   if ((widget.controller.queueSource ?? '').isNotEmpty)
                     Padding(
-                      padding: EdgeInsets.only(left: 16, bottom: 4, top: isCarScreen(context) ? 20 : 0),
+                      padding: EdgeInsets.only(left: 16, bottom: 4, top: isCarScreen(context) ? 40 : 0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -342,6 +342,7 @@ class _PlayerPageState extends State<PlayerPage> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
+            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
             ListenableBuilder(
               listenable: widget.controller,
               builder: (context, _) {
@@ -365,7 +366,6 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
-            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
           ],
           ),
         ),
@@ -443,7 +443,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 children: [
                   if ((widget.controller.queueSource ?? '').isNotEmpty)
                     Padding(
-                      padding: EdgeInsets.only(left: 16, bottom: 4, top: isCarScreen(context) ? 20 : 0),
+                      padding: EdgeInsets.only(left: 16, bottom: 4, top: isCarScreen(context) ? 40 : 0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -510,14 +510,13 @@ class _PlayerPageState extends State<PlayerPage> {
             },
           ),
         ),
-        // 右侧：五行歌词（右按钮栏） + 下方留空 + 底部进度条+播放控制栏
+        // 右侧：歌词区占满中间（向下扩展）+ 底部进度条+播放控制栏
         Expanded(
           flex: 6,
           child: Column(
             children: [
-              // 歌词区：占上方约55%，不再Expanded顶到进度条
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.55,
+              // 歌词区：Expanded 占满中间空间，歌词自然向下扩展
+              Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -534,8 +533,6 @@ class _PlayerPageState extends State<PlayerPage> {
                   ],
                 ),
               ),
-              // 中间大面积空置（把进度条+控制栏推到底部）
-              const Spacer(),
               Padding(
                 padding: EdgeInsets.fromLTRB(0, 2, 8,
                     isCarScreen(context) &&
