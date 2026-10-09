@@ -1011,8 +1011,8 @@ class _LyricsViewState extends State<LyricsView> {
           builder: (context, constraints) {
             // 已唱占1行、当前占1行、余下给未唱：当前行锚在顶部 padding+1行已唱 处
             final _rowH = (_baseFontSize * 1.4 + 18) * scale;
-            _anchor = ((constraints.maxHeight * 0.65) + 1.5 * _rowH) / constraints.maxHeight;
-            _anchor = _anchor.clamp(0.04, 0.95);
+            _anchor = ((constraints.maxHeight * 0.05) + 1.5 * _rowH) / constraints.maxHeight;
+            _anchor = _anchor.clamp(0.04, 0.30);
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,
@@ -1023,6 +1023,10 @@ class _LyricsViewState extends State<LyricsView> {
               itemBuilder: (context, i) {
                 final line = lines[i];
                 final active = !synced || i == _current;
+                // 当前行以上的已唱歌词不占位（折叠隐藏）
+                if (synced && i < _current) {
+                  return const SizedBox.shrink();
+                }
                 // 歌词细描边：浅色底黑边/深色底亮边（轻量，保证白色歌词可读又不压字）
                 final isDark = Theme.of(context).brightness == Brightness.dark;
                 final stroke = isDark
