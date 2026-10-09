@@ -152,7 +152,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 children: [
                   if ((widget.controller.queueSource ?? '').isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(left: 16, bottom: 4),
+                      padding: EdgeInsets.only(left: 16, bottom: 4, top: car ? 20 : 0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -447,7 +447,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 children: [
                   if ((widget.controller.queueSource ?? '').isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(left: 16, bottom: 4),
+                      padding: EdgeInsets.only(left: 16, bottom: 4, top: car ? 20 : 0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
