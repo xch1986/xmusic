@@ -950,7 +950,7 @@ class LyricsView extends StatefulWidget {
 
 class _LyricsViewState extends State<LyricsView> {
   static const double _baseFontSize = 22;
-  double _anchor = 0.38; // 当前行锚点，按已唱1行动态算
+  double _anchor = 0.55; // 当前行锚点，按已唱1行动态算
 
   final ItemScrollController _scroll = ItemScrollController();
   StreamSubscription<Duration>? _positionSub;
@@ -1012,7 +1012,7 @@ class _LyricsViewState extends State<LyricsView> {
             // 已唱占1行、当前占1行、余下给未唱：当前行锚在顶部 padding+1行已唱 处
             final _rowH = (_baseFontSize * 1.4 + 18) * scale;
             _anchor = ((constraints.maxHeight * 0.03) + 1.5 * _rowH) / constraints.maxHeight;
-            _anchor = _anchor.clamp(0.04, 0.30);
+            _anchor = _anchor.clamp(0.04, 0.55);
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,

@@ -40,7 +40,7 @@ class MiniPlayer extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
-              color: cs.surface.withValues(alpha: isDark ? 0.35 : 0.28),
+              color: cs.surface.withValues(alpha: isDark ? 0.22 : 0.15),
               child: InkWell(
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => PlayerPage(settings: settings, controller: controller),
