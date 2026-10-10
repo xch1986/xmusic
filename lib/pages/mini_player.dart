@@ -27,7 +27,7 @@ class MiniPlayer extends StatelessWidget {
         final mq = MediaQuery.of(context);
         final isLandscape = mq.size.width > mq.size.height;
         final isCarScreen = mq.size.shortestSide >= 480;
-        final bottomPad = isLandscape ? (isCarScreen ? 0.0 : 4.0) : 48.0;
+        final bottomPad = isLandscape ? (isCarScreen ? 40.0 : 4.0) : 48.0;
         final coverSize = isLandscape ? 56.0 : 72.0;
         final hPad = isLandscape ? 32.0 : 24.0;
         final vPad = isLandscape ? 10.0 : 18.0;
