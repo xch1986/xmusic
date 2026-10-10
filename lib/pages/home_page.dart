@@ -1528,7 +1528,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(
-              MediaQuery.of(context).size.width > MediaQuery.of(context).size.height ? 0.85 : 1.0,
+              MediaQuery.of(context).size.width > MediaQuery.of(context).size.height ? 1.0 : 1.0,
             ),
           ),
           child: MiniPlayer(settings: settings, controller: controller),
