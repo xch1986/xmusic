@@ -13,6 +13,7 @@ import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
 import 'mini_player.dart';
+import 'home_shell.dart';
 import 'player_page.dart';
 import 'search_page.dart';
 
@@ -1524,6 +1525,8 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         // 迷你播放条放 body 底部而不是 bottomNavigationBar：
         // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
         MiniPlayer(settings: settings, controller: controller),
+        // [xmusic] push页面统一底部导航栏：点击切tab
+        _GlobalBottomNav(settings: settings, controller: controller),
       ],
         )),
         ),
@@ -1572,4 +1575,82 @@ Map<String, String> _imgHeaders(String u) {
     return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'};
   }
   return const {'User-Agent': 'Mozilla/5.0'};
+}
+
+/// [xmusic] push页面统一底部导航栏：和HomeShell一致，点击切tab
+class _GlobalBottomNav extends StatelessWidget {
+  const _GlobalBottomNav({required this.settings, required this.controller});
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final isCarScreen = mq.size.shortestSide >= 480;
+    final isLandscape = mq.size.width > mq.size.height;
+    final cs = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
+          ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: cs.outlineVariant.withOpacity(0.35),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: isCarScreen && isLandscape ? 60 : 0),
+        child: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            backgroundColor: settings.coverColorBg ? Colors.transparent : cs.surfaceContainer,
+            height: isCarScreen ? (isLandscape ? 64 : 84) : (isLandscape ? 56 : 64),
+            iconTheme: WidgetStateProperty.resolveWith((states) =>
+                IconThemeData(size: isCarScreen ? 34 : 24)),
+          ),
+          child: NavigationBar(
+            selectedIndex: 0,
+            onDestinationSelected: (i) {
+              HomeShell.switchToTab(i);
+              Navigator.of(context).pop();
+            },
+            labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+              fontSize: isCarScreen ? 17 : 12,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+            )),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: '首页',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.library_music_outlined),
+                selectedIcon: Icon(Icons.library_music_rounded),
+                label: '音乐库',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.search_rounded),
+                selectedIcon: Icon(Icons.search_rounded),
+                label: '搜索',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings_rounded),
+                label: '设置',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
