@@ -435,7 +435,9 @@ class _HomePageState extends State<HomePage> {
                 }
                 final gi = _qqRadioGroupIdx >= groups.length ? 0 : _qqRadioGroupIdx;
                 final radios = ((groups[gi]['radios'] as List?) ?? const [])
-                    .cast<Map<String, dynamic>>();
+                    .cast<Map<String, dynamic>>()
+                    .where((r) => (r['name'] as String? ?? '') != '个性电台')
+                    .toList();
                 final car = isCarScreen(context);
                 final carP = car &&
                     MediaQuery.sizeOf(context).width <
