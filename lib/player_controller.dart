@@ -1794,7 +1794,6 @@ class PlayerController extends ChangeNotifier {
 
 
 
-          }
 
           } else {
             // 短歌换不到完整版，直接跳下一首
