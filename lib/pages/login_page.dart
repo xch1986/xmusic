@@ -125,8 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-            // 底部miniplayer+导航栏
-            MiniPlayer(settings: widget.settings, controller: widget.controller),
+            // 底部导航栏（登录时无miniplayer）
             Container(
               decoration: BoxDecoration(
                 boxShadow: [

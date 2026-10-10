@@ -33,8 +33,8 @@ class MiniPlayer extends StatelessWidget {
         final vPad = isLandscape ? 10.0 : 18.0;
         final gap = isLandscape ? 16.0 : 22.0;
         final iconSize = isLandscape ? 28.0 : 38.0;
-        final titleSize = isLandscape ? 18.0 : 22.0;
-        final artistSize = isLandscape ? 14.0 : 18.0;
+        final titleSize = isLandscape ? 22.0 : 22.0;
+        final artistSize = isLandscape ? 16.0 : 18.0;
 
         return ClipRect(
           child: BackdropFilter(
