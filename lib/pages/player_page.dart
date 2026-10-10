@@ -1016,9 +1016,11 @@ class _LyricsViewState extends State<LyricsView> {
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,
-              padding: EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: constraints.maxHeight * 0.03,
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: constraints.maxHeight * 0.11,
+                bottom: constraints.maxHeight * 0.35,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
