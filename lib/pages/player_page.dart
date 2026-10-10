@@ -1019,7 +1019,7 @@ class _LyricsViewState extends State<LyricsView> {
               padding: EdgeInsets.only(
                 left: 24,
                 right: 24,
-                top: constraints.maxHeight * 0.22,
+                top: constraints.maxHeight * 0.20,
                 bottom: constraints.maxHeight * 0.35,
               ),
               itemBuilder: (context, i) {
