@@ -335,10 +335,6 @@ class _PlayerPageState extends State<PlayerPage> {
       return Container(
         width: 72,
         margin: const EdgeInsets.only(right: 8),
-        padding: EdgeInsets.only(
-          top: MediaQuery.sizeOf(context).height * 0.23,
-          bottom: MediaQuery.sizeOf(context).height * 0.26,
-        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
