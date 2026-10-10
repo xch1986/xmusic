@@ -1020,7 +1020,7 @@ class _LyricsViewState extends State<LyricsView> {
                 left: 24,
                 right: 24,
                 top: constraints.maxHeight * 0.23,
-                bottom: constraints.maxHeight * 0.35,
+                bottom: constraints.maxHeight * 0.26,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
