@@ -336,9 +336,10 @@ class _PlayerPageState extends State<PlayerPage> {
         width: 72,
         margin: const EdgeInsets.only(right: 8),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
+            const SizedBox(height: 16),
             _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
             ListenableBuilder(
               listenable: widget.controller,
@@ -351,6 +352,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
+            const SizedBox(height: 16),
             ListenableBuilder(
               listenable: widget.controller,
               builder: (context, _) {
@@ -477,7 +479,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   Padding(
                     padding: EdgeInsets.fromLTRB(16, 10, 16,
                         isCarScreen(context) &&
-                        MediaQuery.of(context).orientation == Orientation.landscape ? 56 : 16),
+                        MediaQuery.of(context).orientation == Orientation.landscape ? 30 : 16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
