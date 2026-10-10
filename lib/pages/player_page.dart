@@ -490,7 +490,7 @@ class _PlayerPageState extends State<PlayerPage> {
                           Navigator.of(context).popUntil((r) => r.isFirst);
                           HomeShell.switchToHome();
                         }),
-                        const SizedBox(width: 24),
+                        const SizedBox(width: 60),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -501,7 +501,7 @@ class _PlayerPageState extends State<PlayerPage> {
                               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 15)),
                           ],
                         ),
-                        const SizedBox(width: 24),
+                        const SizedBox(width: 60),
                         _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
                       ],
                     ),
