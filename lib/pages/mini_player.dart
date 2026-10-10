@@ -28,13 +28,13 @@ class MiniPlayer extends StatelessWidget {
         final isLandscape = mq.size.width > mq.size.height;
         final isCarScreen = mq.size.shortestSide >= 480;
         final bottomPad = isLandscape ? (isCarScreen ? 0.0 : 4.0) : 48.0;
-        final coverSize = isLandscape ? 88.0 : 72.0;
+        final coverSize = isLandscape ? 56.0 : 72.0;
         final hPad = isLandscape ? 32.0 : 24.0;
-        final vPad = isLandscape ? 20.0 : 18.0;
-        final gap = isLandscape ? 28.0 : 22.0;
-        final iconSize = isLandscape ? 44.0 : 38.0;
-        final titleSize = isLandscape ? 28.0 : 22.0;
-        final artistSize = isLandscape ? 21.0 : 18.0;
+        final vPad = isLandscape ? 10.0 : 18.0;
+        final gap = isLandscape ? 16.0 : 22.0;
+        final iconSize = isLandscape ? 28.0 : 38.0;
+        final titleSize = isLandscape ? 18.0 : 22.0;
+        final artistSize = isLandscape ? 14.0 : 18.0;
 
         return ClipRect(
           child: BackdropFilter(
