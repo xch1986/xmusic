@@ -483,24 +483,25 @@ class _PlayerPageState extends State<PlayerPage> {
                         isCarScreen(context) &&
                         MediaQuery.of(context).orientation == Orientation.landscape ? 56 : 16),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
                           Navigator.of(context).popUntil((r) => r.isFirst);
                           HomeShell.switchToHome();
                         }),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              _MarqueeText(song.title, textAlign: TextAlign.center,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 26 : 24)),
-                              SizedBox(height: car ? 10 : 6),
-                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 15)),
-                            ],
-                          ),
+                        const SizedBox(width: 24),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _MarqueeText(song.title, textAlign: TextAlign.center,
+                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 26 : 24)),
+                            SizedBox(height: car ? 10 : 6),
+                            Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 15)),
+                          ],
                         ),
+                        const SizedBox(width: 24),
                         _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
                       ],
                     ),
