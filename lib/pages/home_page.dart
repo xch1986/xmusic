@@ -1524,7 +1524,15 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         ),
         // 迷你播放条放 body 底部而不是 bottomNavigationBar：
         // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
-        MiniPlayer(settings: settings, controller: controller),
+        // [xmusic] push页面miniplayer字体和HomeShell统一（textScaler 0.85横屏）
+        MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(
+              MediaQuery.of(context).size.width > MediaQuery.of(context).size.height ? 0.85 : 1.0,
+            ),
+          ),
+          child: MiniPlayer(settings: settings, controller: controller),
+        ),
         // [xmusic] push页面统一底部导航栏：点击切tab
         _GlobalBottomNav(settings: settings, controller: controller),
       ],
