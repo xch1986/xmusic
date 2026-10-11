@@ -335,8 +335,11 @@ class _PlayerPageState extends State<PlayerPage> {
       return Container(
         width: 72,
         margin: const EdgeInsets.only(right: 8),
+        padding: EdgeInsets.symmetric(
+          vertical: MediaQuery.sizeOf(context).height * 0.08,
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
             _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
