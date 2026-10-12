@@ -517,18 +517,21 @@ class _PlayerPageState extends State<PlayerPage> {
             children: [
               // 歌词区：Expanded 占满中间空间，歌词自然向下扩展
               Expanded(
-                child: Row(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    top: isCarScreen(context) ? 72 : 4,
+                    bottom: isCarScreen(context) ? 60 : 4,
+                  ),
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _actionSidebarLeft(context),
                     Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
-                        child: _lyricsArea(context, song.id),
-                      ),
+                      child: _lyricsArea(context, song.id),
                     ),
                     _actionSidebar(context),
                   ],
+                ),
                 ),
               ),
               Padding(
