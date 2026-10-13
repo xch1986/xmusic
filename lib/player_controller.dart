@@ -1895,7 +1895,7 @@ class PlayerController extends ChangeNotifier {
 
 
 
-      'live', '现场', '演唱会', 'concert',
+      'live', '现场', '演唱会', 'concert', 'lives', 'live版', 'livehouse', '音乐节', '巡回', '现场版',
 
 
 
@@ -1903,7 +1903,7 @@ class PlayerController extends ChangeNotifier {
 
 
 
-      '不插电', 'unplugged', 'dj', 'remix', '混音', '直播',
+      '不插电', 'unplugged', 'acoustic', 'dj', 'remix', '混音', '直播', 'demo', '小样', '试唱', '清唱',
 
 
 
