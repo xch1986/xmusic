@@ -390,7 +390,7 @@ class _HomeShellState extends State<HomeShell> {
 
               padding: EdgeInsets.only(
 
-                bottom: isCarScreen && isLandscape ? 60 : 0,
+                bottom: 0,
 
               ),
 
