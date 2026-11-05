@@ -1616,7 +1616,7 @@ class _GlobalBottomNav extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 0),
+        padding: EdgeInsets.only(bottom: carBottomInsetOf(context, settings)),
         child: NavigationBarTheme(
           data: NavigationBarThemeData(
             backgroundColor: settings.coverColorBg ? Colors.transparent : cs.surfaceContainer,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audio_service/audio_service.dart';
@@ -17,10 +19,25 @@ late MyAudioHandler audioHandler;
 /// 系统级 AudioService 是否就绪。init 失败（车机慢/超时）时 fallback 本地 handler，
 /// 此时没有系统 MediaSession，车机桌面（迪友）枚举不到——首次播放前会重试。
 bool audioServiceReady = false;
+/// 防止后台重试与播放前兜底并发调用 AudioService.init。
+bool _audioInitInFlight = false;
 
-/// 重新初始化系统音频服务：仅当首次 init 失败时调用（播放前兜底）。
+/// 系统 AudioService 重建 handler 后，把已挂好的状态迁到新实例：
+/// allowPlay 与 next/prev 回调原先只挂在旧 handler 上，不迁移会导致
+/// 重建后方向盘/通知栏 play 被吞、切歌回调丢失。
+void _adoptNewHandler(MyAudioHandler h) {
+  final old = audioHandler;
+  h.allowPlay = old.allowPlay;
+  h.onSkipNext = old.onSkipNext;
+  h.onSkipPrevious = old.onSkipPrevious;
+  audioHandler = h;
+}
+
+/// 重新初始化系统音频服务：后台重试与播放前兜底都走这里。
+/// 播放路径一律 unawaited 调用，绝不让 MediaSession 就绪成为播放的前置条件。
 Future<void> ensureSystemAudioHandler() async {
-  if (audioServiceReady) return;
+  if (audioServiceReady || _audioInitInFlight) return;
+  _audioInitInFlight = true;
   try {
     final h = await AudioService.init(
       builder: () => MyAudioHandler(),
@@ -33,16 +50,18 @@ Future<void> ensureSystemAudioHandler() async {
         androidShowNotificationBadge: true,
         androidNotificationClickStartsActivity: true,
       ),
-    ).timeout(const Duration(seconds: 30));
-    audioHandler = h;
+    ).timeout(const Duration(seconds: 8));
+    _adoptNewHandler(h);
     audioServiceReady = true;
-    debugPrint('AudioService re-init OK');
+    debugPrint('AudioService init OK');
   } catch (e) {
-    debugPrint('AudioService re-init failed: $e');
+    debugPrint('AudioService init failed: $e');
+  } finally {
+    _audioInitInFlight = false;
   }
 }
 
-/// AudioService 初始化失败后的后台持续重试：车机性能弱时 init 常 30s 超时，
+/// AudioService 初始化失败后的后台持续重试：车机性能弱时 init 可能超时，
 /// 若长期 fallback 本地 handler 则没有系统 MediaSession/通知栏媒体通知，
 /// 迪友等车机桌面枚举不到播放器。每 10 秒重试直到成功（成功即停）。
 void _retryAudioServiceUntilReady() {
@@ -55,8 +74,6 @@ void _retryAudioServiceUntilReady() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 显式允许所有四个方向（空列表在部分 Android/Flutter 版本上不生效或反而锁方向），
-  // 播放页支持横竖屏切换（车机/手机），跟随系统自动旋转。
   try {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -66,33 +83,26 @@ Future<void> main() async {
     ]);
   } catch (_) {}
 
-  // 初始化系统级音频服务。包 try-catch+timeout：失败不阻塞启动（避免白屏）。
-  // 车机性能弱/启动慢：超时放宽到 30s，仍失败则 fallback + 后台持续重试，
-  // 保证服务常驻激活（MediaSession + 媒体通知），迪友车机桌面才能枚举到。
-  try {
-    audioHandler = await AudioService.init(
-      builder: () => MyAudioHandler(),
-      config: const AudioServiceConfig(
-        androidNotificationChannelId: 'com.xmusic.player.channel.audio',
-        androidNotificationChannelName: '音乐播放',
-        androidNotificationChannelDescription: '音素音乐播放器',
-        androidNotificationOngoing: false,
-        androidStopForegroundOnPause: false,
-        androidShowNotificationBadge: true,
-        androidNotificationClickStartsActivity: true,
-      ),
-    ).timeout(const Duration(seconds: 30));
-    audioServiceReady = true;
-  } catch (e) {
-    debugPrint('AudioService init failed: $e');
-    audioHandler = MyAudioHandler();
-    // 车机慢导致 init 超时的场景：后台持续重试，直到 MediaSession 注册成功。
-    _retryAudioServiceUntilReady();
-  }
+  // 上电冷启动修复：先给一个立即可用的本地 handler，再 runApp。
+  // 原实现把 AudioService.init().timeout(30s) 放在 runApp 之前 await，
+  // 车机上电时音频服务慢会让整个界面最长卡 30 秒（白屏 / 点不动）。
+  audioHandler = MyAudioHandler();
+  audioServiceReady = false;
+
   final settings = AppSettings();
   await settings.load();
   runApp(MyApp(settings: settings));
+
+  // 系统级 MediaSession 改为首帧之后在后台初始化，不阻塞界面与播放；
+  // 失败时由 _retryAudioServiceUntilReady 每 10 秒重试，直到迪友能枚举到。
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(ensureSystemAudioHandler());
+    // 首次后台初始化失败时，挂一条每 10 秒的守护重试链，直到 MediaSession 就绪。
+    // 重试循环本身会在 audioServiceReady 变 true 后自行停止，只有一条链。
+    _retryAudioServiceUntilReady();
+  });
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key, required this.settings});
@@ -158,37 +168,24 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
     _sync();
-    // 启动权限申请：必须等首帧渲染完（Activity 处于 resume）再请求，
-    // main() 里 runApp 前请求会被系统忽略（0.3.96 实测不弹框）。
-    // 逐项弹系统勾选框：通知(Android 13+)/音频/图片/存储——通知权限缺失时
-    // 媒体通知不显示，迪友(通知监听)识别不到播放器。
+    // 启动权限申请：必须等首帧渲染完（Activity 处于 resume）再请求。
+    // 上电冷启动修复：不再用模态对话框——它会吃掉刚进 App 的第一次点击，
+    // 表现为「刚进去那首歌点播放没反应」。改为非模态 SnackBar，点击不阻断。
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 600));
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
       try {
-        // 通知未授予时先弹 App 内引导框，用户点"去授权"再走系统请求；
-        // 保证一定出现"申请权限"界面（部分 ROM/Android 16 上直接 request 不弹框）。
         if (!await notificationGranted()) {
           if (!mounted) return;
-          final go = await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AlertDialog(
-              title: const Text('需要通知权限'),
-              content: const Text(
-                  '用于在通知栏显示播放控制，以及让车机（迪友）识别音素为音乐播放器。'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text('稍后'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text('去授权'),
-                ),
-              ],
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 12),
+              content: const Text('开启通知权限后，车机桌面才能识别音素并显示播放控制'),
+              action: SnackBarAction(
+                label: '去授权',
+                onPressed: () => ensureAppPermissions(),
+              ),
             ),
           );
-          if (go == true) await ensureAppPermissions();
         } else {
           await ensureAppPermissions();
         }

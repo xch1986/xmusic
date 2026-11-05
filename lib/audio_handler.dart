@@ -19,8 +19,15 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
   /// 阻止系统自动恢复播放（双播根因：audio_service恢复session时会自动play）
   bool allowPlay = false;
 
+  /// 进程内只有第一个实例负责清空播放状态；AudioService 后台重试成功会重建
+  /// handler，若再 stop() 会把用户刚点播的歌打断（上电首曲无声的根因之一）。
+  static bool _createdOnce = false;
+
   MyAudioHandler() {
-    _player.stop();
+    if (!_createdOnce) {
+      _createdOnce = true;
+      _player.stop();
+    }
     _player.playbackEventStream.map(_transformEvent).pipe(playbackState);
     _player.durationStream.listen((d) {
       final mi = mediaItem.value;
@@ -64,7 +71,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> onStart(mediaId) async {
-    await _player.stop();
+    // 系统自动恢复播放已由 play() 里的 allowPlay 拦截，不再无条件 stop：
+    // AudioService 服务重建时同样回调 onStart，无条件 stop 会打断正在播放的歌。
   }
 
   void setMediaItem(MediaItem item) {

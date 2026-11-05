@@ -324,7 +324,10 @@ class _HomeShellState extends State<HomeShell> {
 
       ),
 
-      bottomNavigationBar: Column(
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.only(
+            bottom: carBottomInsetOf(context, widget.settings)),
+        child: Column(
 
         mainAxisSize: MainAxisSize.min,
 
@@ -348,7 +351,11 @@ class _HomeShellState extends State<HomeShell> {
 
             ),
 
-            child: MiniPlayer(settings: widget.settings, controller: widget.controller),
+            child: MiniPlayer(
+              settings: widget.settings,
+              controller: widget.controller,
+              bottomInsetOverride: 0,
+            ),
 
           ),
 
@@ -488,6 +495,7 @@ class _HomeShellState extends State<HomeShell> {
 
         ],
 
+      ),
       ),
 
       ),

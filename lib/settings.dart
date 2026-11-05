@@ -45,6 +45,7 @@ class AppSettings extends ChangeNotifier {
   static const _kSleepEnabled = 'sleep_timer_enabled';
   static const _kSleepMinutes = 'sleep_timer_minutes';
   static const _kSleepFade = 'sleep_fade_volume';
+  static const _kCarBottomInset = 'car_bottom_inset';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -84,6 +85,17 @@ class AppSettings extends ChangeNotifier {
   bool _sleepEnabled = false;
   int _sleepMinutes = 30;
   bool _sleepFade = true;
+  /// 车机横屏底部避让高度（dp）：迪友桌面自绘导航条不进入 WindowInsets，
+  /// 需要在设置里按实机调整，默认 48dp。
+  double _carBottomInset = 48.0;
+  double get carBottomInset => _carBottomInset;
+  static const double minCarBottomInset = 0.0;
+  static const double maxCarBottomInset = 120.0;
+  Future<void> setCarBottomInset(double v) async {
+    _carBottomInset = v.clamp(minCarBottomInset, maxCarBottomInset);
+    await _prefs.setDouble(_kCarBottomInset, _carBottomInset);
+    notifyListeners();
+  }
   bool get sleepEnabled => _sleepEnabled;
   int get sleepMinutes => _sleepMinutes;
   bool get sleepFade => _sleepFade;
@@ -170,6 +182,8 @@ class AppSettings extends ChangeNotifier {
     _sleepEnabled = _prefs.getBool(_kSleepEnabled) ?? false;
     _sleepMinutes = (_prefs.getInt(_kSleepMinutes) ?? 30).clamp(10, 90);
     _sleepFade = _prefs.getBool(_kSleepFade) ?? true;
+    _carBottomInset = (_prefs.getDouble(_kCarBottomInset) ?? 48.0)
+        .clamp(minCarBottomInset, maxCarBottomInset);
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
@@ -517,4 +531,20 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setString(_kDavPath, webdavPath);
     await _prefs.setString(_kDavName, webdavName);
   }
+}
+
+/// 车机横屏底部避让统一计算。
+/// 迪友桌面（com.dy.launcher）的底部导航条是应用自绘的悬浮容器
+/// （manifest 声明 SYSTEM_ALERT_WINDOW，布局 navigation_bar_container_layout.xml），
+/// 不进入系统 WindowInsets；且 xmusic 横屏启用了 immersiveSticky，
+/// MediaQuery.padding.bottom 会被清零，所以不能只看 padding。
+/// 取「系统 viewPadding.bottom」与「设置里的车机避让值」的较大者；
+/// 手机 / 车机竖屏沿用系统 inset。
+double carBottomInsetOf(BuildContext context, AppSettings settings) {
+  final mq = MediaQuery.of(context);
+  final isCarScreen = mq.size.shortestSide >= 480;
+  final isLandscape = mq.size.width > mq.size.height;
+  if (!isCarScreen || !isLandscape) return mq.padding.bottom;
+  final sys = mq.viewPadding.bottom;
+  return sys > settings.carBottomInset ? sys : settings.carBottomInset;
 }

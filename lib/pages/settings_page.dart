@@ -406,6 +406,32 @@ class SettingsPage extends StatelessWidget {
               onChanged: (v) => settings.setSleepFade(v),
             ),
           ],
+          // ===== 车机适配 =====
+          ListTile(
+            leading: const Icon(Icons.vertical_align_bottom_rounded),
+            title: const Text('车机底部避让'),
+            subtitle: Text('当前 ${settings.carBottomInset.round()} dp · 用于避开迪友桌面底部导航条'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Icon(Icons.straighten_rounded, size: 20),
+                Expanded(
+                  child: Slider(
+                    min: AppSettings.minCarBottomInset,
+                    max: AppSettings.maxCarBottomInset,
+                    divisions: 15,
+                    value: settings.carBottomInset,
+                    label: '${settings.carBottomInset.round()} dp',
+                    onChanged: (v) => settings.setCarBottomInset(v.roundToDouble()),
+                  ),
+                ),
+                Text('${settings.carBottomInset.round()} dp',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
           const Divider(),
 
           // ===== 源 =====

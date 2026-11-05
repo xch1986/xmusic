@@ -487,6 +487,10 @@ class PlayerController extends ChangeNotifier {
 
 
   int _playToken = 0;
+  /// 用户是否已点过播放/切歌：一旦接管，restoreLastState 必须让位。
+  bool _userTookOver = false;
+  /// 防止冷启动时连点播放重复触发整条加载链。
+  bool _reloadPending = false;
 
 
 
@@ -603,159 +607,49 @@ class PlayerController extends ChangeNotifier {
 
 
   Future<void> restoreLastState() async {
-
-
-
     try {
-
-
-
       final f = await _stateFile;
-
-
-
       if (!await f.exists()) return;
-
-
-
       final m = jsonDecode(await f.readAsString()) as Map;
-
-
-
       queueSource = (m['queueSource'] as String?) ?? '';
-
-
-
       final list = (m['queue'] as List?) ?? [];
-
-
-
       if (list.isEmpty) return;
-
-
-
       queue = list.map((e) => Song(
-
-
-
         id: e['id'], title: e['title'], artist: e['artist'], album: e['album'],
-
-
-
         coverArt: e['coverArt'], coverUrl: e['coverUrl'], streamUrl: e['streamUrl'],
-
-
-
         fromExternal: e['fromExternal'] ?? false, externalSource: e['externalSource'],
-
-
-
       )).toList();
-
-
-
       index = (m['index'] as int?) ?? 0;
-
-
-
       if (index >= queue.length) index = 0;
-
-
-
       notifyListeners();
 
+      // 用户在这期间已经点过播放/切歌：恢复流程完全让位，避免覆盖。
+      if (_userTookOver) return;
 
-
-      // 先停止AudioService自动恢复的播放，避免双播
-
-
-
+      // 阻止 AudioService 自动恢复造成的双播，但用 finally 保证一定放行，
+      // 否则异常时方向盘/通知栏的 play 会被永久吞掉。
       audioHandler.allowPlay = false;
-
-
-
-      await player.stop();
-
-
-
       try {
-
-
-
-        await player.processingStateStream.firstWhere(
-
-
-
-          (st) => st == ProcessingState.idle,
-
-
-
-        ).timeout(const Duration(milliseconds: 800));
-
-
-
-      } catch (_) {}
-
-
-
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-
-
-      try {
-
-
-
+        await player.stop();
+        try {
+          await player.processingStateStream.firstWhere(
+            (st) => st == ProcessingState.idle,
+          ).timeout(const Duration(milliseconds: 800));
+        } catch (_) {}
+        // 原实现硬等 1500ms：上电时叠加网络/服务初始化，界面已出却点不动播放。
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_userTookOver) return;
         await _loadAndPlay(index, autoplay: settings.autoPlay);
-
-
-
-        // 恢复上次退出/切后台时的播放进度（>3秒才跳转，避免从头几秒还跳一下）
-
-
-
         final savedPos = (m['position'] as num?)?.toInt() ?? 0;
-
-
-
         if (savedPos > 3000) {
-
-
-
-          try {
-
-
-
-            await player.seek(Duration(milliseconds: savedPos));
-
-
-
-          } catch (_) {}
-
-
-
+          try { await player.seek(Duration(milliseconds: savedPos)); } catch (_) {}
         }
-
-
-
-      } catch (_) {}
-
-
-
-      // 恢复完成，重新放行系统主动播放（方向盘 play 有效）
-
-
-
-      audioHandler.allowPlay = true;
-
-
-
+      } catch (_) {
+      } finally {
+        audioHandler.allowPlay = true;
+      }
     } catch (_) {}
-
-
-
   }
-
 
 
 
@@ -1398,7 +1292,9 @@ class PlayerController extends ChangeNotifier {
 
 
 
-    await ensureSystemAudioHandler();
+    // 系统 MediaSession 就绪与否不能阻塞播放：后台重试独立进行，
+    // 原来这里 await 最长 30s，是「上电首曲点播放没反应」的主要阻塞点。
+    unawaited(ensureSystemAudioHandler());
 
 
 
@@ -1934,6 +1830,7 @@ class PlayerController extends ChangeNotifier {
 
 
       {String? source}) async {
+    _userTookOver = true;
 
 
 
@@ -2090,6 +1987,7 @@ class PlayerController extends ChangeNotifier {
 
 
   Future<void> playAt(int i) async {
+    _userTookOver = true;
 
 
 
@@ -3174,6 +3072,7 @@ class PlayerController extends ChangeNotifier {
 
 
   Future<void> next() async {
+    _userTookOver = true;
 
 
 
@@ -3246,6 +3145,7 @@ class PlayerController extends ChangeNotifier {
 
 
   Future<void> previous() async {
+    _userTookOver = true;
 
 
 
@@ -3310,35 +3210,25 @@ class PlayerController extends ChangeNotifier {
 
 
   void togglePlay() {
-
-
-
+    _userTookOver = true;
     if (player.playing) {
-
-
-
       unawaited(player.pause());
-
-
-
-    } else {
-
-
-
-      audioHandler.allowPlay = true;
-
-
-
-      unawaited(player.play());
-
-
-
+      return;
     }
-
-
-
+    if (queue.isEmpty) return;
+    // 冷启动恢复流程还没加载音源（或 AudioService 重建把音源清掉）时，
+    // player 处于 idle，play() 对无音源的播放器无效且异常被 unawaited 吞掉，
+    // 表现就是「刚进去那首歌点播放播不出来」。这里改为重新加载并播放当前曲目。
+    if (player.processingState == ProcessingState.idle) {
+      if (_reloadPending) return;
+      _reloadPending = true;
+      unawaited(_loadAndPlay(index, autoplay: true)
+          .whenComplete(() => _reloadPending = false));
+      return;
+    }
+    audioHandler.allowPlay = true;
+    unawaited(player.play());
   }
-
 
 
 

@@ -9,10 +9,18 @@ import 'player_page.dart';
 /// 迷你播放栏：液态玻璃（BackdropFilter模糊+半透明），与首页/音乐库/导航栏统一由设置的主题开关控制；内容跟随主题色。
 /// 车机横屏（landscape）时整体压缩尺寸，避免占横向空间。
 class MiniPlayer extends StatelessWidget {
-  const MiniPlayer({super.key, required this.settings, required this.controller});
+  const MiniPlayer({
+    super.key,
+    required this.settings,
+    required this.controller,
+    this.bottomInsetOverride,
+  });
 
   final AppSettings settings;
   final PlayerController controller;
+  /// HomeShell 把 MiniPlayer 与 NavigationBar 一起包进避让 Padding，
+  /// 那时传 0 避免重复抬高；单独使用的页面不传，自行避让。
+  final double? bottomInsetOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +35,12 @@ class MiniPlayer extends StatelessWidget {
         final mq = MediaQuery.of(context);
         final isLandscape = mq.size.width > mq.size.height;
         final isCarScreen = mq.size.shortestSide >= 480;
-        final bottomPad = isLandscape ? (isCarScreen ? 0.0 : 4.0) : 48.0;
+        // 车机横屏：迪友桌面自绘底部导航条不进入系统 inset，
+        // 用统一计算（系统 viewPadding 与设置值取大）把内容抬到它上面。
+        final bottomPad = bottomInsetOverride ??
+            (isLandscape && isCarScreen
+                ? carBottomInsetOf(context, settings)
+                : mq.padding.bottom.clamp(0.0, 48.0));
         final coverSize = isLandscape ? 56.0 : 72.0;
         final hPad = isLandscape ? 32.0 : 24.0;
         final vPad = isLandscape ? 10.0 : 18.0;
@@ -46,11 +59,7 @@ class MiniPlayer extends StatelessWidget {
                   builder: (_) => PlayerPage(settings: settings, controller: controller),
                 )),
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: isLandscape && isCarScreen
-                        ? bottomPad
-                        : mq.padding.bottom.clamp(0.0, bottomPad),
-                  ),
+                  padding: EdgeInsets.only(bottom: bottomPad),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                     child: song == null
