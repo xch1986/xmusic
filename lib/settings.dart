@@ -47,6 +47,7 @@ class AppSettings extends ChangeNotifier {
   static const _kSleepFade = 'sleep_fade_volume';
   static const _kCarBottomInset = 'car_bottom_inset';
   static const _kListTextScale = 'list_text_scale';
+  static const _kCarTopInset = 'car_top_inset';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -95,6 +96,17 @@ class AppSettings extends ChangeNotifier {
   Future<void> setCarBottomInset(double v) async {
     _carBottomInset = v.clamp(minCarBottomInset, maxCarBottomInset);
     await _prefs.setDouble(_kCarBottomInset, _carBottomInset);
+    notifyListeners();
+  }
+  /// 车机横屏顶部避让（dp）：迪友桌面顶部状态条是自绘悬浮层，不进 WindowInsets。
+  /// 默认 0 = 顶部不留白；若顶部内容被状态条盖住，在设置里按实机调大。
+  double _carTopInset = 0.0;
+  double get carTopInset => _carTopInset;
+  static const double minCarTopInset = 0.0;
+  static const double maxCarTopInset = 120.0;
+  Future<void> setCarTopInset(double v) async {
+    _carTopInset = v.clamp(minCarTopInset, maxCarTopInset);
+    await _prefs.setDouble(_kCarTopInset, _carTopInset);
     notifyListeners();
   }
   /// 排行榜/歌单列表文字大小：车机全局 1.5x 缩放会把双行列表撑到一屏只剩 2 首，
@@ -199,6 +211,8 @@ class AppSettings extends ChangeNotifier {
         .clamp(minCarBottomInset, maxCarBottomInset);
     _listTextScale = (_prefs.getDouble(_kListTextScale) ?? 1.0)
         .clamp(minListTextScale, maxListTextScale);
+    _carTopInset = (_prefs.getDouble(_kCarTopInset) ?? 0.0)
+        .clamp(minCarTopInset, maxCarTopInset);
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
@@ -562,4 +576,19 @@ double carBottomInsetOf(BuildContext context, AppSettings settings) {
   if (!isCarScreen || !isLandscape) return mq.padding.bottom;
   final sys = mq.viewPadding.bottom;
   return sys > settings.carBottomInset ? sys : settings.carBottomInset;
+}
+
+/// 车机横屏顶部避让统一计算。
+/// 迪友桌面顶部状态条是自绘悬浮容器（status_bar_container_layout.xml，
+/// layout_height=@dimen/dp_30），不进系统 WindowInsets，只能按实机调。
+/// 原先 home_shell 写死 28dp 顶部 padding，叠加三个 tab 各自空 AppBar 的
+/// 56dp 标题区（音乐库还有 48dp TabBar），形成一条没有内容的顶部空白。
+/// 现在空标题区压到 0，顶部只取设置里的可调值（默认 0 = 不留白）；
+/// 手机 / 车机竖屏保持原行为 0，由各自 Scaffold / AppBar 处理系统栏。
+double carTopInsetOf(BuildContext context, AppSettings settings) {
+  final mq = MediaQuery.of(context);
+  final isCarScreen = mq.size.shortestSide >= 480;
+  final isLandscape = mq.size.width > mq.size.height;
+  if (!isCarScreen || !isLandscape) return 0.0;
+  return settings.carTopInset;
 }

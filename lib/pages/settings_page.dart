@@ -243,6 +243,9 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // [xmusic] 车机横屏：空 AppBar 标题区压到 0，去掉顶部「状态栏」留白。
+    final carLand = MediaQuery.sizeOf(context).shortestSide >= 480 &&
+        MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
     // 车机横屏大屏：整页文字放大 1.35x
     final theme = Theme.of(context);
     final _mq = MediaQuery.of(context);
@@ -259,7 +262,11 @@ class SettingsPage extends StatelessWidget {
         child: Scaffold(
           // [xmusic] 2026-09-28 设置页透明：透出全局封面玻璃背景（之前是初始底色）
           backgroundColor: Colors.transparent,
-      appBar: AppBar(),
+      appBar: AppBar(
+        toolbarHeight: carLand ? 0.0 : kToolbarHeight,
+        primary: !carLand,
+        backgroundColor: Colors.transparent,
+      ),
       body: ListView(
         children: [
           // ===== 主题 =====
@@ -407,6 +414,32 @@ class SettingsPage extends StatelessWidget {
             ),
           ],
           // ===== 车机适配 =====
+          // ===== 车机顶部避让 =====
+          ListTile(
+            leading: const Icon(Icons.vertical_align_top),
+            title: const Text('车机顶部避让'),
+            subtitle: Text('当前 ${settings.carTopInset.round()} dp · 默认 0 不留白；若顶部内容被迪友状态条盖住再调大'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Icon(Icons.straighten_rounded, size: 20),
+                Expanded(
+                  child: Slider(
+                    min: AppSettings.minCarTopInset,
+                    max: AppSettings.maxCarTopInset,
+                    divisions: 12,
+                    value: settings.carTopInset,
+                    label: '${settings.carTopInset.round()} dp',
+                    onChanged: (v) => settings.setCarTopInset(v.roundToDouble()),
+                  ),
+                ),
+                Text('${settings.carTopInset.round()} dp',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.vertical_align_bottom_rounded),
             title: const Text('车机底部避让'),

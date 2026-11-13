@@ -316,7 +316,11 @@ class _HomeShellState extends State<HomeShell> {
 
         padding: EdgeInsets.only(
 
-          top: isCarScreen && isLandscape ? 28 : 0,
+          // 车机横屏默认 0（不留白）；若顶部内容被迪友状态条盖住，
+
+          // 在设置 →「车机顶部避让」里按实机调大即可，无需重新构建。
+
+          top: carTopInsetOf(context, widget.settings),
 
         ),
 

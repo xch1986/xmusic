@@ -66,10 +66,16 @@ class _LibraryPageState extends State<LibraryPage>
 
   @override
   Widget build(BuildContext context) {
+    // [xmusic] 车机横屏：空 AppBar 标题区压到 0，去掉顶部「状态栏」留白。
+    final carLand = MediaQuery.sizeOf(context).shortestSide >= 480 &&
+        MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
     return BigScreenText(
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        toolbarHeight: carLand ? 0.0 : kToolbarHeight,
+        primary: !carLand,
+        backgroundColor: Colors.transparent,
         bottom: TabBar(
           controller: _tab,
           isScrollable: true,
