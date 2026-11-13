@@ -72,6 +72,10 @@ class CoverImage extends StatelessWidget {
       ),
     );
 
+    // 只按显示尺寸解码：车机长列表若把 600px 原图整张留在内存，
+    // 100 首封面能吃掉上百 MB。缩略场景一律限制到 256px 以内。
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final int decodePx = (((size ?? 96) * dpr).round()).clamp(48, 256).toInt();
     return SizedBox(
       width: size,
       height: size,
@@ -84,11 +88,15 @@ class CoverImage extends StatelessWidget {
                 ? Image.file(
                     File(url.toFilePath()),
                     fit: BoxFit.cover,
+                    cacheWidth: decodePx,
+                    cacheHeight: decodePx,
                     errorBuilder: (_, __, ___) => placeholder,
                   )
                 : CachedNetworkImage(
                     imageUrl: url.toString(),
                     fit: BoxFit.cover,
+                    memCacheWidth: decodePx,
+                    memCacheHeight: decodePx,
                     fadeInDuration: const Duration(milliseconds: 200),
                     fadeOutDuration: const Duration(milliseconds: 200),
                     httpHeaders: _imgHeaders(url.toString()),
@@ -188,6 +196,8 @@ class SongTile extends StatefulWidget {
     this.onBlacklist,
     this.blacklisted = false,
     this.onDelete,
+    this.compact = false,
+    this.textScale = 1.0,
   });
 
   final Song song;
@@ -204,6 +214,10 @@ class SongTile extends StatefulWidget {
   final bool blacklisted;
   /// 删除回调（提供则左滑露出删除按钮）
   final VoidCallback? onDelete;
+  /// 紧凑列表模式：显式字号与行高，脱离全局大屏 1.5x 文字缩放。
+  final bool compact;
+  /// 列表文字缩放（由设置项 listTextScale 提供）。
+  final double textScale;
 
   @override
   State<SongTile> createState() => _SongTileState();
@@ -220,25 +234,32 @@ class _SongTileState extends State<SongTile> {
 
   Widget _content(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    final c = widget.compact;
+    final tile = ListTile(
+      dense: c,
+      visualDensity: c ? const VisualDensity(horizontal: 0, vertical: -2) : null,
+      contentPadding: c
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 0)
+          : const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: widget.leading ??
           CoverImage(
             client: widget.client,
             coverId: widget.song.coverArt,
             coverUrl: widget.song.coverUrl,
-            size: 44,
+            size: c ? 40 : 44,
             radius: 8,
             requestSize: 120,
           ),
       title: Text(widget.song.title ?? '',
-          maxLines: 1, overflow: TextOverflow.ellipsis),
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: c ? TextStyle(fontSize: 16 * widget.textScale, height: 1.1) : null),
       subtitle: Text(
         widget.showAlbum
             ? '${widget.song.artist ?? ''} · ${widget.song.album ?? ''}'
             : (widget.song.artist ?? '未知'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+        style: c ? TextStyle(fontSize: 12.5 * widget.textScale, height: 1.1) : null,
       ),
       trailing: widget.trailing ??
           Row(
@@ -246,10 +267,13 @@ class _SongTileState extends State<SongTile> {
             children: [
               if (widget.song.durationSec != null)
                 Text(formatDuration(Duration(seconds: widget.song.durationSec!)),
-                    style: theme.textTheme.bodySmall
+                    style: (c
+                            ? TextStyle(fontSize: 12 * widget.textScale)
+                            : theme.textTheme.bodySmall)
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              const SizedBox(width: 8),
+              SizedBox(width: c ? 4 : 8),
               Icon(Icons.play_circle_outline,
+                  size: c ? 22 : 24,
                   color: theme.colorScheme.primary),
             ],
           ),
@@ -260,6 +284,13 @@ class _SongTileState extends State<SongTile> {
           widget.onTap();
         }
       },
+    );
+    if (!c) return tile;
+    // 紧凑模式屏蔽全局大屏 1.5x 文字缩放，字号完全由 textScale 决定，
+    // 否则 ListTile 双行高度被撑大，一屏只能看到 2 首歌。
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
+      child: tile,
     );
   }
 

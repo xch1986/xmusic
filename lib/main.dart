@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart' show imageCache;
 import 'package:flutter/services.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -74,6 +75,11 @@ void _retryAudioServiceUntilReady() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 车机内存有限：Flutter 默认图片缓存可达 100MB / 1000 张，长列表滚动后
+  // 会常驻大量解码位图。配合封面按显示尺寸解码，这里再兜一个总量上限。
+  imageCache
+    ..maximumSizeBytes = 48 << 20
+    ..maximumSize = 80;
   try {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,

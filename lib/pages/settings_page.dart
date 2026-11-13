@@ -432,6 +432,33 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          // ===== 歌曲列表显示大小 =====
+          ListTile(
+            leading: const Icon(Icons.format_size_rounded),
+            title: const Text('歌曲列表显示大小'),
+            subtitle: Text('当前 ${(settings.listTextScale * 100).round()}% · 排行榜/歌单一屏显示的歌曲数'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Icon(Icons.text_fields_rounded, size: 20),
+                Expanded(
+                  child: Slider(
+                    min: AppSettings.minListTextScale,
+                    max: AppSettings.maxListTextScale,
+                    divisions: 12,
+                    value: settings.listTextScale,
+                    label: '${(settings.listTextScale * 100).round()}%',
+                    onChanged: (v) =>
+                        settings.setListTextScale((v * 20).roundToDouble() / 20),
+                  ),
+                ),
+                Text('${(settings.listTextScale * 100).round()}%',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
           const Divider(),
 
           // ===== 源 =====

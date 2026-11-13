@@ -192,7 +192,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                 return Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
                       child: Row(
                         children: [
                           Expanded(
@@ -260,6 +260,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                             ),
                             onDismissed: (_) => _removeSong(song),
                             child: SongTile(
+                              compact: true,
+                              textScale: widget.settings.listTextScale,
                               song: song,
                               client: _client,
                               onTap: () => _playSongs(songs, i),

@@ -65,11 +65,16 @@ class CoverGlassBackground extends StatelessWidget {
                   child: Opacity(
                     opacity: 0.38,
                     child: ImageFiltered(
-                      imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                      // 全屏模糊半径 40→16：视觉接近，但车机 GPU 每帧代价大幅降低。
+                      imageFilter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
+                          // 入口封面与当前封面相同时只画一层，
+                          // 避免同一张全屏位图被解码/绘制两次。
+                          if (fallbackCoverUrl != null &&
+                              fallbackCoverUrl!.isNotEmpty &&
+                              fallbackCoverUrl != coverUrl)
                             _coverImage(fallbackCoverUrl!, cs),
                           _coverImage(coverUrl!, cs),
                         ],
@@ -104,12 +109,17 @@ class CoverGlassBackground extends StatelessWidget {
       return Image.file(
         File(uri.toFilePath()),
         fit: BoxFit.cover,
+        cacheWidth: 320,
+        cacheHeight: 320,
         errorBuilder: (_, __, ___) => transparent,
       );
     }
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
+      // 背景经过 16px 模糊，320px 解码足够，无需把原图整张留在内存。
+      memCacheWidth: 320,
+      memCacheHeight: 320,
       httpHeaders: _imgHeaders(url),
       fadeInDuration: const Duration(milliseconds: 300),
       fadeOutDuration: const Duration(milliseconds: 200),
@@ -140,7 +150,13 @@ class PageBackground extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: CoverGlassBackground(controller: controller, settings: settings, fallbackCoverUrl: fallbackCoverUrl),
+          child: RepaintBoundary(
+            // 背景自成重绘层：列表滚动/播放状态变化不再触发全屏模糊重算。
+            child: CoverGlassBackground(
+                controller: controller,
+                settings: settings,
+                fallbackCoverUrl: fallbackCoverUrl),
+          ),
         ),
         Positioned.fill(child: child),
       ],

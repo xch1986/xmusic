@@ -46,6 +46,7 @@ class AppSettings extends ChangeNotifier {
   static const _kSleepMinutes = 'sleep_timer_minutes';
   static const _kSleepFade = 'sleep_fade_volume';
   static const _kCarBottomInset = 'car_bottom_inset';
+  static const _kListTextScale = 'list_text_scale';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -96,6 +97,18 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setDouble(_kCarBottomInset, _carBottomInset);
     notifyListeners();
   }
+  /// 排行榜/歌单列表文字大小：车机全局 1.5x 缩放会把双行列表撑到一屏只剩 2 首，
+  /// 列表页单独用这个缩放（默认 1.0），在设置里可调。
+  double _listTextScale = 1.0;
+  double get listTextScale => _listTextScale;
+  static const double minListTextScale = 0.8;
+  static const double maxListTextScale = 1.4;
+  Future<void> setListTextScale(double v) async {
+    _listTextScale = v.clamp(minListTextScale, maxListTextScale);
+    await _prefs.setDouble(_kListTextScale, _listTextScale);
+    notifyListeners();
+  }
+
   bool get sleepEnabled => _sleepEnabled;
   int get sleepMinutes => _sleepMinutes;
   bool get sleepFade => _sleepFade;
@@ -184,6 +197,8 @@ class AppSettings extends ChangeNotifier {
     _sleepFade = _prefs.getBool(_kSleepFade) ?? true;
     _carBottomInset = (_prefs.getDouble(_kCarBottomInset) ?? 48.0)
         .clamp(minCarBottomInset, maxCarBottomInset);
+    _listTextScale = (_prefs.getDouble(_kListTextScale) ?? 1.0)
+        .clamp(minListTextScale, maxListTextScale);
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';

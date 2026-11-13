@@ -863,6 +863,8 @@ class _HomePageState extends State<HomePage> {
                           ? CachedNetworkImage(
                               imageUrl: coverUrl,
                               fit: BoxFit.cover,
+                              memCacheWidth: 256,
+                              memCacheHeight: 256,
                               httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
                               placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
                               errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
@@ -895,6 +897,8 @@ class _HomePageState extends State<HomePage> {
                           ? CachedNetworkImage(
                               imageUrl: coverUrl,
                               fit: BoxFit.cover,
+                              memCacheWidth: 256,
+                              memCacheHeight: 256,
                               httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
                               placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
                               errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
@@ -945,6 +949,8 @@ class _HomePageState extends State<HomePage> {
                 CachedNetworkImage(
                   imageUrl: coverUrl,
                   fit: BoxFit.cover,
+                  memCacheWidth: 256,
+                  memCacheHeight: 256,
                   httpHeaders: _imgHeaders(coverUrl!),
                   placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                   errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
@@ -1002,6 +1008,8 @@ class _HomePageState extends State<HomePage> {
                     ? CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 256,
+                        memCacheHeight: 256,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
                         placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                         errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
@@ -1022,6 +1030,8 @@ class _HomePageState extends State<HomePage> {
                     ? CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 256,
+                        memCacheHeight: 256,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
                         placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                         errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
@@ -1064,6 +1074,8 @@ class _HomePageState extends State<HomePage> {
                     ? CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 256,
+                        memCacheHeight: 256,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
                         placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                         errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
@@ -1084,6 +1096,8 @@ class _HomePageState extends State<HomePage> {
                     ? CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 256,
+                        memCacheHeight: 256,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
                         placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                         errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
@@ -1127,6 +1141,8 @@ class _HomePageState extends State<HomePage> {
                     ? CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 256,
+                        memCacheHeight: 256,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
                         placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                         errorWidget: (_, __, ___) => Container(
@@ -1159,6 +1175,8 @@ class _HomePageState extends State<HomePage> {
                     ? CachedNetworkImage(
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 256,
+                        memCacheHeight: 256,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
                         placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                         errorWidget: (_, __, ___) => Container(
@@ -1394,7 +1412,14 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                         : Theme.of(context).colorScheme.surfaceContainer),
             child: Scaffold(
         backgroundColor: Colors.transparent,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(title)),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: Text(title),
+        toolbarHeight: MediaQuery.of(context).size.width >
+                MediaQuery.of(context).size.height
+            ? 44
+            : kToolbarHeight,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -1402,24 +1427,25 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
               children: [
                 if (coverUrl != null && coverUrl!.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
               child: Row(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: CachedNetworkImage(
                       imageUrl: coverUrl!,
-                      width: 80, height: 80, fit: BoxFit.cover,
+                      width: 56, height: 56, fit: BoxFit.cover,
+                      memCacheWidth: 168, memCacheHeight: 168,
                       httpHeaders: _imgHeaders(coverUrl!),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text('共 ${_visibleIndices.length} 首', style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),
@@ -1428,7 +1454,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
             child: Row(
               children: [
                 TextButton.icon(
@@ -1494,6 +1520,8 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                       final i = _visibleIndices[k];
                       final song = songs[i];
                       return SongTile(
+                        compact: true,
+                        textScale: widget.settings.listTextScale,
                         song: song,
                         client: client,
                         onTap: () => onPlay(i),
@@ -1533,7 +1561,13 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
               MediaQuery.of(context).size.width > MediaQuery.of(context).size.height ? 1.0 : 1.0,
             ),
           ),
-          child: MiniPlayer(settings: settings, controller: controller),
+          child: MiniPlayer(
+            settings: settings,
+            controller: controller,
+            // 下面还有 _GlobalBottomNav 负责迪友栏避让，这里不能再加一层，
+            // 否则 miniplayer 与底栏之间会多出 48dp 纯留白。
+            bottomInsetOverride: 0,
+          ),
         ),
         // [xmusic] push页面统一底部导航栏：点击切tab
         _GlobalBottomNav(settings: settings, controller: controller),

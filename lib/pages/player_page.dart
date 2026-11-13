@@ -1362,7 +1362,7 @@ class _MiniCornerButton extends StatelessWidget {
     final theme = Theme.of(context);
     return ClipOval(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
         child: Material(
           color: theme.colorScheme.surface.withValues(alpha: 0.18),
           shape: const CircleBorder(),
@@ -1387,7 +1387,7 @@ class _GlassPanel extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius = 22,
-    this.blur = 26,
+    this.blur = 12,
   });
 
   final Widget child;

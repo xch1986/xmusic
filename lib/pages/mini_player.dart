@@ -6,6 +6,13 @@ import '../settings.dart';
 import '../widgets.dart';
 import 'player_page.dart';
 
+/// 模糊滤镜复用：sigma 从 24 降到 10（车机 GPU 每帧重绘代价显著下降），
+/// 且避免 ListenableBuilder 每次重建都新建 ImageFilter 对象。
+/// 注意：这里不套 RepaintBoundary——BackdropFilter 需读取下层绘制内容，
+/// 额外合成层会改变模糊结果。
+final ImageFilter _miniPlayerBlur =
+    ImageFilter.blur(sigmaX: 10, sigmaY: 10);
+
 /// 迷你播放栏：液态玻璃（BackdropFilter模糊+半透明），与首页/音乐库/导航栏统一由设置的主题开关控制；内容跟随主题色。
 /// 车机横屏（landscape）时整体压缩尺寸，避免占横向空间。
 class MiniPlayer extends StatelessWidget {
@@ -51,7 +58,7 @@ class MiniPlayer extends StatelessWidget {
 
         return ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            filter: _miniPlayerBlur,
             child: Container(
               color: cs.surface.withValues(alpha: isDark ? 0.22 : 0.15),
               child: InkWell(
