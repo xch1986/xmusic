@@ -436,7 +436,7 @@ Map<String, String> _imgHeaders(String u) {
 /// TV（遥控器）焦点包装：给任意子组件加焦点边框，方向键可导航，
 /// OK/确认键（Enter/Select）触发 onSelect；获得焦点时自动滚动进视野。
 /// enabled=false 时原样返回 child（车机/手机零开销、行为不变）。
-class TvFocus extends StatelessWidget {
+class TvFocus extends StatefulWidget {
   const TvFocus({
     super.key,
     required this.child,
@@ -451,45 +451,70 @@ class TvFocus extends StatelessWidget {
   final bool autofocus;
 
   @override
+  State<TvFocus> createState() => _TvFocusState();
+}
+
+class _TvFocusState extends State<TvFocus> {
+  final FocusNode _focusNode = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (!mounted) return;
+    final f = _focusNode.hasFocus;
+    if (f == _focused) return;
+    setState(() => _focused = f);
+    if (f) {
+      // 获得焦点时滚动进视野，长列表不会跑出屏幕
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Scrollable.ensureVisible(context,
+            alignment: 0.5, duration: const Duration(milliseconds: 250));
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!enabled) return child;
-    final key = GlobalKey();
-    return FocusableActionDetector(
-      autofocus: autofocus,
-      mouseCursor: SystemMouseCursors.click,
-      onFocusChange: (focused) {
-        if (focused) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final c = key.currentContext;
-            if (c != null) {
-              Scrollable.ensureVisible(c,
-                  alignment: 0.5, duration: const Duration(milliseconds: 250));
-            }
-          });
-        }
-      },
-      // 响应遥控器 OK/确认键（Enter/Select 默认映射为 ActivateIntent）。
-      // FocusableActionDetector 无 onActivate 参数，改用 actions 映射。
+    if (!widget.enabled) return widget.child;
+    final cs = Theme.of(context).colorScheme;
+    // Actions 捕获 OK/确认键（Enter/Select 默认映射为 ActivateIntent）。
+    // Focus 提供焦点节点并绘制焦点边框；descendantsAreFocusable=false
+    // 让子组件（IconButton/ListTile）不单独成为焦点停靠点，整块只有一个焦点。
+    return Actions(
       actions: <Type, Action<Intent>>{
         ActivateIntent: CallbackAction<Intent>(
           onInvoke: (_) {
-            onSelect?.call();
+            widget.onSelect?.call();
             return null;
           },
         ),
       },
-      builder: (ctx, state) => Container(
-        key: key,
-        decoration: state.focused
-            ? BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(ctx).colorScheme.primary,
-                  width: 3,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              )
-            : null,
-        child: Focus(descendantsAreFocusable: false, child: child),
+      child: Focus(
+        focusNode: _focusNode,
+        autofocus: widget.autofocus,
+        descendantsAreFocusable: false,
+        child: Container(
+          decoration: _focused
+              ? BoxDecoration(
+                  border: Border.all(color: cs.primary, width: 3),
+                  borderRadius: BorderRadius.circular(10),
+                )
+              : null,
+          child: widget.child,
+        ),
       ),
     );
   }
