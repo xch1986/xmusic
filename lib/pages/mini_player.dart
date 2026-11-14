@@ -72,22 +72,34 @@ class MiniPlayer extends StatelessWidget {
                     child: song == null
                         ? Row(
                             children: [
-                              Container(
-                                width: coverSize,
-                                height: coverSize,
-                                decoration: BoxDecoration(
-                                  color: cs.onSurface.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(8),
+                              TvFocus(
+                                enabled: settings.tvMode,
+                                onSelect: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => PlayerPage(settings: settings, controller: controller),
+                                )),
+                                child: Container(
+                                  width: coverSize,
+                                  height: coverSize,
+                                  decoration: BoxDecoration(
+                                    color: cs.onSurface.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.music_note_rounded,
+                                      color: cs.onSurfaceVariant, size: iconSize),
                                 ),
-                                child: Icon(Icons.music_note_rounded,
-                                    color: cs.onSurfaceVariant, size: iconSize),
                               ),
                               SizedBox(width: gap),
-                              Expanded(
-                                child: Text('未在播放',
-                                    style: TextStyle(
-                                        color: cs.onSurfaceVariant,
-                                        fontSize: titleSize)),
+                              TvFocus(
+                                enabled: settings.tvMode,
+                                onSelect: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => PlayerPage(settings: settings, controller: controller),
+                                )),
+                                child: Expanded(
+                                  child: Text('未在播放',
+                                      style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          fontSize: titleSize)),
+                                ),
                               ),
                               Icon(Icons.play_circle_outline_rounded,
                                   color: cs.onSurfaceVariant, size: iconSize),
@@ -96,51 +108,71 @@ class MiniPlayer extends StatelessWidget {
                           )
                         : Row(
                             children: [
-                              CoverImage(
-                                client: controller.client,
-                                coverId: song.coverArt,
-                                coverUrl: song.coverUrl,
-                                size: coverSize,
-                                radius: 8,
-                                requestSize: 120,
-                              ),
-                              SizedBox(width: gap),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(song.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                            color: cs.onSurface,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: titleSize)),
-                                    Text(song.artist,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                            color: cs.onSurfaceVariant,
-                                            fontSize: artistSize)),
-                                  ],
+                              TvFocus(
+                                enabled: settings.tvMode,
+                                onSelect: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => PlayerPage(settings: settings, controller: controller),
+                                )),
+                                child: CoverImage(
+                                  client: controller.client,
+                                  coverId: song.coverArt,
+                                  coverUrl: song.coverUrl,
+                                  size: coverSize,
+                                  radius: 8,
+                                  requestSize: 120,
                                 ),
                               ),
-                              IconButton(
-                                iconSize: iconSize,
-                                icon: Icon(
-                                    controller.playing
-                                        ? Icons.pause_rounded
-                                        : Icons.play_arrow_rounded,
-                                    color: cs.onSurface),
-                                onPressed: controller.togglePlay,
+                              SizedBox(width: gap),
+                              TvFocus(
+                                enabled: settings.tvMode,
+                                onSelect: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => PlayerPage(settings: settings, controller: controller),
+                                )),
+                                child: Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(song.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: cs.onSurface,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: titleSize)),
+                                      Text(song.artist,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: cs.onSurfaceVariant,
+                                              fontSize: artistSize)),
+                                    ],
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                iconSize: iconSize,
-                                icon: Icon(Icons.skip_next_rounded,
-                                    color: cs.onSurface),
-                                onPressed:
-                                    controller.hasNext ? controller.next : null,
+                              TvFocus(
+                                enabled: settings.tvMode,
+                                onSelect: controller.togglePlay,
+                                child: IconButton(
+                                  iconSize: iconSize,
+                                  icon: Icon(
+                                      controller.playing
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      color: cs.onSurface),
+                                  onPressed: controller.togglePlay,
+                                ),
+                              ),
+                              TvFocus(
+                                enabled: settings.tvMode,
+                                onSelect: controller.hasNext ? controller.next : null,
+                                child: IconButton(
+                                  iconSize: iconSize,
+                                  icon: Icon(Icons.skip_next_rounded,
+                                      color: cs.onSurface),
+                                  onPressed:
+                                      controller.hasNext ? controller.next : null,
+                                ),
                               ),
                             ],
                           ),

@@ -183,6 +183,7 @@ class _FavoriteTabState extends State<_FavoriteTab> {
           itemBuilder: (context, i) => SongTile(
             song: songs[i],
             client: widget.controller.client,
+            tvMode: widget.settings.tvMode,
             onTap: () => _play(songs, i),
           ),
         );

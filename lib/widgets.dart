@@ -198,6 +198,7 @@ class SongTile extends StatefulWidget {
     this.onDelete,
     this.compact = false,
     this.textScale = 1.0,
+    this.tvMode = false,
   });
 
   final Song song;
@@ -218,6 +219,8 @@ class SongTile extends StatefulWidget {
   final bool compact;
   /// 列表文字缩放（由设置项 listTextScale 提供）。
   final double textScale;
+  /// TV 模式：列表项获得焦点边框，方向键可导航、OK 激活（触发 onTap）。
+  final bool tvMode;
 
   @override
   State<SongTile> createState() => _SongTileState();
@@ -246,7 +249,7 @@ class _SongTileState extends State<SongTile> {
             client: widget.client,
             coverId: widget.song.coverArt,
             coverUrl: widget.song.coverUrl,
-            size: c ? 40 : 44,
+            size: widget.tvMode ? 56 : (c ? 40 : 44),
             radius: 8,
             requestSize: 120,
           ),
@@ -285,13 +288,17 @@ class _SongTileState extends State<SongTile> {
         }
       },
     );
-    if (!c) return tile;
-    // 紧凑模式屏蔽全局大屏 1.5x 文字缩放，字号完全由 textScale 决定，
-    // 否则 ListTile 双行高度被撑大，一屏只能看到 2 首歌。
-    return MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
-      child: tile,
-    );
+    final Widget built = !c
+        ? tile
+        : MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
+            child: tile,
+          );
+    // TV 模式：列表项获得焦点边框，方向键可导航、OK 激活（触发 onTap）。
+    if (widget.tvMode) {
+      return TvFocus(onSelect: widget.onTap, child: built);
+    }
+    return built;
   }
 
   void _close() => setState(() => _dx = 0);
@@ -424,4 +431,57 @@ Map<String, String> _imgHeaders(String u) {
     return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'};
   }
   return const {'User-Agent': 'Mozilla/5.0'};
+}
+
+/// TV（遥控器）焦点包装：给任意子组件加焦点边框，方向键可导航，
+/// OK/确认键（Enter/Select）触发 onSelect；获得焦点时自动滚动进视野。
+/// enabled=false 时原样返回 child（车机/手机零开销、行为不变）。
+class TvFocus extends StatelessWidget {
+  const TvFocus({
+    super.key,
+    required this.child,
+    this.enabled = true,
+    this.onSelect,
+    this.autofocus = false,
+  });
+
+  final Widget child;
+  final bool enabled;
+  final VoidCallback? onSelect;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    final key = GlobalKey();
+    return FocusableActionDetector(
+      autofocus: autofocus,
+      mouseCursor: SystemMouseCursors.click,
+      onFocusChange: (focused) {
+        if (focused) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final c = key.currentContext;
+            if (c != null) {
+              Scrollable.ensureVisible(c,
+                  alignment: 0.5, duration: const Duration(milliseconds: 250));
+            }
+          });
+        }
+      },
+      onActivate: onSelect,
+      builder: (ctx, state) => Container(
+        key: key,
+        decoration: state.focused
+            ? BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(ctx).colorScheme.primary,
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              )
+            : null,
+        child: Focus(descendantsAreFocusable: false, child: child),
+      ),
+    );
+  }
 }

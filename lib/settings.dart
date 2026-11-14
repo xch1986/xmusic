@@ -48,6 +48,7 @@ class AppSettings extends ChangeNotifier {
   static const _kCarBottomInset = 'car_bottom_inset';
   static const _kListTextScale = 'list_text_scale';
   static const _kCarTopInset = 'car_top_inset';
+  static const _kTvMode = 'tv_mode';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -107,6 +108,18 @@ class AppSettings extends ChangeNotifier {
   Future<void> setCarTopInset(double v) async {
     _carTopInset = v.clamp(minCarTopInset, maxCarTopInset);
     await _prefs.setDouble(_kCarTopInset, _carTopInset);
+    notifyListeners();
+  }
+  /// TV 模式（遥控器操作）开关。开启后：
+  /// 1) 顶部/底部避让改为电视过扫描安全区，不再套用「车机迪友桌面」避让；
+  /// 2) 列表项与按钮获得焦点边框，方向键可导航、OK/确认键激活；
+  /// 3) 支持遥控器媒体键（播放/暂停/上一曲/下一曲）。
+  bool _tvMode = false;
+  bool get tvMode => _tvMode;
+  Future<void> setTvMode(bool v) async {
+    if (v == _tvMode) return;
+    _tvMode = v;
+    await _prefs.setBool(_kTvMode, v);
     notifyListeners();
   }
   /// 排行榜/歌单列表文字大小：车机全局 1.5x 缩放会把双行列表撑到一屏只剩 2 首，
@@ -213,6 +226,7 @@ class AppSettings extends ChangeNotifier {
         .clamp(minListTextScale, maxListTextScale);
     _carTopInset = (_prefs.getDouble(_kCarTopInset) ?? 0.0)
         .clamp(minCarTopInset, maxCarTopInset);
+    _tvMode = _prefs.getBool(_kTvMode) ?? false;
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
@@ -573,9 +587,17 @@ double carBottomInsetOf(BuildContext context, AppSettings settings) {
   final mq = MediaQuery.of(context);
   final isCarScreen = mq.size.shortestSide >= 480;
   final isLandscape = mq.size.width > mq.size.height;
+  // TV 模式：不走车机迪友桌面避让，改用电视过扫描安全区
+  if (settings.tvMode) return tvSafeInsetOf(context);
   if (!isCarScreen || !isLandscape) return mq.padding.bottom;
   final sys = mq.viewPadding.bottom;
   return sys > settings.carBottomInset ? sys : settings.carBottomInset;
+}
+
+/// 电视过扫描安全区（TV safe area / overscan）：电视边缘约 5% 不显示内容，
+/// 留出固定内边距避免画面被裁切。仅在 TV 模式生效；车机仍走迪友桌面避让。
+double tvSafeInsetOf(BuildContext context) {
+  return 48.0;
 }
 
 /// 车机横屏顶部避让统一计算。
@@ -589,6 +611,8 @@ double carTopInsetOf(BuildContext context, AppSettings settings) {
   final mq = MediaQuery.of(context);
   final isCarScreen = mq.size.shortestSide >= 480;
   final isLandscape = mq.size.width > mq.size.height;
+  // TV 模式：不走车机迪友桌面避让，改用电视过扫描安全区
+  if (settings.tvMode) return tvSafeInsetOf(context);
   if (!isCarScreen || !isLandscape) return 0.0;
   return settings.carTopInset;
 }

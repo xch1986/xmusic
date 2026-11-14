@@ -500,6 +500,7 @@ class _SearchPageState extends State<SearchPage> {
           ...r.songs.asMap().entries.map((e) => SongTile(
                 song: e.value,
                 client: _client,
+                tvMode: widget.settings.tvMode,
                 onTap: () => _playSongs(r.songs, e.key),
                 onFavorite: () async {
                   final s = e.value;

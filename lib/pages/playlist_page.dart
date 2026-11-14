@@ -264,6 +264,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                               textScale: widget.settings.listTextScale,
                               song: song,
                               client: _client,
+                              tvMode: widget.settings.tvMode,
                               onTap: () => _playSongs(songs, i),
                             ),
                           );

@@ -1524,6 +1524,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                         textScale: widget.settings.listTextScale,
                         song: song,
                         client: client,
+                        tvMode: widget.settings.tvMode,
                         onTap: () => onPlay(i),
                         onFavorite: () async {
                           final s = song;

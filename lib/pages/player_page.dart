@@ -211,10 +211,17 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
-                Navigator.of(context).popUntil((r) => r.isFirst);
-                HomeShell.switchToHome();
-              }),
+              TvFocus(
+                enabled: widget.settings.tvMode,
+                onSelect: () {
+                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  HomeShell.switchToHome();
+                },
+                child: _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
+                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  HomeShell.switchToHome();
+                }),
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -260,7 +267,11 @@ class _PlayerPageState extends State<PlayerPage> {
                   ],
                 ),
               ),
-              _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
+              TvFocus(
+                enabled: widget.settings.tvMode,
+                onSelect: () => Navigator.of(context).maybePop(),
+                child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
+              ),
             ],
           ),
         ),
@@ -271,7 +282,7 @@ class _PlayerPageState extends State<PlayerPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _SeekBar(player: widget.controller.player),
-              _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
+              _Controls(controller: widget.controller, compact: false, tvMode: widget.settings.tvMode, onShowQueue: () => _openQueue(context)),
             ],
           ),
         ),
@@ -485,10 +496,17 @@ class _PlayerPageState extends State<PlayerPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
-                          Navigator.of(context).popUntil((r) => r.isFirst);
-                          HomeShell.switchToHome();
-                        }),
+                        TvFocus(
+                          enabled: widget.settings.tvMode,
+                          onSelect: () {
+                            Navigator.of(context).popUntil((r) => r.isFirst);
+                            HomeShell.switchToHome();
+                          },
+                          child: _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
+                            Navigator.of(context).popUntil((r) => r.isFirst);
+                            HomeShell.switchToHome();
+                          }),
+                        ),
                         const SizedBox(width: 60),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -501,7 +519,11 @@ class _PlayerPageState extends State<PlayerPage> {
                           ],
                         ),
                         const SizedBox(width: 60),
-                        _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
+                        TvFocus(
+                enabled: widget.settings.tvMode,
+                onSelect: () => Navigator.of(context).maybePop(),
+                child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
+              ),
                       ],
                     ),
                   ),
@@ -542,7 +564,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _SeekBar(player: widget.controller.player),
-                    _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
+                    _Controls(controller: widget.controller, compact: false, tvMode: widget.settings.tvMode, onShowQueue: () => _openQueue(context)),
                   ],
                 ),
               ),
@@ -1497,11 +1519,13 @@ class _Controls extends StatelessWidget {
   const _Controls({
     required this.controller,
     required this.compact,
+    required this.tvMode,
     this.onShowQueue,
   });
 
   final PlayerController controller;
   final bool compact;
+  final bool tvMode;
   final VoidCallback? onShowQueue;
 
   @override
@@ -1517,55 +1541,75 @@ class _Controls extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(
-          iconSize: sideIcon,
-          tooltip: '播放模式',
-          icon: Icon(switch (controller.repeat) {
-            PlayMode.sequential => Icons.repeat_rounded,
-            PlayMode.shuffle => Icons.shuffle_rounded,
-            PlayMode.repeatOne => Icons.repeat_one_rounded,
-          }),
-          color: controller.repeat == PlayMode.sequential ? null : cs.primary,
-          onPressed: controller.cycleRepeat,
-        ),
-        IconButton.filledTonal(
-          iconSize: navSize,
-          style: IconButton.styleFrom(
-            // 玻璃质感：半透明圆钮，浮在壁纸上
-            backgroundColor: cs.primary.withValues(alpha: 0.16),
-            foregroundColor: cs.onSurface,
-            side: BorderSide(color: cs.primary.withValues(alpha: 0.10), width: 0.5),
+        TvFocus(
+          enabled: tvMode,
+          onSelect: controller.cycleRepeat,
+          child: IconButton(
+            iconSize: sideIcon,
+            tooltip: '播放模式',
+            icon: Icon(switch (controller.repeat) {
+              PlayMode.sequential => Icons.repeat_rounded,
+              PlayMode.shuffle => Icons.shuffle_rounded,
+              PlayMode.repeatOne => Icons.repeat_one_rounded,
+            }),
+            color: controller.repeat == PlayMode.sequential ? null : cs.primary,
+            onPressed: controller.cycleRepeat,
           ),
-          icon: const Icon(Icons.skip_previous_rounded),
-          onPressed: controller.previous,
         ),
-        IconButton.filled(
-          iconSize: playSize,
-          style: IconButton.styleFrom(
-            backgroundColor: cs.primary,
-            shadowColor: cs.shadow.withValues(alpha: 0.35),
-            elevation: 4,
+        TvFocus(
+          enabled: tvMode,
+          onSelect: controller.previous,
+          child: IconButton.filledTonal(
+            iconSize: navSize,
+            style: IconButton.styleFrom(
+              // 玻璃质感：半透明圆钮，浮在壁纸上
+              backgroundColor: cs.primary.withValues(alpha: 0.16),
+              foregroundColor: cs.onSurface,
+              side: BorderSide(color: cs.primary.withValues(alpha: 0.10), width: 0.5),
+            ),
+            icon: const Icon(Icons.skip_previous_rounded),
+            onPressed: controller.previous,
           ),
-          icon: Icon(controller.playing
-              ? Icons.pause_rounded
-              : Icons.play_arrow_rounded),
-          onPressed: controller.togglePlay,
         ),
-        IconButton.filledTonal(
-          iconSize: navSize,
-          style: IconButton.styleFrom(
-            backgroundColor: cs.primary.withValues(alpha: 0.16),
-            foregroundColor: cs.onSurface,
-            side: BorderSide(color: cs.primary.withValues(alpha: 0.10), width: 0.5),
+        TvFocus(
+          enabled: tvMode,
+          onSelect: controller.togglePlay,
+          child: IconButton.filled(
+            iconSize: playSize,
+            style: IconButton.styleFrom(
+              backgroundColor: cs.primary,
+              shadowColor: cs.shadow.withValues(alpha: 0.35),
+              elevation: 4,
+            ),
+            icon: Icon(controller.playing
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded),
+            onPressed: controller.togglePlay,
           ),
-          icon: const Icon(Icons.skip_next_rounded),
-          onPressed: controller.hasNext ? controller.next : null,
         ),
-        IconButton(
-          iconSize: sideIcon,
-          tooltip: '播放列表',
-          icon: const Icon(Icons.queue_music_rounded),
-          onPressed: onShowQueue,
+        TvFocus(
+          enabled: tvMode,
+          onSelect: controller.hasNext ? controller.next : null,
+          child: IconButton.filledTonal(
+            iconSize: navSize,
+            style: IconButton.styleFrom(
+              backgroundColor: cs.primary.withValues(alpha: 0.16),
+              foregroundColor: cs.onSurface,
+              side: BorderSide(color: cs.primary.withValues(alpha: 0.10), width: 0.5),
+            ),
+            icon: const Icon(Icons.skip_next_rounded),
+            onPressed: controller.hasNext ? controller.next : null,
+          ),
+        ),
+        TvFocus(
+          enabled: tvMode,
+          onSelect: onShowQueue,
+          child: IconButton(
+            iconSize: sideIcon,
+            tooltip: '播放列表',
+            icon: const Icon(Icons.queue_music_rounded),
+            onPressed: onShowQueue,
+          ),
         ),
       ],
     );

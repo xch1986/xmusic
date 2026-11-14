@@ -98,6 +98,10 @@ class _HomeShellState extends State<HomeShell> {
 
     _tabPing.addListener(_onTabRequest);
 
+    // TV 模式：监听遥控器媒体键（播放/暂停/上一曲/下一曲）。
+    // 仅 TV 模式生效，车机仍由 audio_service MediaSession 处理媒体键，避免重复触发。
+    HardwareKeyboard.instance.addHandler(_handleMediaKey);
+
     // [xmusic] 冷启动默认进播放页：首帧渲染后 push 一次（不重复）。
 
     // 未配置 Navidrome 时不自动进播放页（无播放队列），改为弹"前往配置"提醒。
@@ -226,6 +230,8 @@ class _HomeShellState extends State<HomeShell> {
 
     _tabPing.removeListener(_onTabRequest);
 
+    HardwareKeyboard.instance.removeHandler(_handleMediaKey);
+
     super.dispose();
 
   }
@@ -240,6 +246,27 @@ class _HomeShellState extends State<HomeShell> {
 
     setState(() => _tab = _tabRequest.value);
 
+  }
+
+  /// 遥控器媒体键（TV 模式）：播放/暂停、上一曲、下一曲。
+  /// 仅在 TV 模式拦截，车机不受影响；非媒体键一律放行（返回 false）。
+  bool _handleMediaKey(KeyEvent event) {
+    if (!widget.settings.tvMode) return false;
+    if (event is! KeyDownEvent) return false;
+    final k = event.logicalKey;
+    if (k == LogicalKeyboardKey.mediaPlayPause) {
+      widget.controller.togglePlay();
+      return true;
+    }
+    if (k == LogicalKeyboardKey.mediaTrackNext) {
+      widget.controller.next();
+      return true;
+    }
+    if (k == LogicalKeyboardKey.mediaTrackPrevious) {
+      widget.controller.previous();
+      return true;
+    }
+    return false;
   }
 
 
@@ -321,6 +348,8 @@ class _HomeShellState extends State<HomeShell> {
           // 在设置 →「车机顶部避让」里按实机调大即可，无需重新构建。
 
           top: carTopInsetOf(context, widget.settings),
+          left: widget.settings.tvMode ? tvSafeInsetOf(context) : 0.0,
+          right: widget.settings.tvMode ? tvSafeInsetOf(context) : 0.0,
 
         ),
 
