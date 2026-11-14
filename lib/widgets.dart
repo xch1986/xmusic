@@ -468,7 +468,16 @@ class TvFocus extends StatelessWidget {
           });
         }
       },
-      onActivate: onSelect,
+      // 响应遥控器 OK/确认键（Enter/Select 默认映射为 ActivateIntent）。
+      // FocusableActionDetector 无 onActivate 参数，改用 actions 映射。
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<Intent>(
+          onInvoke: (_) {
+            onSelect?.call();
+            return null;
+          },
+        ),
+      },
       builder: (ctx, state) => Container(
         key: key,
         decoration: state.focused
