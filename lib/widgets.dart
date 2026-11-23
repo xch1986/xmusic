@@ -509,7 +509,7 @@ class _TvFocusState extends State<TvFocus> {
         focusNode: _focusNode,
         autofocus: widget.autofocus,
         descendantsAreFocusable: false,
-        child: Listener(
+        child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
             if (!_focused) {
