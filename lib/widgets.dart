@@ -535,3 +535,231 @@ class _TvFocusState extends State<TvFocus> {
     );
   }
 }
+
+/// TV 应用内软键盘：Android TV 系统输入法常不弹出（小米电视等），
+/// 用自绘键盘 + 遥控器方向键/OK 输入；点「完成」把文本写回 controller。
+Future<void> showTvKeyboard(
+  BuildContext context,
+  TextEditingController controller, {
+  String label = '',
+  bool obscure = false,
+}) async {
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) {
+      final cs = Theme.of(ctx).colorScheme;
+      String text = controller.text;
+      bool upper = true;
+      bool symbols = false;
+      bool first = true;
+
+      Widget keyBtn(String caption, VoidCallback onTap, {bool wide = false}) {
+        final k = TvFocus(
+          enabled: true,
+          autofocus: first,
+          onSelect: onTap,
+          child: Container(
+            height: 54,
+            margin: const EdgeInsets.all(3),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(caption,
+                style: TextStyle(fontSize: 22, color: cs.onSurface)),
+          ),
+        );
+        if (first) first = false;
+        return Expanded(flex: wide ? 2 : 1, child: k);
+      }
+
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 780),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              void ins(String s) {
+                text += s;
+                setState(() {});
+              }
+
+              final letters = [
+                ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+                ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+                ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+                ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
+              ];
+              final syms = [
+                [':', '/', '.', '-', '_', '@', '#', r'$'],
+                ['%', '^', '&', '*', '(', ')', '+', '='],
+                ['?', '!', "'", '"', ';', '<', '>', '~'],
+                ['[', ']', '{', '}', '|', '#', '%', '&'],
+              ];
+              final rows = symbols ? syms : letters;
+              return Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(children: [
+                      Icon(Icons.keyboard_rounded, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Text(label.isEmpty ? '输入' : label,
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(ctx).pop()),
+                    ]),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: cs.outlineVariant),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        text.isEmpty
+                            ? '…'
+                            : (obscure ? '•' * text.length : text),
+                        style: TextStyle(fontSize: 22, color: cs.onSurface),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...rows.map((row) => Row(
+                          children: row.map((ch) {
+                            final shown =
+                                (!symbols && upper && ch.length == 1 &&
+                                        ch.codeUnitAt(0) >= 97 &&
+                                        ch.codeUnitAt(0) <= 122)
+                                    ? ch.toUpperCase()
+                                    : ch;
+                            return keyBtn(shown, () => ins(shown));
+                          }).toList(),
+                        )),
+                    Row(children: [
+                      if (!symbols)
+                        keyBtn(upper ? '小写' : '大写', () {
+                          upper = !upper;
+                          setState(() {});
+                        }),
+                      keyBtn(symbols ? 'ABC' : '符号', () {
+                        symbols = !symbols;
+                        setState(() {});
+                      }),
+                      keyBtn('空格', () => ins(' '), wide: true),
+                      keyBtn('退格', () {
+                        if (text.isNotEmpty) {
+                          text = text.substring(0, text.length - 1);
+                          setState(() {});
+                        }
+                      }),
+                      keyBtn('完成', () {
+                        controller.text = text;
+                        Navigator.of(ctx).pop();
+                      }, wide: true),
+                    ]),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// TV 专用滑块：左右键调值、上下键交给系统焦点导航移出（解决裸 Slider
+/// 吞掉方向键导致焦点卡死的问题）；获焦显示边框。触摸拖动保持可用。
+class TvSlider extends StatefulWidget {
+  const TvSlider({
+    super.key,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.divisions,
+    this.label,
+  });
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChanged;
+  final int? divisions;
+  final String? label;
+
+  @override
+  State<TvSlider> createState() => _TvSliderState();
+}
+
+class _TvSliderState extends State<TvSlider> {
+  final FocusNode _fn = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fn.addListener(() {
+      if (mounted && _fn.hasFocus != _focused) {
+        setState(() => _focused = _fn.hasFocus);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _fn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final step = widget.divisions != null
+        ? (widget.max - widget.min) / widget.divisions!
+        : (widget.max - widget.min) / 50.0;
+    return Focus(
+      focusNode: _fn,
+      descendantsAreFocusable: false,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent || event is KeyRepeatEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            widget.onChanged(
+                (widget.value - step).clamp(widget.min, widget.max).toDouble());
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            widget.onChanged(
+                (widget.value + step).clamp(widget.min, widget.max).toDouble());
+            return KeyEventResult.handled;
+          }
+        }
+        // 上下键不消费，交给系统默认焦点导航移动到其它项
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        decoration: _focused
+            ? BoxDecoration(
+                border: Border.all(color: cs.primary, width: 2),
+                borderRadius: BorderRadius.circular(10),
+              )
+            : null,
+        child: Slider(
+          value: widget.value.clamp(widget.min, widget.max).toDouble(),
+          min: widget.min,
+          max: widget.max,
+          divisions: widget.divisions,
+          label: widget.label,
+          onChanged: widget.onChanged,
+        ),
+      ),
+    );
+  }
+}

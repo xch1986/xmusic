@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../toast.dart';
+import '../widgets.dart';
 
 
 
@@ -78,17 +79,21 @@ class SettingsPage extends StatelessWidget {
 
               keyboardType: TextInputType.url,
 
+              readOnly: settings.tvMode,
+
+              onTap: settings.tvMode ? () => showTvKeyboard(context, urlCtl, label: 'WebDAV 地址') : null,
+
               decoration: const InputDecoration(labelText: 'WebDAV 地址', isDense: true),
 
             ),
 
-            TextField(controller: userCtl, decoration: const InputDecoration(labelText: '用户名', isDense: true)),
+            TextField(controller: userCtl, readOnly: settings.tvMode, onTap: settings.tvMode ? () => showTvKeyboard(context, userCtl, label: '用户名') : null, decoration: const InputDecoration(labelText: '用户名', isDense: true)),
 
-            TextField(controller: passCtl, obscureText: true, decoration: const InputDecoration(labelText: '密码', isDense: true)),
+            TextField(controller: passCtl, obscureText: true, readOnly: settings.tvMode, onTap: settings.tvMode ? () => showTvKeyboard(context, passCtl, label: '密码', obscure: true) : null, decoration: const InputDecoration(labelText: '密码', isDense: true)),
 
-            TextField(controller: pathCtl, decoration: const InputDecoration(labelText: '下载路径（如 /Music/）', isDense: true)),
+            TextField(controller: pathCtl, readOnly: settings.tvMode, onTap: settings.tvMode ? () => showTvKeyboard(context, pathCtl, label: '下载路径') : null, decoration: const InputDecoration(labelText: '下载路径（如 /Music/）', isDense: true)),
 
-            TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'NAS 名称（如 飞牛）', isDense: true)),
+            TextField(controller: nameCtl, readOnly: settings.tvMode, onTap: settings.tvMode ? () => showTvKeyboard(context, nameCtl, label: 'NAS 名称') : null, decoration: const InputDecoration(labelText: 'NAS 名称（如 飞牛）', isDense: true)),
 
           ],
 

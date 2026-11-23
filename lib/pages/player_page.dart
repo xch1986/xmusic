@@ -97,7 +97,11 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      // 半透明面板 + 顶部圆角，透出播放页便于实时对比调整效果
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow.withOpacity(0.72),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.55,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -136,10 +140,11 @@ class _PlayerPageState extends State<PlayerPage> {
                     s.setPlayerIconScale, ctx),
                 _layoutSlider('整体边距', s.playerMarginScale, 0.0, 3.0,
                     s.setPlayerMarginScale, ctx),
-                _layoutSlider('距顶距离', s.playerTopPad, 0.0, 120.0,
-                    s.setPlayerTopPad, ctx, unit: 'dp'),
-                _layoutSlider('距底距离', s.playerBottomPad, 0.0, 120.0,
-                    s.setPlayerBottomPad, ctx, unit: 'dp'),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 6),
+                  child: Text('距顶/距底默认无空隙；如需留白请到「设置 → 车机顶部/底部避让」调节',
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ),
                 const SizedBox(height: 4),
                 OutlinedButton.icon(
                   onPressed: s.playerLayoutIsDefault
@@ -176,13 +181,21 @@ class _PlayerPageState extends State<PlayerPage> {
                     fontSize: 13,
                     color: Theme.of(ctx).colorScheme.primary)),
           ]),
-          Slider(
-            value: value.clamp(min, max).toDouble(),
-            min: min,
-            max: max,
-            divisions: 100,
-            onChanged: (v) => setter(v),
-          ),
+          widget.settings.tvMode
+              ? TvSlider(
+                  value: value.clamp(min, max).toDouble(),
+                  min: min,
+                  max: max,
+                  divisions: 100,
+                  onChanged: (v) => setter(v),
+                )
+              : Slider(
+                  value: value.clamp(min, max).toDouble(),
+                  min: min,
+                  max: max,
+                  divisions: 100,
+                  onChanged: (v) => setter(v),
+                ),
         ],
       ),
     );
@@ -214,7 +227,7 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
               SafeArea(
                 minimum: EdgeInsets.only(
-                    bottom: (12 + widget.settings.playerBottomPad).clamp(0.0, 200.0)),
+                    bottom: widget.settings.playerBottomPad.clamp(0.0, 200.0)),
                 child: Padding(
                   padding: EdgeInsets.only(
                       top: widget.settings.playerTopPad.clamp(0.0, 120.0)),
@@ -226,6 +239,22 @@ class _PlayerPageState extends State<PlayerPage> {
                               ? _landscapeView(context, song)
                               : _portraitView(context, song),
                     ],
+                  ),
+                ),
+              ),
+              // 播放页布局设置入口：统一放在右上角（不随歌名行/横竖屏移动）
+              Positioned(
+                top: 6,
+                right: 8,
+                child: TvFocus(
+                  enabled: widget.settings.tvMode,
+                  onSelect: () => _showPlayerLayoutPanel(context),
+                  child: _MiniCornerButton(
+                    icon: Icons.tune_rounded,
+                    color: widget.settings.playerLayoutIsDefault
+                        ? null
+                        : Theme.of(context).colorScheme.primary,
+                    onTap: () => _showPlayerLayoutPanel(context),
                   ),
                 ),
               ),
@@ -377,17 +406,6 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
               TvFocus(
                 enabled: widget.settings.tvMode,
-                onSelect: () => _showPlayerLayoutPanel(context),
-                child: _MiniCornerButton(
-                  icon: Icons.tune_rounded,
-                  color: widget.settings.playerLayoutIsDefault
-                      ? null
-                      : Theme.of(context).colorScheme.primary,
-                  onTap: () => _showPlayerLayoutPanel(context),
-                ),
-              ),
-              TvFocus(
-                enabled: widget.settings.tvMode,
                 onSelect: () => Navigator.of(context).maybePop(),
                 child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
               ),
@@ -469,33 +487,39 @@ class _PlayerPageState extends State<PlayerPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
+            TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null,
+              child: _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
             const SizedBox(height: 24),
-            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
+            TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null,
+              child: _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null)),
             const SizedBox(height: 24),
-            ListenableBuilder(
-              listenable: widget.controller,
-              builder: (context, _) {
-                final starred = widget.controller.currentStarred;
-                return _MiniCornerButton(
-                  icon: starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  color: starred ? Theme.of(context).colorScheme.primary : null,
-                  onTap: widget.controller.toggleStar,
-                );
-              },
+            TvFocus(enabled: widget.settings.tvMode, onSelect: widget.controller.toggleStar,
+              child: ListenableBuilder(
+                listenable: widget.controller,
+                builder: (context, _) {
+                  final starred = widget.controller.currentStarred;
+                  return _MiniCornerButton(
+                    icon: starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: starred ? Theme.of(context).colorScheme.primary : null,
+                    onTap: widget.controller.toggleStar,
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 24),
-            ListenableBuilder(
-              listenable: widget.controller,
-              builder: (context, _) {
-                final sg = widget.controller.current;
-                final blocked = sg != null && widget.settings.isBlacklisted(sg);
-                return _MiniCornerButton(
-                  icon: Icons.heart_broken_rounded,
-                  color: blocked ? Theme.of(context).colorScheme.error : null,
-                  onTap: sg == null ? null : () => _toggleBlacklist(sg),
-                );
-              },
+            TvFocus(enabled: widget.settings.tvMode, onSelect: () { final sg = widget.controller.current; if (sg != null) _toggleBlacklist(sg); },
+              child: ListenableBuilder(
+                listenable: widget.controller,
+                builder: (context, _) {
+                  final sg = widget.controller.current;
+                  final blocked = sg != null && widget.settings.isBlacklisted(sg);
+                  return _MiniCornerButton(
+                    icon: Icons.heart_broken_rounded,
+                    color: blocked ? Theme.of(context).colorScheme.error : null,
+                    onTap: sg == null ? null : () => _toggleBlacklist(sg),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -648,17 +672,6 @@ class _PlayerPageState extends State<PlayerPage> {
                         ),
                         const SizedBox(width: 60),
                         TvFocus(
-                  enabled: widget.settings.tvMode,
-                  onSelect: () => _showPlayerLayoutPanel(context),
-                  child: _MiniCornerButton(
-                    icon: Icons.tune_rounded,
-                    color: widget.settings.playerLayoutIsDefault
-                        ? null
-                        : Theme.of(context).colorScheme.primary,
-                    onTap: () => _showPlayerLayoutPanel(context),
-                  ),
-                ),
-                TvFocus(
                 enabled: widget.settings.tvMode,
                 onSelect: () => Navigator.of(context).maybePop(),
                 child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
@@ -1626,15 +1639,25 @@ class _SeekBarState extends State<_SeekBar> {
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
                   ),
-                  child: Slider(
-                    value: value.toDouble(),
-                    max: maxMs,
-                    onChanged: (v) => setState(() => _dragMs = v),
-                    onChangeEnd: (v) {
-                      widget.player.seek(Duration(milliseconds: v.round()));
-                      setState(() => _dragMs = null);
-                    },
-                  ),
+                  child: widget.settings.tvMode
+                      ? TvSlider(
+                          value: value.toDouble(),
+                          min: 0.0,
+                          max: maxMs,
+                          onChanged: (v) {
+                            setState(() => _dragMs = v);
+                            widget.player.seek(Duration(milliseconds: v.round()));
+                          },
+                        )
+                      : Slider(
+                          value: value.toDouble(),
+                          max: maxMs,
+                          onChanged: (v) => setState(() => _dragMs = v),
+                          onChangeEnd: (v) {
+                            widget.player.seek(Duration(milliseconds: v.round()));
+                            setState(() => _dragMs = null);
+                          },
+                        ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),

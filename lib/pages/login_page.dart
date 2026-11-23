@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../settings.dart';
 import '../subsonic.dart';
+import '../widgets.dart';
 import 'mini_player.dart';
 import 'home_shell.dart';
 
@@ -28,6 +29,29 @@ class _LoginPageState extends State<LoginPage> {
     _user.dispose();
     _pass.dispose();
     super.dispose();
+  }
+
+  /// TV 模式：系统输入法常不弹出，改为点击输入框弹出应用内软键盘。
+  /// 非 TV 模式保持原生 TextField 行为不变。
+  TextField _tvField(TextEditingController ctl,
+      {TextInputType? type, bool obscure = false, String label = '',
+      String hint = '', void Function(String)? onSubmitted}) {
+    final tv = widget.settings.tvMode;
+    return TextField(
+      controller: ctl,
+      keyboardType: type,
+      obscureText: obscure,
+      readOnly: tv,
+      onTap: tv
+          ? () => showTvKeyboard(context, ctl, label: label, obscure: obscure)
+          : null,
+      onSubmitted: onSubmitted,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint.isEmpty ? null : hint,
+        border: const OutlineInputBorder(),
+      ),
+    );
   }
 
   Future<void> _login() async {
@@ -76,33 +100,17 @@ class _LoginPageState extends State<LoginPage> {
                       Text('连接到服务器',
                           style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: 24),
-                      TextField(
-                        controller: _url,
-                        keyboardType: TextInputType.url,
-                        decoration: const InputDecoration(
-                          labelText: '服务器地址',
-                          hintText: 'https://music.example.com',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                      _tvField(_url,
+                          type: TextInputType.url,
+                          label: '服务器地址',
+                          hint: 'https://music.example.com'),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: _user,
-                        decoration: const InputDecoration(
-                          labelText: '用户名',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                      _tvField(_user, label: '用户名'),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: _pass,
-                        obscureText: true,
-                        onSubmitted: (_) => _busy ? null : _login(),
-                        decoration: const InputDecoration(
-                          labelText: '密码',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+                      _tvField(_pass,
+                          obscure: true,
+                          label: '密码',
+                          onSubmitted: (_) => _busy ? null : _login()),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Text(_error!,
