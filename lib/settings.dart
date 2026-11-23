@@ -63,10 +63,10 @@ class AppSettings extends ChangeNotifier {
     'titleFont',        // 歌名字号
     'artistFont',       // 歌手/专辑字号
     'titleGap',         // 歌名-歌手间距
-    'cornerIcon',       // 首页/返回角落图标大小
-    'cornerGap',        // 角落图标与歌名间距
+    'cornerIcon',       // 首页/返回图标大小
+    'cornerGap',        // 首页/返回图标与歌名间距
     'controlIcon',      // 控制栏播放/上下曲图标大小
-    'sideIcon',         // 侧栏图标大小
+    'sideIcon',         // 侧栏图标大小（首页/返回钮不受此参数影响）
     'sideGap',          // 侧栏图标间距
     'lyricMargin',      // 歌词左右边距
     'seekGap',          // 进度条区上下间距

@@ -170,8 +170,8 @@ class _PlayerPageState extends State<PlayerPage> {
                         _advSlider('歌名字号', 'titleFont', ctx, s),
                         _advSlider('歌手/专辑字号', 'artistFont', ctx, s),
                         _advSlider('歌名-歌手间距', 'titleGap', ctx, s),
-                        _advSlider('角落图标大小', 'cornerIcon', ctx, s),
-                        _advSlider('角落-歌名间距', 'cornerGap', ctx, s),
+                        _advSlider('首页/返回图标大小', 'cornerIcon', ctx, s),
+                        _advSlider('首页/返回-歌名间距', 'cornerGap', ctx, s),
                         _advSlider('控制栏图标大小', 'controlIcon', ctx, s),
                         _advSlider('侧栏图标大小', 'sideIcon', ctx, s),
                         _advSlider('侧栏图标间距', 'sideGap', ctx, s),
@@ -561,10 +561,10 @@ class _PlayerPageState extends State<PlayerPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null,
-              child: _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
+              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
             SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null,
-              child: _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null)),
+              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null)),
             SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.controller.toggleStar,
               child: ListenableBuilder(
@@ -572,6 +572,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 builder: (context, _) {
                   final starred = widget.controller.currentStarred;
                   return _MiniCornerButton(
+                    scale: widget.settings.playerAdv('sideIcon'),
                     icon: starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                     color: starred ? Theme.of(context).colorScheme.primary : null,
                     onTap: widget.controller.toggleStar,
@@ -587,6 +588,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   final sg = widget.controller.current;
                   final blocked = sg != null && widget.settings.isBlacklisted(sg);
                   return _MiniCornerButton(
+                    scale: widget.settings.playerAdv('sideIcon'),
                     icon: Icons.heart_broken_rounded,
                     color: blocked ? Theme.of(context).colorScheme.error : null,
                     onTap: sg == null ? null : () => _toggleBlacklist(sg),
@@ -1620,7 +1622,7 @@ class _MiniCornerButton extends StatelessWidget {
             onTap: onTap,
             child: SizedBox(
               // [xmusic] 2026-09-28 手机主页/返回也加大：56 容器 / 40 图标（对齐控制栏图标），车机 64/48
-              // scale 由播放页「角落图标大小」高级参数驱动（默认 1.0 = 原样）
+              // scale 由播放页高级参数驱动：首页/返回钮用「首页/返回图标大小」，侧栏钮用「侧栏图标大小」（默认 1.0 = 原样）
               width: (_carUI(context) ? 64 : 44) * scale,
               height: (_carUI(context) ? 64 : 44) * scale,
               child: Icon(icon,
