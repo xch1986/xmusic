@@ -607,6 +607,8 @@ class _PlayerPageState extends State<PlayerPage> {
         IconTheme(
           data: IconThemeData(size: side),
           child: IconButton(
+            // 接「侧栏图标大小」：IconButton 默认 iconSize 会覆盖外层 IconTheme
+            iconSize: side,
             tooltip: '下载',
             icon: Icon(Icons.download_rounded),
             onPressed: () => _downloadMenu(context),
@@ -616,6 +618,7 @@ class _PlayerPageState extends State<PlayerPage> {
         IconTheme(
           data: IconThemeData(size: side),
           child: IconButton(
+            iconSize: side,
             tooltip: '下载当前歌曲到NAS',
             icon: Icon(Icons.cloud_download_rounded),
             onPressed: () async {
@@ -635,6 +638,7 @@ class _PlayerPageState extends State<PlayerPage> {
               final sg = widget.controller.current;
               final blocked = sg != null && widget.settings.isBlacklisted(sg);
               return IconButton(
+                iconSize: side,
                 tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
                 icon: Icon(Icons.heart_broken_rounded,
                     color: blocked ? Theme.of(context).colorScheme.error : null),
@@ -645,8 +649,9 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       ],
     );
+    // 侧栏宽度跟随「侧栏图标大小」，避免 FittedBox(scaleDown) 把放大的图标又缩回去
     return Container(
-      width: _landP ? 40 : 44,
+      width: (_landP ? 40 : 44) * widget.settings.playerAdv('sideIcon'),
       margin: const EdgeInsets.only(right: 8),
       child: FittedBox(
         fit: BoxFit.scaleDown,
