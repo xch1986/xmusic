@@ -419,7 +419,7 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _SeekBar(player: widget.controller.player),
+              _SeekBar(player: widget.controller.player, tvMode: widget.settings.tvMode),
               _Controls(controller: widget.controller, settings: widget.settings, compact: false, tvMode: widget.settings.tvMode, onShowQueue: () => _openQueue(context)),
             ],
           ),
@@ -715,7 +715,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _SeekBar(player: widget.controller.player),
+                    _SeekBar(player: widget.controller.player, tvMode: widget.settings.tvMode),
                     _Controls(controller: widget.controller, settings: widget.settings, compact: false, tvMode: widget.settings.tvMode, onShowQueue: () => _openQueue(context)),
                   ],
                 ),
@@ -1602,9 +1602,10 @@ class _GlassPanel extends StatelessWidget {
 }
 
 class _SeekBar extends StatefulWidget {
-  const _SeekBar({required this.player});
+  const _SeekBar({required this.player, this.tvMode = false});
 
   final AudioPlayer player;
+  final bool tvMode;
 
   @override
   State<_SeekBar> createState() => _SeekBarState();
@@ -1639,7 +1640,7 @@ class _SeekBarState extends State<_SeekBar> {
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
                   ),
-                  child: widget.settings.tvMode
+                      child: widget.tvMode
                       ? TvSlider(
                           value: value.toDouble(),
                           min: 0.0,
