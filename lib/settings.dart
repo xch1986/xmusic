@@ -72,6 +72,15 @@ class AppSettings extends ChangeNotifier {
     'seekGap',          // 进度条区上下间距
   ];
   static const _kPlayerAdvPrefix = 'player_adv_';
+  // ---- 播放页区域纵向占比（倍率默认 1.0 = 原 flex/高度） ----
+  static const playerAreaKeys = <String>[
+    'pathArea',     // 路径区（来源文字行）高度占比
+    'coverArea',    // 封面区高度/flex 占比
+    'lyricArea',    // 歌词区高度/flex 占比
+    'titleArea',    // 歌名区高度占比
+    'controlArea',  // 控制栏区高度占比
+  ];
+  static const _kPlayerAreaPrefix = 'player_area_';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -213,6 +222,15 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setDouble(_kPlayerAdvPrefix + key, val);
     notifyListeners();
   }
+  // ---- 区域占比 Map（默认 1.0 = 原样，范围 0.2~3.0） ----
+  final Map<String, double> _playerArea = {};
+  double playerArea(String key) => _playerArea[key] ?? 1.0;
+  Future<void> setPlayerArea(String key, double v) async {
+    final val = v.clamp(0.2, 3.0);
+    _playerArea[key] = val;
+    await _prefs.setDouble(_kPlayerAreaPrefix + key, val);
+    notifyListeners();
+  }
 
   /// 播放页布局是否仍全部为中性默认（用于面板显示"恢复默认"状态）。
   bool get playerLayoutIsDefault =>
@@ -220,7 +238,8 @@ class AppSettings extends ChangeNotifier {
       _playerLyricLineScale == 1.0 && _playerControlGapScale == 1.0 &&
       _playerIconScale == 1.0 && _playerMarginScale == 1.0 &&
       _playerTopPad == 0.0 && _playerBottomPad == 0.0 &&
-      playerAdvKeys.every((k) => playerAdv(k) == 1.0);
+      playerAdvKeys.every((k) => playerAdv(k) == 1.0) &&
+      playerAreaKeys.every((k) => playerArea(k) == 1.0);
   Future<void> resetPlayerLayout() async {
     _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
@@ -237,6 +256,10 @@ class AppSettings extends ChangeNotifier {
     for (final k in playerAdvKeys) {
       _playerAdv.remove(k);
       await _prefs.remove(_kPlayerAdvPrefix + k);
+    }
+    for (final k in playerAreaKeys) {
+      _playerArea.remove(k);
+      await _prefs.remove(_kPlayerAreaPrefix + k);
     }
     notifyListeners();
   }
@@ -356,6 +379,10 @@ class AppSettings extends ChangeNotifier {
     for (final k in playerAdvKeys) {
       final v = _prefs.getDouble(_kPlayerAdvPrefix + k);
       if (v != null) _playerAdv[k] = v.clamp(0.3, 3.0);
+    }
+    for (final k in playerAreaKeys) {
+      final v = _prefs.getDouble(_kPlayerAreaPrefix + k);
+      if (v != null) _playerArea[k] = v.clamp(0.2, 3.0);
     }
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
