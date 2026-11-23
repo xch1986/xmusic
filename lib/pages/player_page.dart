@@ -148,7 +148,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 _layoutSlider('距底距离', s.playerBottomPad, -40.0, 120.0,
                     s.setPlayerBottomPad, ctx, unit: 'dp'),
                 const SizedBox(height: 8),
-                StatefulBuilder(builder: (setState2, _) {
+                StatefulBuilder(builder: (_, setState2) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
