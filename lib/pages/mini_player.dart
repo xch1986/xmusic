@@ -89,12 +89,12 @@ class MiniPlayer extends StatelessWidget {
                                 ),
                               ),
                               SizedBox(width: gap),
-                              TvFocus(
-                                enabled: settings.tvMode,
-                                onSelect: () => Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => PlayerPage(settings: settings, controller: controller),
-                                )),
-                                child: Expanded(
+                              Expanded(
+                                child: TvFocus(
+                                  enabled: settings.tvMode,
+                                  onSelect: () => Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => PlayerPage(settings: settings, controller: controller),
+                                  )),
                                   child: Text('未在播放',
                                       style: TextStyle(
                                           color: cs.onSurfaceVariant,
@@ -123,12 +123,12 @@ class MiniPlayer extends StatelessWidget {
                                 ),
                               ),
                               SizedBox(width: gap),
-                              TvFocus(
-                                enabled: settings.tvMode,
-                                onSelect: () => Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => PlayerPage(settings: settings, controller: controller),
-                                )),
-                                child: Expanded(
+                              Expanded(
+                                child: TvFocus(
+                                  enabled: settings.tvMode,
+                                  onSelect: () => Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => PlayerPage(settings: settings, controller: controller),
+                                  )),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
