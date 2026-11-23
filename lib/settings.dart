@@ -58,6 +58,20 @@ class AppSettings extends ChangeNotifier {
   static const _kPlayerMarginScale = 'player_margin_scale';
   static const _kPlayerTopPad = 'player_top_pad';
   static const _kPlayerBottomPad = 'player_bottom_pad';
+  // ---- 播放页高级细分参数（统一倍率 key，默认 1.0 = 原样） ----
+  static const playerAdvKeys = <String>[
+    'titleFont',        // 歌名字号
+    'artistFont',       // 歌手/专辑字号
+    'titleGap',         // 歌名-歌手间距
+    'cornerIcon',       // 首页/返回角落图标大小
+    'cornerGap',        // 角落图标与歌名间距
+    'controlIcon',      // 控制栏播放/上下曲图标大小
+    'sideIcon',         // 侧栏图标大小
+    'sideGap',          // 侧栏图标间距
+    'lyricMargin',      // 歌词左右边距
+    'seekGap',          // 进度条区上下间距
+  ];
+  static const _kPlayerAdvPrefix = 'player_adv_';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -190,12 +204,23 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setDouble(_kPlayerBottomPad, _playerBottomPad);
     notifyListeners();
   }
+  // ---- 播放页高级细分参数：统一 Map 存储（默认 1.0 = 原样） ----
+  final Map<String, double> _playerAdv = {};
+  double playerAdv(String key) => _playerAdv[key] ?? 1.0;
+  Future<void> setPlayerAdv(String key, double v) async {
+    final val = v.clamp(0.3, 3.0);
+    _playerAdv[key] = val;
+    await _prefs.setDouble(_kPlayerAdvPrefix + key, val);
+    notifyListeners();
+  }
+
   /// 播放页布局是否仍全部为中性默认（用于面板显示"恢复默认"状态）。
   bool get playerLayoutIsDefault =>
       _playerCoverScale == 1.0 && _playerLyricFontScale == 1.0 &&
       _playerLyricLineScale == 1.0 && _playerControlGapScale == 1.0 &&
       _playerIconScale == 1.0 && _playerMarginScale == 1.0 &&
-      _playerTopPad == 0.0 && _playerBottomPad == 0.0;
+      _playerTopPad == 0.0 && _playerBottomPad == 0.0 &&
+      playerAdvKeys.every((k) => playerAdv(k) == 1.0);
   Future<void> resetPlayerLayout() async {
     _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
@@ -209,6 +234,10 @@ class AppSettings extends ChangeNotifier {
     await _prefs.remove(_kPlayerMarginScale);
     await _prefs.remove(_kPlayerTopPad);
     await _prefs.remove(_kPlayerBottomPad);
+    for (final k in playerAdvKeys) {
+      _playerAdv.remove(k);
+      await _prefs.remove(_kPlayerAdvPrefix + k);
+    }
     notifyListeners();
   }
   /// 排行榜/歌单列表文字大小：车机全局 1.5x 缩放会把双行列表撑到一屏只剩 2 首，
@@ -324,6 +353,10 @@ class AppSettings extends ChangeNotifier {
     _playerMarginScale = (_prefs.getDouble(_kPlayerMarginScale) ?? 1.0).clamp(0.0, 3.0);
     _playerTopPad = (_prefs.getDouble(_kPlayerTopPad) ?? 0.0).clamp(-40.0, 120.0);
     _playerBottomPad = (_prefs.getDouble(_kPlayerBottomPad) ?? 0.0).clamp(-40.0, 120.0);
+    for (final k in playerAdvKeys) {
+      final v = _prefs.getDouble(_kPlayerAdvPrefix + k);
+      if (v != null) _playerAdv[k] = v.clamp(0.3, 3.0);
+    }
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';

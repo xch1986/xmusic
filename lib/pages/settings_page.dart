@@ -533,9 +533,11 @@ class SettingsPage extends StatelessWidget {
 
       appBar: AppBar(
 
-        toolbarHeight: carLand ? 0.0 : kToolbarHeight,
+        // [xmusic] 顶部留白全去：竖屏也压到 0，且不套 SafeArea 顶部
 
-        primary: !carLand,
+        toolbarHeight: 0.0,
+
+        primary: false,
 
         backgroundColor: Colors.transparent,
 

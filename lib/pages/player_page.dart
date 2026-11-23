@@ -44,6 +44,7 @@ enum _OrientMode { auto, landscape, portrait }
 
 class _PlayerPageState extends State<PlayerPage> {
   _OrientMode _orient = _OrientMode.auto;
+  bool _advExpanded = false; // 播放页布局面板「高级细分」分组展开状态
   @override
   void initState() {
     super.initState();
@@ -125,9 +126,11 @@ class _PlayerPageState extends State<PlayerPage> {
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.pop(ctx)),
                 ]),
-                const Text('所有滑块默认 1.00× 即为原样；调完即时生效并保存。',
+                const Text('默认 1.00× / 0dp 即原样；调完即时生效并保存。',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
+                const Text('— 基础 —',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 _layoutSlider('封面大小', s.playerCoverScale, 0.5, 2.0,
                     s.setPlayerCoverScale, ctx),
                 _layoutSlider('歌词字号', s.playerLyricFontScale, 0.5, 2.0,
@@ -140,12 +143,45 @@ class _PlayerPageState extends State<PlayerPage> {
                     s.setPlayerIconScale, ctx),
                 _layoutSlider('整体边距', s.playerMarginScale, 0.0, 3.0,
                     s.setPlayerMarginScale, ctx),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Text('距顶/距底默认无空隙；如需留白请到「设置 → 车机顶部/底部避让」调节',
-                      style: TextStyle(fontSize: 11, color: Colors.grey)),
-                ),
-                const SizedBox(height: 4),
+                _layoutSlider('距顶距离', s.playerTopPad, -40.0, 120.0,
+                    s.setPlayerTopPad, ctx, unit: 'dp'),
+                _layoutSlider('距底距离', s.playerBottomPad, -40.0, 120.0,
+                    s.setPlayerBottomPad, ctx, unit: 'dp'),
+                const SizedBox(height: 8),
+                StatefulBuilder(builder: (setState2, _) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TvFocus(
+                        enabled: s.tvMode,
+                        onSelect: () => setState2(() => _advExpanded = !_advExpanded),
+                        child: InkWell(
+                          onTap: () => setState2(() => _advExpanded = !_advExpanded),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(children: [
+                              Text('— 高级细分 ${_advExpanded ? '▾' : '▸'}',
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        ),
+                      ),
+                      if (_advExpanded) ...[
+                        _advSlider('歌名字号', 'titleFont', ctx, s),
+                        _advSlider('歌手/专辑字号', 'artistFont', ctx, s),
+                        _advSlider('歌名-歌手间距', 'titleGap', ctx, s),
+                        _advSlider('角落图标大小', 'cornerIcon', ctx, s),
+                        _advSlider('角落-歌名间距', 'cornerGap', ctx, s),
+                        _advSlider('控制栏图标大小', 'controlIcon', ctx, s),
+                        _advSlider('侧栏图标大小', 'sideIcon', ctx, s),
+                        _advSlider('侧栏图标间距', 'sideGap', ctx, s),
+                        _advSlider('歌词左右边距', 'lyricMargin', ctx, s),
+                        _advSlider('进度条区上下间距', 'seekGap', ctx, s),
+                      ],
+                    ],
+                  );
+                }),
+                const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: s.playerLayoutIsDefault
                       ? null
@@ -201,6 +237,37 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
+  /// 高级细分滑块：值来自 settings.playerAdv(key)，默认 1.00× 原样。
+  Widget _advSlider(String label, String key, BuildContext ctx, AppSettings s) {
+    final value = s.playerAdv(key);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Text(label, style: const TextStyle(fontSize: 13)),
+          const Spacer(),
+          Text('${value.toStringAsFixed(2)}×',
+              style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.primary)),
+        ]),
+        s.tvMode
+            ? TvSlider(
+                value: value.clamp(0.3, 3.0).toDouble(),
+                min: 0.3,
+                max: 3.0,
+                divisions: 100,
+                onChanged: (v) => s.setPlayerAdv(key, v),
+              )
+            : Slider(
+                value: value.clamp(0.3, 3.0).toDouble(),
+                min: 0.3,
+                max: 3.0,
+                divisions: 100,
+                onChanged: (v) => s.setPlayerAdv(key, v),
+              ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 车机横屏大屏：整页文字放大 1.35x（歌名/歌词/歌手/进度都跟着大）
@@ -226,6 +293,8 @@ class _PlayerPageState extends State<PlayerPage> {
                 ),
               ),
               SafeArea(
+                // [xmusic] 顶部不留白：顶部避让交给 playerTopPad 滑块；底部仍避让迪友栏
+                top: false,
                 minimum: EdgeInsets.only(
                     bottom: widget.settings.playerBottomPad.clamp(0.0, 200.0)),
                 child: Padding(
@@ -244,7 +313,8 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
               // 播放页布局设置入口：统一放在右上角（不随歌名行/横竖屏移动）
               Positioned(
-                top: 6,
+                // [xmusic] 避开手机状态栏可点击区，避免齿轮被盖住点不到
+                top: MediaQuery.viewPaddingOf(context).top + 6,
                 right: 8,
                 child: TvFocus(
                   enabled: widget.settings.tvMode,
@@ -354,7 +424,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   Navigator.of(context).popUntil((r) => r.isFirst);
                   HomeShell.switchToHome();
                 },
-                child: _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
+                child: _MiniCornerButton(icon: Icons.home_rounded, scale: widget.settings.playerAdv('cornerIcon'), onTap: () {
                   Navigator.of(context).popUntil((r) => r.isFirst);
                   HomeShell.switchToHome();
                 }),
@@ -369,10 +439,10 @@ class _PlayerPageState extends State<PlayerPage> {
                   maxWidth: MediaQuery.sizeOf(context).width - 140,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22,
+                    fontSize: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22) * widget.settings.playerAdv('titleFont'),
                     height: 1.2)),
               ),
-              SizedBox(height: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 10 : 4),
+              SizedBox(height: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 10 : 4) * widget.settings.playerAdv('titleGap')),
               // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
               SizedBox(
                 width: double.infinity,
@@ -380,7 +450,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   maxWidth: MediaQuery.sizeOf(context).width - 140,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14)),
+                    fontSize: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14) * widget.settings.playerAdv('artistFont'))),
               ),
 
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
@@ -407,15 +477,18 @@ class _PlayerPageState extends State<PlayerPage> {
               TvFocus(
                 enabled: widget.settings.tvMode,
                 onSelect: () => Navigator.of(context).maybePop(),
-                child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
+                child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, scale: widget.settings.playerAdv('cornerIcon'), onTap: () => Navigator.of(context).maybePop()),
               ),
             ],
           ),
         ),
         // 进度条+控制栏：整块玻璃面板（模糊+半透明，跟随深浅）
         Padding(
-          padding: EdgeInsets.fromLTRB(16 * widget.settings.playerMarginScale, 6,
-            16 * widget.settings.playerMarginScale, 10),
+          padding: EdgeInsets.fromLTRB(
+            16 * widget.settings.playerMarginScale,
+            6 * widget.settings.playerAdv('seekGap'),
+            16 * widget.settings.playerMarginScale,
+            10 * widget.settings.playerAdv('seekGap')),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -445,8 +518,8 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _actionSidebarLeft(BuildContext context) {
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale;
-    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale;
+    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
+    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
     if (car) return const SizedBox.shrink();
     final Widget bar = Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -477,8 +550,8 @@ class _PlayerPageState extends State<PlayerPage> {
     // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale;
-    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale;
+    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
+    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
     if (car) {
       // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸；Column占满高度spaceEvenly均匀分布
       return Container(
@@ -489,10 +562,10 @@ class _PlayerPageState extends State<PlayerPage> {
           children: [
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null,
               child: _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
-            const SizedBox(height: 24),
+            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null,
               child: _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null)),
-            const SizedBox(height: 24),
+            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.controller.toggleStar,
               child: ListenableBuilder(
                 listenable: widget.controller,
@@ -506,7 +579,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 },
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: () { final sg = widget.controller.current; if (sg != null) _toggleBlacklist(sg); },
               child: ListenableBuilder(
                 listenable: widget.controller,
@@ -654,27 +727,27 @@ class _PlayerPageState extends State<PlayerPage> {
                             Navigator.of(context).popUntil((r) => r.isFirst);
                             HomeShell.switchToHome();
                           },
-                          child: _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
+                          child: _MiniCornerButton(icon: Icons.home_rounded, scale: widget.settings.playerAdv('cornerIcon'), onTap: () {
                             Navigator.of(context).popUntil((r) => r.isFirst);
                             HomeShell.switchToHome();
                           }),
                         ),
-                        const SizedBox(width: 60),
+                        SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             _MarqueeText(song.title, textAlign: TextAlign.center,
-                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 26 : 24)),
-                            SizedBox(height: car ? 10 : 6),
+                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: (car ? 26 : 24) * widget.settings.playerAdv('titleFont'))),
+                            SizedBox(height: (car ? 10 : 6) * widget.settings.playerAdv('titleGap')),
                             Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 15)),
+                              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: (car ? 17 : 15) * widget.settings.playerAdv('artistFont'))),
                           ],
                         ),
-                        const SizedBox(width: 60),
+                        SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
                         TvFocus(
                 enabled: widget.settings.tvMode,
                 onSelect: () => Navigator.of(context).maybePop(),
-                child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
+                child: _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, scale: widget.settings.playerAdv('cornerIcon'), onTap: () => Navigator.of(context).maybePop()),
               ),
                       ],
                     ),
@@ -709,9 +782,9 @@ class _PlayerPageState extends State<PlayerPage> {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(0, 2, 8 * widget.settings.playerMarginScale,
-                    isCarScreen(context) &&
-                    MediaQuery.of(context).orientation == Orientation.landscape ? 56 : 14),
+                padding: EdgeInsets.fromLTRB(0, 2 * widget.settings.playerAdv('seekGap'), 8 * widget.settings.playerMarginScale,
+                    (isCarScreen(context) &&
+                    MediaQuery.of(context).orientation == Orientation.landscape ? 56 : 14) * widget.settings.playerAdv('seekGap')),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1199,8 +1272,8 @@ class _LyricsViewState extends State<LyricsView> {
               itemScrollController: _scroll,
               itemCount: lines.length,
               padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
+                left: 24 * widget.settings.playerAdv('lyricMargin'),
+                right: 24 * widget.settings.playerAdv('lyricMargin'),
                 top: constraints.maxHeight * 0.23,
                 bottom: constraints.maxHeight * 0.26,
               ),
@@ -1529,10 +1602,11 @@ bool _carUI(BuildContext context) =>
 
 /// 小玻璃圆钮（歌名行两侧：首页/返回）
 class _MiniCornerButton extends StatelessWidget {
-  const _MiniCornerButton({required this.icon, this.onTap, this.color});
+  const _MiniCornerButton({required this.icon, this.onTap, this.color, this.scale = 1.0});
   final IconData icon;
   final VoidCallback? onTap;
   final Color? color;
+  final double scale;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1546,8 +1620,12 @@ class _MiniCornerButton extends StatelessWidget {
             onTap: onTap,
             child: SizedBox(
               // [xmusic] 2026-09-28 手机主页/返回也加大：56 容器 / 40 图标（对齐控制栏图标），车机 64/48
-              width: _carUI(context) ? 64 : 44, height: _carUI(context) ? 64 : 44,
-              child: Icon(icon, size: _carUI(context) ? 48 : 30, color: color ?? theme.colorScheme.onSurface),
+              // scale 由播放页「角落图标大小」高级参数驱动（默认 1.0 = 原样）
+              width: (_carUI(context) ? 64 : 44) * scale,
+              height: (_carUI(context) ? 64 : 44) * scale,
+              child: Icon(icon,
+                  size: (_carUI(context) ? 48 : 30) * scale,
+                  color: color ?? theme.colorScheme.onSurface),
             ),
           ),
         ),
@@ -1704,9 +1782,10 @@ class _Controls extends StatelessWidget {
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
     final land = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final playSize = (car ? (land ? 76.0 : 82.0) : 40.0) * iconScale;
-    final navSize = (car ? (land ? 76.0 : 82.0) : 40.0) * iconScale;
-    final sideIcon = (car ? 72.0 : 40.0) * iconScale;
+    final controlIconScale = settings.playerAdv('controlIcon');
+    final playSize = (car ? (land ? 76.0 : 82.0) : 40.0) * iconScale * controlIconScale;
+    final navSize = (car ? (land ? 76.0 : 82.0) : 40.0) * iconScale * controlIconScale;
+    final sideIcon = (car ? 72.0 : 40.0) * iconScale * controlIconScale;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,

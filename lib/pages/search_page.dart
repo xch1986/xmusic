@@ -407,8 +407,9 @@ class _SearchPageState extends State<SearchPage> {
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        toolbarHeight: carLand ? 0.0 : kToolbarHeight,
-        primary: !carLand,
+        // [xmusic] 顶部留白全去：竖屏也压到 0，且不套 SafeArea 顶部
+        toolbarHeight: 0.0,
+        primary: false,
         backgroundColor: Colors.transparent,
       ),
       body: Column(
