@@ -49,6 +49,15 @@ class AppSettings extends ChangeNotifier {
   static const _kListTextScale = 'list_text_scale';
   static const _kCarTopInset = 'car_top_inset';
   static const _kTvMode = 'tv_mode';
+  // ---- 播放页布局自定义（倍率默认 1.0 = 原样；距顶/距底 dp 默认 0 = 用原值） ----
+  static const _kPlayerCoverScale = 'player_cover_scale';
+  static const _kPlayerLyricFontScale = 'player_lyric_font_scale';
+  static const _kPlayerLyricLineScale = 'player_lyric_line_scale';
+  static const _kPlayerControlGapScale = 'player_control_gap_scale';
+  static const _kPlayerIconScale = 'player_icon_scale';
+  static const _kPlayerMarginScale = 'player_margin_scale';
+  static const _kPlayerTopPad = 'player_top_pad';
+  static const _kPlayerBottomPad = 'player_bottom_pad';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -120,6 +129,86 @@ class AppSettings extends ChangeNotifier {
     if (v == _tvMode) return;
     _tvMode = v;
     await _prefs.setBool(_kTvMode, v);
+    notifyListeners();
+  }
+  // ---- 播放页布局参数（全部中性默认，保证零回归） ----
+  static const double minPlayerScale = 0.5;
+  static const double maxPlayerScale = 2.0;
+  double _playerCoverScale = 1.0;
+  double get playerCoverScale => _playerCoverScale;
+  double _playerLyricFontScale = 1.0;
+  double get playerLyricFontScale => _playerLyricFontScale;
+  double _playerLyricLineScale = 1.0;
+  double get playerLyricLineScale => _playerLyricLineScale;
+  double _playerControlGapScale = 1.0;
+  double get playerControlGapScale => _playerControlGapScale;
+  double _playerIconScale = 1.0;
+  double get playerIconScale => _playerIconScale;
+  double _playerMarginScale = 1.0;
+  double get playerMarginScale => _playerMarginScale;
+  double _playerTopPad = 0.0;
+  double get playerTopPad => _playerTopPad;
+  double _playerBottomPad = 0.0;
+  double get playerBottomPad => _playerBottomPad;
+  Future<void> setPlayerCoverScale(double v) async {
+    _playerCoverScale = v.clamp(minPlayerScale, maxPlayerScale);
+    await _prefs.setDouble(_kPlayerCoverScale, _playerCoverScale);
+    notifyListeners();
+  }
+  Future<void> setPlayerLyricFontScale(double v) async {
+    _playerLyricFontScale = v.clamp(minPlayerScale, maxPlayerScale);
+    await _prefs.setDouble(_kPlayerLyricFontScale, _playerLyricFontScale);
+    notifyListeners();
+  }
+  Future<void> setPlayerLyricLineScale(double v) async {
+    _playerLyricLineScale = v.clamp(minPlayerScale, maxPlayerScale);
+    await _prefs.setDouble(_kPlayerLyricLineScale, _playerLyricLineScale);
+    notifyListeners();
+  }
+  Future<void> setPlayerControlGapScale(double v) async {
+    _playerControlGapScale = v.clamp(0.5, 3.0);
+    await _prefs.setDouble(_kPlayerControlGapScale, _playerControlGapScale);
+    notifyListeners();
+  }
+  Future<void> setPlayerIconScale(double v) async {
+    _playerIconScale = v.clamp(0.5, 2.0);
+    await _prefs.setDouble(_kPlayerIconScale, _playerIconScale);
+    notifyListeners();
+  }
+  Future<void> setPlayerMarginScale(double v) async {
+    _playerMarginScale = v.clamp(0.0, 3.0);
+    await _prefs.setDouble(_kPlayerMarginScale, _playerMarginScale);
+    notifyListeners();
+  }
+  Future<void> setPlayerTopPad(double v) async {
+    _playerTopPad = v.clamp(-40.0, 120.0);
+    await _prefs.setDouble(_kPlayerTopPad, _playerTopPad);
+    notifyListeners();
+  }
+  Future<void> setPlayerBottomPad(double v) async {
+    _playerBottomPad = v.clamp(-40.0, 120.0);
+    await _prefs.setDouble(_kPlayerBottomPad, _playerBottomPad);
+    notifyListeners();
+  }
+  /// 播放页布局是否仍全部为中性默认（用于面板显示"恢复默认"状态）。
+  bool get playerLayoutIsDefault =>
+      _playerCoverScale == 1.0 && _playerLyricFontScale == 1.0 &&
+      _playerLyricLineScale == 1.0 && _playerControlGapScale == 1.0 &&
+      _playerIconScale == 1.0 && _playerMarginScale == 1.0 &&
+      _playerTopPad == 0.0 && _playerBottomPad == 0.0;
+  Future<void> resetPlayerLayout() async {
+    _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
+    _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
+    _playerIconScale = 1.0; _playerMarginScale = 1.0;
+    _playerTopPad = 0.0; _playerBottomPad = 0.0;
+    await _prefs.remove(_kPlayerCoverScale);
+    await _prefs.remove(_kPlayerLyricFontScale);
+    await _prefs.remove(_kPlayerLyricLineScale);
+    await _prefs.remove(_kPlayerControlGapScale);
+    await _prefs.remove(_kPlayerIconScale);
+    await _prefs.remove(_kPlayerMarginScale);
+    await _prefs.remove(_kPlayerTopPad);
+    await _prefs.remove(_kPlayerBottomPad);
     notifyListeners();
   }
   /// 排行榜/歌单列表文字大小：车机全局 1.5x 缩放会把双行列表撑到一屏只剩 2 首，
@@ -227,6 +316,14 @@ class AppSettings extends ChangeNotifier {
     _carTopInset = (_prefs.getDouble(_kCarTopInset) ?? 0.0)
         .clamp(minCarTopInset, maxCarTopInset);
     _tvMode = _prefs.getBool(_kTvMode) ?? false;
+    _playerCoverScale = (_prefs.getDouble(_kPlayerCoverScale) ?? 1.0).clamp(minPlayerScale, maxPlayerScale);
+    _playerLyricFontScale = (_prefs.getDouble(_kPlayerLyricFontScale) ?? 1.0).clamp(minPlayerScale, maxPlayerScale);
+    _playerLyricLineScale = (_prefs.getDouble(_kPlayerLyricLineScale) ?? 1.0).clamp(minPlayerScale, maxPlayerScale);
+    _playerControlGapScale = (_prefs.getDouble(_kPlayerControlGapScale) ?? 1.0).clamp(0.5, 3.0);
+    _playerIconScale = (_prefs.getDouble(_kPlayerIconScale) ?? 1.0).clamp(0.5, 2.0);
+    _playerMarginScale = (_prefs.getDouble(_kPlayerMarginScale) ?? 1.0).clamp(0.0, 3.0);
+    _playerTopPad = (_prefs.getDouble(_kPlayerTopPad) ?? 0.0).clamp(-40.0, 120.0);
+    _playerBottomPad = (_prefs.getDouble(_kPlayerBottomPad) ?? 0.0).clamp(-40.0, 120.0);
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
