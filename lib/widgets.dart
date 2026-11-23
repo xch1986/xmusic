@@ -493,6 +493,9 @@ class _TvFocusState extends State<TvFocus> {
     // Actions 捕获 OK/确认键（Enter/Select 默认映射为 ActivateIntent）。
     // Focus 提供焦点节点并绘制焦点边框；descendantsAreFocusable=false
     // 让子组件（IconButton/ListTile）不单独成为焦点停靠点，整块只有一个焦点。
+    // 触摸两步确认：TV 模式下用 AbsorbPointer 吞掉 child 原本的一点即执行，
+    // 由外层 Listener 接管——第一下只请求焦点（亮框），第二下才执行 onSelect；
+    // 遥控器 OK 走 Actions/ActivateIntent，不经过指针链路，仍直接执行 onSelect。
     return Actions(
       actions: <Type, Action<Intent>>{
         ActivateIntent: CallbackAction<Intent>(
@@ -506,14 +509,27 @@ class _TvFocusState extends State<TvFocus> {
         focusNode: _focusNode,
         autofocus: widget.autofocus,
         descendantsAreFocusable: false,
-        child: Container(
-          decoration: _focused
-              ? BoxDecoration(
-                  border: Border.all(color: cs.primary, width: 3),
-                  borderRadius: BorderRadius.circular(10),
-                )
-              : null,
-          child: widget.child,
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            if (!_focused) {
+              _focusNode.requestFocus();
+            } else {
+              widget.onSelect?.call();
+            }
+          },
+          child: AbsorbPointer(
+            absorbing: true,
+            child: Container(
+              decoration: _focused
+                  ? BoxDecoration(
+                      border: Border.all(color: cs.primary, width: 3),
+                      borderRadius: BorderRadius.circular(10),
+                    )
+                  : null,
+              child: widget.child,
+            ),
+          ),
         ),
       ),
     );
