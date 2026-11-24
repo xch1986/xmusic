@@ -10,8 +10,8 @@ import 'widgets.dart';
 enum AppThemeMode { system, light, dark }
 
 class AppSettings extends ChangeNotifier {
-  static const double minScale = 0.7;
-  static const double maxScale = 2.0;
+  static const double minScale = 0.2;
+  static const double maxScale = 4.0;
   static const double scaleStep = 0.1;
 
   static const _kScale = 'lyric_scale';
@@ -70,6 +70,8 @@ class AppSettings extends ChangeNotifier {
     'sideGap',          // 侧栏图标间距
     'lyricMargin',      // 歌词左右边距
     'seekGap',          // 进度条区上下间距
+    'queueTitleFont',   // 播放列表歌名字号
+    'queueArtistFont',  // 播放列表歌手字号
   ];
   static const _kPlayerAdvPrefix = 'player_adv_';
   // ---- 播放页区域纵向占比（倍率默认 1.0 = 原 flex/高度） ----
@@ -157,6 +159,9 @@ class AppSettings extends ChangeNotifier {
   // ---- 播放页布局参数（全部中性默认，保证零回归） ----
   static const double minPlayerScale = 0.5;
   static const double maxPlayerScale = 2.0;
+  /// [xmusic] 歌词字号独立范围：放宽 0.2~4.0x（原 0.5~2.0 限制解除）。
+  static const double minLyricFontScale = 0.2;
+  static const double maxLyricFontScale = 4.0;
   double _playerCoverScale = 1.0;
   double get playerCoverScale => _playerCoverScale;
   double _playerLyricFontScale = 1.0;
@@ -179,7 +184,7 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
   Future<void> setPlayerLyricFontScale(double v) async {
-    _playerLyricFontScale = v.clamp(minPlayerScale, maxPlayerScale);
+    _playerLyricFontScale = v.clamp(minLyricFontScale, maxLyricFontScale);
     await _prefs.setDouble(_kPlayerLyricFontScale, _playerLyricFontScale);
     notifyListeners();
   }
@@ -222,11 +227,30 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setDouble(_kPlayerAdvPrefix + key, val);
     notifyListeners();
   }
-  // ---- 区域占比 Map（默认 1.0 = 原样，范围 0.2~3.0） ----
+  // ---- 区域占比 Map（权重，归一化后 5 区总和恒为 100%，此消彼长） ----
   final Map<String, double> _playerArea = {};
-  double playerArea(String key) => _playerArea[key] ?? 1.0;
-  Future<void> setPlayerArea(String key, double v) async {
-    final val = v.clamp(0.2, 3.0);
+  double playerAreaRaw(String key) => _playerArea[key] ?? 1.0;
+  double get _playerAreaTotal {
+    double t = 0;
+    for (final k in playerAreaKeys) {
+      t += (_playerArea[k] ?? 1.0);
+    }
+    return t <= 0 ? playerAreaKeys.length.toDouble() : t;
+  }
+  /// 归一化倍率：默认各 1.00x；某区调大，其余区自动变小（占比总和恒为 100%）。
+  double playerArea(String key) =>
+      playerAreaRaw(key) / _playerAreaTotal * playerAreaKeys.length;
+  /// 该区百分比（5 区之和恒为 100%）。
+  double playerAreaPct(String key) => playerAreaRaw(key) / _playerAreaTotal * 100.0;
+  /// 设置某区占比百分比（2%~80%）：其余区按当前权重比例自动缩小（此消彼长）。
+  Future<void> setPlayerAreaPct(String key, double pct) async {
+    final p = (pct / 100.0).clamp(0.02, 0.80);
+    double others = 0;
+    for (final k in playerAreaKeys) {
+      if (k != key) others += (_playerArea[k] ?? 1.0);
+    }
+    if (others <= 0) others = playerAreaKeys.length - 1.0;
+    final val = (p * others / (1 - p)).clamp(0.05, 30.0);
     _playerArea[key] = val;
     await _prefs.setDouble(_kPlayerAreaPrefix + key, val);
     notifyListeners();
@@ -239,7 +263,7 @@ class AppSettings extends ChangeNotifier {
       _playerIconScale == 1.0 && _playerMarginScale == 1.0 &&
       _playerTopPad == 0.0 && _playerBottomPad == 0.0 &&
       playerAdvKeys.every((k) => playerAdv(k) == 1.0) &&
-      playerAreaKeys.every((k) => playerArea(k) == 1.0);
+      playerAreaKeys.every((k) => playerAreaRaw(k) == 1.0);
   Future<void> resetPlayerLayout() async {
     _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
@@ -369,7 +393,7 @@ class AppSettings extends ChangeNotifier {
         .clamp(minCarTopInset, maxCarTopInset);
     _tvMode = _prefs.getBool(_kTvMode) ?? false;
     _playerCoverScale = (_prefs.getDouble(_kPlayerCoverScale) ?? 1.0).clamp(minPlayerScale, maxPlayerScale);
-    _playerLyricFontScale = (_prefs.getDouble(_kPlayerLyricFontScale) ?? 1.0).clamp(minPlayerScale, maxPlayerScale);
+    _playerLyricFontScale = (_prefs.getDouble(_kPlayerLyricFontScale) ?? 1.0).clamp(minLyricFontScale, maxLyricFontScale);
     _playerLyricLineScale = (_prefs.getDouble(_kPlayerLyricLineScale) ?? 1.0).clamp(minPlayerScale, maxPlayerScale);
     _playerControlGapScale = (_prefs.getDouble(_kPlayerControlGapScale) ?? 1.0).clamp(0.5, 3.0);
     _playerIconScale = (_prefs.getDouble(_kPlayerIconScale) ?? 1.0).clamp(0.5, 2.0);
@@ -382,7 +406,7 @@ class AppSettings extends ChangeNotifier {
     }
     for (final k in playerAreaKeys) {
       final v = _prefs.getDouble(_kPlayerAreaPrefix + k);
-      if (v != null) _playerArea[k] = v.clamp(0.2, 3.0);
+      if (v != null) _playerArea[k] = v.clamp(0.05, 30.0);
     }
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';

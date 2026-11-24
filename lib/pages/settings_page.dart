@@ -467,6 +467,34 @@ class SettingsPage extends StatelessWidget {
 
 
 
+  /// [xmusic] TV 模式用 TvSlider（左右键调值、上下键交还焦点导航），触屏仍用系统 Slider。
+  Widget _tvSlider({
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+    int? divisions,
+    String? label,
+  }) {
+    return settings.tvMode
+        ? TvSlider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: label,
+            onChanged: onChanged,
+          )
+        : Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: label,
+            onChanged: onChanged,
+          );
+  }
+
   Widget _slider(String label, double val, double min, double max, ValueChanged<double> onChanged) {
 
     return Padding(
@@ -477,7 +505,7 @@ class SettingsPage extends StatelessWidget {
 
         SizedBox(width: 60, child: Text(label, style: _stroke(const TextStyle(fontSize: 13)))),
 
-        Expanded(child: Slider(value: val, min: min, max: max, onChanged: onChanged)),
+        Expanded(child: _tvSlider(value: val, min: min, max: max, onChanged: onChanged)),
 
         SizedBox(width: 40, child: Text(val.toStringAsFixed(2), style: _stroke(const TextStyle(fontSize: 12)))),
 
@@ -809,7 +837,7 @@ class SettingsPage extends StatelessWidget {
 
                   Expanded(
 
-                    child: Slider(
+                    child: _tvSlider(
 
                       min: 10,
 
@@ -879,7 +907,7 @@ class SettingsPage extends StatelessWidget {
 
                 Expanded(
 
-                  child: Slider(
+                  child: _tvSlider(
 
                     min: AppSettings.minCarTopInset,
 
@@ -929,7 +957,7 @@ class SettingsPage extends StatelessWidget {
 
                 Expanded(
 
-                  child: Slider(
+                  child: _tvSlider(
 
                     min: AppSettings.minCarBottomInset,
 
@@ -981,7 +1009,7 @@ class SettingsPage extends StatelessWidget {
 
                 Expanded(
 
-                  child: Slider(
+                  child: _tvSlider(
 
                     min: AppSettings.minListTextScale,
 

@@ -133,7 +133,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 _layoutSlider('封面大小', s.playerCoverScale, 0.5, 2.0,
                     s.setPlayerCoverScale, ctx),
-                _layoutSlider('歌词字号', s.playerLyricFontScale, 0.5, 2.0,
+                _layoutSlider('歌词字号', s.playerLyricFontScale, 0.2, 4.0,
                     s.setPlayerLyricFontScale, ctx),
                 _layoutSlider('歌词行距', s.playerLyricLineScale, 0.5, 2.0,
                     s.setPlayerLyricLineScale, ctx),
@@ -177,8 +177,10 @@ class _PlayerPageState extends State<PlayerPage> {
                         _advSlider('侧栏图标间距', 'sideGap', ctx, s),
                         _advSlider('歌词左右边距', 'lyricMargin', ctx, s),
                         _advSlider('进度条区上下间距', 'seekGap', ctx, s),
+                        _advSlider('播放列表歌名字号', 'queueTitleFont', ctx, s),
+                        _advSlider('播放列表歌手字号', 'queueArtistFont', ctx, s),
                         const SizedBox(height: 6),
-                        const Text('— 区域占比（纵向，1.00×为原始比例） —',
+                        const Text('— 区域占比（总和 100%，此消彼长；20% = 原样） —',
                             style: TextStyle(fontSize: 12, color: Colors.grey)),
                         _areaSlider('路径区占比', 'pathArea', ctx, s),
                         _areaSlider('封面区占比', 'coverArea', ctx, s),
@@ -276,32 +278,32 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  /// 区域占比滑块：值来自 settings.playerArea(key)，默认 1.00× 原比例，范围 0.2~3.0。
+  /// 区域占比滑块：显示百分比（5 区总和恒为 100%），拖大某区其余按比例缩小。
   Widget _areaSlider(String label, String key, BuildContext ctx, AppSettings s) {
-    final value = s.playerArea(key);
+    final value = s.playerAreaPct(key);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Text(label, style: const TextStyle(fontSize: 13)),
           const Spacer(),
-          Text('${value.toStringAsFixed(2)}×',
+          Text('${value.toStringAsFixed(0)}%',
               style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.primary)),
         ]),
         s.tvMode
             ? TvSlider(
-                value: value.clamp(0.2, 3.0).toDouble(),
-                min: 0.2,
-                max: 3.0,
-                divisions: 100,
-                onChanged: (v) => s.setPlayerArea(key, v),
+                value: value.clamp(2.0, 80.0).toDouble(),
+                min: 2.0,
+                max: 80.0,
+                divisions: 78,
+                onChanged: (v) => s.setPlayerAreaPct(key, v),
               )
             : Slider(
-                value: value.clamp(0.2, 3.0).toDouble(),
-                min: 0.2,
-                max: 3.0,
-                divisions: 100,
-                onChanged: (v) => s.setPlayerArea(key, v),
+                value: value.clamp(2.0, 80.0).toDouble(),
+                min: 2.0,
+                max: 80.0,
+                divisions: 78,
+                onChanged: (v) => s.setPlayerAreaPct(key, v),
               ),
       ]),
     );
@@ -398,7 +400,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: Padding(
                       padding: EdgeInsets.only(
                           left: 16 * widget.settings.playerMarginScale,
-                          right: 8 * widget.settings.playerMarginScale,
+                          right: 0,
                           bottom: 4,
                           top: math.max(isCarScreen(context) ? 40 : 0,
                               MediaQuery.viewPaddingOf(context).top + 6)),
@@ -739,7 +741,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: Padding(
                       padding: EdgeInsets.only(
                           left: 16 * widget.settings.playerMarginScale,
-                          right: 8 * widget.settings.playerMarginScale,
+                          right: 0,
                           bottom: 4,
                           top: math.max(isCarScreen(context) ? 40 : 0,
                               MediaQuery.viewPaddingOf(context).top + 6)),
@@ -764,7 +766,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   ),
                   // 封面：自适应占满上方空间（车机横屏加大）
                   Expanded(
-                    flex: widget.settings.playerArea('coverArea').round().clamp(1, 50),
+                    flex: widget.settings.playerAreaPct('coverArea').round().clamp(1, 100),
                     child: Center(
                       child: StreamBuilder<bool>(
                         stream: widget.controller.player.playingStream,
@@ -840,7 +842,7 @@ class _PlayerPageState extends State<PlayerPage> {
             children: [
               // 歌词区：Expanded 占满中间空间，歌词自然向下扩展
               Expanded(
-                flex: widget.settings.playerArea('lyricArea').round().clamp(1, 50),
+                flex: widget.settings.playerAreaPct('lyricArea').round().clamp(1, 100),
                 child: Padding(
                   padding: EdgeInsets.only(
                     top: isCarScreen(context) ? 72 : 4,
@@ -1064,11 +1066,27 @@ class _PlayerPageState extends State<PlayerPage> {
                         style: TextStyle(
                             color: active ? cs.primary : cs.onSurfaceVariant)),
                     // 歌名 + 歌手同一行，短横线连接；超长时跑马灯滚动展示完整
+                    // [xmusic] 歌名/歌手字号独立可调（播放列表歌名字号/歌手字号）
                     title: _MarqueeText(
                       (sn.title ?? '') +
                           ((sn.artist ?? '').isNotEmpty
                               ? ' - ${sn.artist}'
                               : ''),
+                      span: TextSpan(children: [
+                        TextSpan(
+                            text: sn.title ?? '',
+                            style: TextStyle(
+                                color: active ? cs.primary : cs.onSurface,
+                                fontSize: 14 *
+                                    widget.settings.playerAdv('queueTitleFont'))),
+                        if ((sn.artist ?? '').isNotEmpty)
+                          TextSpan(
+                              text: ' - ${sn.artist}',
+                              style: TextStyle(
+                                  color: active ? cs.primary : cs.onSurface,
+                                  fontSize: 13 *
+                                      widget.settings.playerAdv('queueArtistFont'))),
+                      ]),
                       style: TextStyle(
                           color: active
                               ? cs.primary
@@ -1972,9 +1990,11 @@ Future<void> openPlayerPage(
 /// 歌名滚动组件：文本超出可用宽度时循环左右滚动展示（不超出则普通省略号文本）。
 class _MarqueeText extends StatefulWidget {
   const _MarqueeText(this.text,
-      {super.key, this.style, this.textAlign = TextAlign.start, this.maxWidth});
+      {super.key, this.style, this.textAlign = TextAlign.start, this.maxWidth, this.span});
   final String text;
   final TextStyle? style;
+  /// 可选富文本（如歌名/歌手不同字号）；提供后优先于 [text]/[style]。
+  final InlineSpan? span;
   final TextAlign textAlign;
   /// 确定的可视宽度；不传则用父约束。传明确宽度可避免 LayoutBuilder 拿到不准确的约束。
   final double? maxWidth;
@@ -2009,7 +2029,7 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (ctx, cons) {
       final tp = TextPainter(
-        text: TextSpan(text: widget.text, style: widget.style),
+        text: widget.span ?? TextSpan(text: widget.text, style: widget.style),
         maxLines: 1,
         textDirection: TextDirection.ltr,
         textScaler: MediaQuery.textScalerOf(ctx),
@@ -2024,8 +2044,12 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
       if (tp.width <= boxW) {
         return Align(
           alignment: widget.textAlign == TextAlign.center ? Alignment.center : Alignment.centerLeft,
-          child: Text(widget.text, style: widget.style, maxLines: 1,
-              overflow: TextOverflow.ellipsis, softWrap: false, textAlign: widget.textAlign),
+          child: Text.rich(
+              widget.span ?? TextSpan(text: widget.text, style: widget.style),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              textAlign: widget.textAlign),
         );
       }
       return ClipRect(
@@ -2036,8 +2060,11 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
             controller: _s,
-            child: Text(widget.text, style: widget.style, maxLines: 1,
-                softWrap: false, textAlign: widget.textAlign),
+            child: Text.rich(
+                widget.span ?? TextSpan(text: widget.text, style: widget.style),
+                maxLines: 1,
+                softWrap: false,
+                textAlign: widget.textAlign),
           ),
         ),
       );
