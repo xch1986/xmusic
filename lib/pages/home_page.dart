@@ -970,31 +970,40 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 顶部大类导航（TV 遥控器：左右跳大类，OK 定位分区并进小类）。
+  /// 顶部大类导航（单行「·」风格，对齐样例图顶栏）：榜单 · QQ歌单 · QQ电台。
+  /// 点谁/遥控选谁即跳对应分区；TV OK 后仍进该分区小类行（_gotoSection 不变）。
   Widget _homeNavBar() {
     const items = [
       ['榜单', 'toplists'],
       ['QQ歌单', 'playlists'],
       ['QQ电台', 'radio'],
     ];
-    return SizedBox(
-      height: 46,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          for (final e in items)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: TvFocus(
-                enabled: widget.settings.tvMode,
-                onSelect: () => _gotoSection(e[1]),
-                child: ActionChip(
-                  label: Text(e[0]),
-                  onPressed: () => _gotoSection(e[1]),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              const Text(' · ',
+                  style: TextStyle(fontSize: 15, color: Colors.grey)),
+            TvFocus(
+              enabled: widget.settings.tvMode,
+              onSelect: () => _gotoSection(items[i][1]),
+              child: InkWell(
+                onTap: () => _gotoSection(items[i][1]),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: Text(items[i][0],
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
