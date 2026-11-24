@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'subsonic.dart';
 import 'widgets.dart';
+import 'audio_handler.dart';
 
 enum AppThemeMode { system, light, dark }
 
@@ -83,6 +84,10 @@ class AppSettings extends ChangeNotifier {
     'controlArea',  // 控制栏区高度占比
   ];
   static const _kPlayerAreaPrefix = 'player_area_';
+  // ---- EQ / 封面样式 ----
+  static const _kEqPreset = 'eq_preset';
+  static const _kEqCustom = 'eq_custom';
+  static const _kCoverStyle = 'cover_style';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -255,6 +260,37 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setDouble(_kPlayerAreaPrefix + key, val);
     notifyListeners();
   }
+  // ---- 均衡器（EQ） ----
+  /// 'off'/'flat'/'bass'/'vocal'/'stereo'/'pop'/'rock'/'classical'/'jazz'/'electronic'/'custom'
+  String _eqPreset = 'off';
+  List<double> _eqCustomGains = [0, 0, 0, 0, 0];
+  String get eqPreset => _eqPreset;
+  List<double> get eqCustomGains => _eqCustomGains;
+  Future<void> _applyEq() =>
+      applyEqualizer(preset: _eqPreset, customGains: _eqCustomGains);
+  Future<void> setEqPreset(String v) async {
+    _eqPreset = v;
+    await _prefs.setString(_kEqPreset, v);
+    await _applyEq();
+    notifyListeners();
+  }
+  /// 拖自定义段滑块：自动切到 custom 预设并即时应用。
+  Future<void> setEqCustomGain(int index, double v) async {
+    _eqCustomGains[index] = v.clamp(-15.0, 15.0);
+    _eqPreset = 'custom';
+    await _prefs.setString(_kEqCustom, _eqCustomGains.join(','));
+    await _prefs.setString(_kEqPreset, 'custom');
+    await _applyEq();
+    notifyListeners();
+  }
+  // ---- 封面样式：classic 经典 / vinyl 唱片 / iphone ----
+  String _coverStyle = 'classic';
+  String get coverStyle => _coverStyle;
+  Future<void> setCoverStyle(String v) async {
+    _coverStyle = v;
+    await _prefs.setString(_kCoverStyle, v);
+    notifyListeners();
+  }
 
   /// 播放页布局是否仍全部为中性默认（用于面板显示"恢复默认"状态）。
   bool get playerLayoutIsDefault =>
@@ -408,6 +444,17 @@ class AppSettings extends ChangeNotifier {
       final v = _prefs.getDouble(_kPlayerAreaPrefix + k);
       if (v != null) _playerArea[k] = v.clamp(0.05, 30.0);
     }
+    // EQ / 封面样式恢复
+    _eqPreset = _prefs.getString(_kEqPreset) ?? 'off';
+    _eqCustomGains = (_prefs.getString(_kEqCustom) ?? '')
+        .split(',')
+        .map((e) => double.tryParse(e.trim()) ?? 0.0)
+        .toList();
+    while (_eqCustomGains.length < 5) {
+      _eqCustomGains.add(0.0);
+    }
+    _coverStyle = _prefs.getString(_kCoverStyle) ?? 'classic';
+    unawaited(_applyEq());
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';

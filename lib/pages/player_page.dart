@@ -42,12 +42,17 @@ class PlayerPage extends StatefulWidget {
 
 enum _OrientMode { auto, landscape, portrait }
 
-class _PlayerPageState extends State<PlayerPage> {
+class _PlayerPageState extends State<PlayerPage>
+    with SingleTickerProviderStateMixin {
   _OrientMode _orient = _OrientMode.auto;
   bool _advExpanded = true; // 播放页布局面板「精细调整」分组默认展开
+  /// 唱片样式封面的旋转控制器（8s/圈，播放时转动）。
+  late final AnimationController _vinylSpin;
   @override
   void initState() {
     super.initState();
+    _vinylSpin =
+        AnimationController(vsync: this, duration: const Duration(seconds: 8));
     PlayerPage._stackCount++;
     // 显式允许所有四个方向（空列表在某些版本不生效/反而锁方向），跟随系统自动旋转
     SystemChrome.setPreferredOrientations([
@@ -60,6 +65,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   void dispose() {
+    _vinylSpin.dispose();
     PlayerPage._stackCount--;
     // 离开播放页时还原系统方向（允许所有方向），避免把其他页面锁住
     SystemChrome.setPreferredOrientations([
@@ -133,6 +139,21 @@ class _PlayerPageState extends State<PlayerPage> {
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 _layoutSlider('封面大小', s.playerCoverScale, 0.5, 2.0,
                     s.setPlayerCoverScale, ctx),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text('封面样式', style: TextStyle(fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Wrap(spacing: 8, runSpacing: 6, children: [
+                        _coverStyleChip(s, 'classic', '经典'),
+                        _coverStyleChip(s, 'vinyl', '唱片'),
+                        _coverStyleChip(s, 'iphone', 'iPhone'),
+                      ]),
+                    ],
+                  ),
+                ),
                 _layoutSlider('歌词字号', s.playerLyricFontScale, 0.2, 4.0,
                     s.setPlayerLyricFontScale, ctx),
                 _layoutSlider('歌词行距', s.playerLyricLineScale, 0.5, 2.0,
@@ -324,6 +345,269 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
+  /// 封面样式选择 chip（齿轮面板「基础」组）。
+  Widget _coverStyleChip(AppSettings s, String key, String label) {
+    return TvFocus(
+      enabled: s.tvMode,
+      onSelect: () => s.setCoverStyle(key),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: s.coverStyle == key,
+        onSelected: (_) => s.setCoverStyle(key),
+      ),
+    );
+  }
+
+  /// 均衡器面板：预设 chips + 自定义 5 段滑块（60/230/910/3.6k/14k Hz）。
+  void _showEqPanel(BuildContext context) {
+    final s = widget.settings;
+    const presetLabels = <String, String>{
+      'off': '关闭',
+      'flat': '平直',
+      'bass': '重低音',
+      'vocal': '人声增强',
+      'stereo': '立体声',
+      'pop': '流行',
+      'rock': '摇滚',
+      'classical': '古典',
+      'jazz': '爵士',
+      'electronic': '电子',
+      'custom': '自定义',
+    };
+    const bandLabels = ['60Hz', '230Hz', '910Hz', '3.6kHz', '14kHz'];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor:
+          Theme.of(context).colorScheme.surfaceContainerLow.withOpacity(0.72),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.55,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [
+                  Icon(Icons.equalizer_rounded,
+                      color: Theme.of(ctx).colorScheme.primary),
+                  const SizedBox(width: 10),
+                  const Text('均衡器',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx)),
+                ]),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    for (final e in presetLabels.entries)
+                      TvFocus(
+                        enabled: s.tvMode,
+                        onSelect: () async {
+                          await s.setEqPreset(e.key);
+                          setSheet(() {});
+                        },
+                        child: ChoiceChip(
+                          label: Text(e.value),
+                          selected: s.eqPreset == e.key,
+                          onSelected: (_) async {
+                            await s.setEqPreset(e.key);
+                            setSheet(() {});
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('自定义 5 段（拖动即切到自定义）',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                for (var i = 0; i < 5; i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(children: [
+                          Text(bandLabels[i],
+                              style: const TextStyle(fontSize: 13)),
+                          const Spacer(),
+                          Text(
+                              '${s.eqCustomGains[i] >= 0 ? '+' : ''}${s.eqCustomGains[i].toStringAsFixed(1)} dB',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(ctx).colorScheme.primary)),
+                        ]),
+                        s.tvMode
+                            ? TvSlider(
+                                value: s.eqCustomGains[i]
+                                    .clamp(-15.0, 15.0)
+                                    .toDouble(),
+                                min: -15.0,
+                                max: 15.0,
+                                divisions: 60,
+                                onChanged: (v) async {
+                                  await s.setEqCustomGain(i, v);
+                                  setSheet(() {});
+                                },
+                              )
+                            : Slider(
+                                value: s.eqCustomGains[i]
+                                    .clamp(-15.0, 15.0)
+                                    .toDouble(),
+                                min: -15.0,
+                                max: 15.0,
+                                divisions: 60,
+                                onChanged: (v) async {
+                                  await s.setEqCustomGain(i, v);
+                                  setSheet(() {});
+                                },
+                              ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// 封面按样式渲染：经典（圆角方图）/ 唱片（圆封面+唱片盘，播放旋转）/ iPhone（大圆角+柔影）。
+  Widget _coverDisplay(Song song, double s, bool playing) {
+    final style = widget.settings.coverStyle;
+    final cov = CoverImage(
+        client: widget.controller.client,
+        coverId: song.coverArt,
+        coverUrl: song.coverUrl,
+        size: s,
+        requestSize: 600);
+    if (style == 'vinyl') {
+      if (playing) {
+        _vinylSpin.repeat();
+      } else {
+        _vinylSpin.stop();
+      }
+      return SizedBox(
+        width: s * 1.32,
+        height: s * 1.08,
+        child: Stack(
+          alignment: Alignment.centerLeft,
+          children: [
+            // 唱片盘：深色圆盘+中心标签，播放时旋转
+            Positioned(
+              left: s * 0.38,
+              child: RotationTransition(
+                turns: _vinylSpin,
+                child: Container(
+                  width: s * 0.96,
+                  height: s * 0.96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const RadialGradient(colors: [
+                      Color(0xFF2A2A2A),
+                      Color(0xFF111111),
+                      Color(0xFF000000)
+                    ]),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 20,
+                          offset: const Offset(4, 10))
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: s * 0.26,
+                      height: s * 0.26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer,
+                        border: Border.all(color: Colors.black38, width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 圆形封面盖在左侧
+            Positioned(
+              left: 0,
+              child: Container(
+                width: s,
+                height: s,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black38,
+                        blurRadius: 26,
+                        offset: const Offset(0, 12))
+                  ],
+                ),
+                child: ClipOval(child: cov),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (style == 'iphone') {
+      return Container(
+        width: s,
+        height: s,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(s * 0.14),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black54,
+                blurRadius: 40,
+                offset: const Offset(0, 18)),
+            BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10,
+                offset: const Offset(0, 4)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(s * 0.14),
+          child: cov,
+        ),
+      );
+    }
+    // 经典：现状（小圆角+柔影）
+    return Container(
+      width: s,
+      height: s,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(s * 0.055),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black38,
+              blurRadius: 26,
+              offset: const Offset(0, 12))
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(s * 0.055),
+        child: cov,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 车机横屏大屏：整页文字放大 1.35x（歌名/歌词/歌手/进度都跟着大）
@@ -427,18 +711,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: StreamBuilder<bool>(
                       stream: widget.controller.player.playingStream,
                       builder: (context, snap) {
-                        final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
-                        return Container(
-                          width: s, height: s,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(s * 0.055),
-                            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(s * 0.055),
-                            child: cov,
-                          ),
-                        );
+                        return _coverDisplay(song, s, snap.data ?? false);
                       },
                     ),
                   ),
@@ -615,6 +888,9 @@ class _PlayerPageState extends State<PlayerPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            TvFocus(enabled: widget.settings.tvMode, onSelect: () => _showEqPanel(context),
+              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.equalizer_rounded, onTap: () => _showEqPanel(context))),
+            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null,
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
             SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
@@ -659,6 +935,16 @@ class _PlayerPageState extends State<PlayerPage> {
     final Widget bar = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: IconButton(
+            iconSize: side,
+            tooltip: '均衡器',
+            icon: const Icon(Icons.equalizer_rounded),
+            onPressed: () => _showEqPanel(context),
+          ),
+        ),
+        SizedBox(height: _gap),
         IconTheme(
           data: IconThemeData(size: side),
           child: IconButton(
@@ -771,18 +1057,7 @@ class _PlayerPageState extends State<PlayerPage> {
                       child: StreamBuilder<bool>(
                         stream: widget.controller.player.playingStream,
                         builder: (context, snap) {
-                          final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
-                          return Container(
-                            width: s, height: s,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(s * 0.055),
-                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(s * 0.055),
-                              child: cov,
-                            ),
-                          );
+                          return _coverDisplay(song, s, snap.data ?? false);
                         },
                       ),
                     ),
