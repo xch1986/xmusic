@@ -152,8 +152,6 @@ class _PlayerPageState extends State<PlayerPage> {
                     s.setPlayerLyricFontScale, ctx),
                 _layoutSlider('歌词行距', s.playerLyricLineScale, 0.5, 2.0,
                     s.setPlayerLyricLineScale, ctx),
-                _layoutSlider('歌词叠封面', s.playerLyricOverlap, 0.0, 0.6,
-                    s.setPlayerLyricOverlap, ctx, unit: '%'),
                 _layoutSlider('控件间距', s.playerControlGapScale, 0.5, 3.0,
                     s.setPlayerControlGapScale, ctx),
                 _layoutSlider('图标大小', s.playerIconScale, 0.5, 2.0,
@@ -613,22 +611,10 @@ class _PlayerPageState extends State<PlayerPage> {
     final size = MediaQuery.of(context).size.width * 0.5;
     return Column(
       children: [
-        // 封面+歌词叠放区：歌词按「歌词叠封面」上移压在封面下半部（0% = 不叠，同旧版）
+        // 封面区：路径行 + 设置齿轮 + 黑胶封面（与歌词上下分栏，互不重叠）
         Expanded(
-          flex: (5 * widget.settings.playerArea('coverArea')).round().clamp(1, 50) +
-              (4 * widget.settings.playerArea('lyricArea')).round().clamp(1, 50),
-          child: LayoutBuilder(builder: (context, outerBox) {
-            final coverFlex = (5 * widget.settings.playerArea('coverArea')).round().clamp(1, 50);
-            final lyricFlex = (4 * widget.settings.playerArea('lyricArea')).round().clamp(1, 50);
-            final coverH = outerBox.maxHeight * coverFlex / (coverFlex + lyricFlex);
-            final overlap = coverH * widget.settings.playerLyricOverlap;
-            return Stack(children: [
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: coverH,
-                child: LayoutBuilder(
+          flex: (5 * widget.settings.playerArea('coverArea')).round().clamp(1, 50),
+          child: LayoutBuilder(
             builder: (context, box) {
               final s = (math.min(size, box.maxHeight * 0.92) *
                       widget.settings.playerCoverScale)
@@ -679,13 +665,11 @@ class _PlayerPageState extends State<PlayerPage> {
               );
             },
           ),
-              ),
-              Positioned(
-                top: coverH - overlap,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Row(
+        ),
+        // 歌词区：左4右3侧栏 + 歌词（独立分栏，不压封面）
+        Expanded(
+          flex: (4 * widget.settings.playerArea('lyricArea')).round().clamp(1, 50),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _actionSidebarLeft(context),
@@ -697,10 +681,7 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
               _actionSidebar(context),
             ],
-                ),
-              ),
-            ]);
-          }),
+          ),
         ),
         // 歌名+歌手：左右各一个小玻璃按钮（首页/返回）
         Padding(

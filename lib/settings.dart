@@ -59,7 +59,6 @@ class AppSettings extends ChangeNotifier {
   static const _kPlayerMarginScale = 'player_margin_scale';
   static const _kPlayerTopPad = 'player_top_pad';
   static const _kPlayerBottomPad = 'player_bottom_pad';
-  static const _kPlayerLyricOverlap = 'player_lyric_overlap';
   // ---- 播放页高级细分参数（统一倍率 key，默认 1.0 = 原样） ----
   static const playerAdvKeys = <String>[
     'titleFont',        // 歌名字号
@@ -184,9 +183,6 @@ class AppSettings extends ChangeNotifier {
   double get playerTopPad => _playerTopPad;
   double _playerBottomPad = 0.0;
   double get playerBottomPad => _playerBottomPad;
-  /// 歌词叠封面：歌词区顶部上移压入封面区的高度比例（0=不叠，0.3=压进封面高度30%）。
-  double _playerLyricOverlap = 0.3;
-  double get playerLyricOverlap => _playerLyricOverlap;
   Future<void> setPlayerCoverScale(double v) async {
     _playerCoverScale = v.clamp(minPlayerScale, maxPlayerScale);
     await _prefs.setDouble(_kPlayerCoverScale, _playerCoverScale);
@@ -225,11 +221,6 @@ class AppSettings extends ChangeNotifier {
   Future<void> setPlayerBottomPad(double v) async {
     _playerBottomPad = v.clamp(-40.0, 120.0);
     await _prefs.setDouble(_kPlayerBottomPad, _playerBottomPad);
-    notifyListeners();
-  }
-  Future<void> setPlayerLyricOverlap(double v) async {
-    _playerLyricOverlap = v.clamp(0.0, 0.6);
-    await _prefs.setDouble(_kPlayerLyricOverlap, _playerLyricOverlap);
     notifyListeners();
   }
   // ---- 播放页高级细分参数：统一 Map 存储（默认 1.0 = 原样） ----
@@ -324,7 +315,6 @@ class AppSettings extends ChangeNotifier {
       _playerLyricLineScale == 1.0 && _playerControlGapScale == 1.0 &&
       _playerIconScale == 1.0 && _playerMarginScale == 1.0 &&
       _playerTopPad == 0.0 && _playerBottomPad == 0.0 &&
-      _playerLyricOverlap == 0.3 &&
       playerAdvKeys.every((k) => playerAdv(k) == 1.0) &&
       playerAreaKeys.every((k) => playerAreaRaw(k) == 1.0);
   Future<void> resetPlayerLayout() async {
@@ -332,7 +322,6 @@ class AppSettings extends ChangeNotifier {
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
     _playerIconScale = 1.0; _playerMarginScale = 1.0;
     _playerTopPad = 0.0; _playerBottomPad = 0.0;
-    _playerLyricOverlap = 0.3;
     await _prefs.remove(_kPlayerCoverScale);
     await _prefs.remove(_kPlayerLyricFontScale);
     await _prefs.remove(_kPlayerLyricLineScale);
@@ -341,7 +330,6 @@ class AppSettings extends ChangeNotifier {
     await _prefs.remove(_kPlayerMarginScale);
     await _prefs.remove(_kPlayerTopPad);
     await _prefs.remove(_kPlayerBottomPad);
-    await _prefs.remove(_kPlayerLyricOverlap);
     for (final k in playerAdvKeys) {
       _playerAdv.remove(k);
       await _prefs.remove(_kPlayerAdvPrefix + k);
@@ -465,7 +453,6 @@ class AppSettings extends ChangeNotifier {
     _playerMarginScale = (_prefs.getDouble(_kPlayerMarginScale) ?? 1.0).clamp(0.0, 3.0);
     _playerTopPad = (_prefs.getDouble(_kPlayerTopPad) ?? 0.0).clamp(-40.0, 120.0);
     _playerBottomPad = (_prefs.getDouble(_kPlayerBottomPad) ?? 0.0).clamp(-40.0, 120.0);
-    _playerLyricOverlap = (_prefs.getDouble(_kPlayerLyricOverlap) ?? 0.3).clamp(0.0, 0.6);
     for (final k in playerAdvKeys) {
       final v = _prefs.getDouble(_kPlayerAdvPrefix + k);
       if (v != null) _playerAdv[k] = v.clamp(0.3, 3.0);

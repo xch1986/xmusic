@@ -15,7 +15,6 @@ import '../widgets.dart';
 import 'mini_player.dart';
 import 'home_shell.dart';
 import 'player_page.dart';
-import 'search_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.settings, required this.controller});
@@ -371,17 +370,6 @@ class _HomePageState extends State<HomePage> {
         toolbarHeight: carLand ? 0 : kToolbarHeight,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
-        actions: carLand
-            ? []
-            : [
-                IconButton(
-                  tooltip: '搜索',
-                  icon: const Icon(Icons.search_rounded),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => SearchPage(settings: widget.settings, controller: widget.controller),
-                  )),
-                ),
-              ],
       ),
       body: MediaQuery.removePadding(
         context: context,
@@ -393,8 +381,6 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            // 顶部大类导航（TV 遥控器：左右跳大类，OK 定位分区进小类）
-            _homeNavBar(),
             // QQ 电台（匿名接口：电台列表 → 点进拉 5 首推荐歌曲）
             Padding(
               key: _secKeys['radio'],
@@ -405,14 +391,6 @@ class _HomePageState extends State<HomePage> {
                     child: Text('QQ电台',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700)),
-                  ),
-                  IconButton(
-                    tooltip: '刷新电台',
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    onPressed: () {
-                      setState(() => _qqRadios =
-                          widget.controller.external.qqRadios());
-                    },
                   ),
                 ],
               ),
@@ -792,18 +770,6 @@ class _HomePageState extends State<HomePage> {
           ],
           ),
       ),
-          // 车机横屏：搜索按钮浮在右上角（AppBar 高度为 0 后）
-          if (carLand)
-            Positioned(
-              top: 8, right: 8,
-              child: IconButton(
-                tooltip: '搜索',
-                icon: const Icon(Icons.search_rounded),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => SearchPage(settings: widget.settings, controller: widget.controller),
-                )),
-              ),
-            ),
           ],
         ),
       ),
@@ -994,67 +960,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
-  }
-
-  /// 顶部大类导航（单行「·」风格，对齐样例图顶栏）：榜单 · QQ歌单 · QQ电台。
-  /// 点谁/遥控选谁即跳对应分区；TV OK 后仍进该分区小类行（_gotoSection 不变）。
-  Widget _homeNavBar() {
-    const items = [
-      ['榜单', 'toplists'],
-      ['QQ歌单', 'playlists'],
-      ['QQ电台', 'radio'],
-    ];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            if (i > 0)
-              const Text(' · ',
-                  style: TextStyle(fontSize: 15, color: Colors.grey)),
-            TvFocus(
-              enabled: widget.settings.tvMode,
-              onSelect: () => _gotoSection(items[i][1]),
-              child: InkWell(
-                onTap: () => _gotoSection(items[i][1]),
-                borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  child: Text(items[i][0],
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// OK 大类：滚到分区；TV 模式把焦点交给该分区小类选择行（进小类）。
-  void _gotoSection(String key) {
-    final ctx = _secKeys[key]?.currentContext;
-    if (ctx != null) {
-      Scrollable.ensureVisible(ctx,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOut,
-          alignment: 0.02);
-    }
-    if (!widget.settings.tvMode) return;
-    final node = key == 'playlists'
-        ? _playlistCatFocus
-        : key == 'radio'
-            ? _radioCatFocus
-            : null;
-    if (node != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) node.requestFocus();
-      });
-    }
   }
 
   /// 榜单卡 v2：大图 + 半透明标题覆盖 + TV 焦点。
