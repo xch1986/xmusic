@@ -42,17 +42,12 @@ class PlayerPage extends StatefulWidget {
 
 enum _OrientMode { auto, landscape, portrait }
 
-class _PlayerPageState extends State<PlayerPage>
-    with SingleTickerProviderStateMixin {
+class _PlayerPageState extends State<PlayerPage> {
   _OrientMode _orient = _OrientMode.auto;
   bool _advExpanded = true; // 播放页布局面板「精细调整」分组默认展开
-  /// 唱片样式封面的旋转控制器（8s/圈，播放时转动）。
-  late final AnimationController _vinylSpin;
   @override
   void initState() {
     super.initState();
-    _vinylSpin =
-        AnimationController(vsync: this, duration: const Duration(seconds: 8));
     PlayerPage._stackCount++;
     // 显式允许所有四个方向（空列表在某些版本不生效/反而锁方向），跟随系统自动旋转
     SystemChrome.setPreferredOrientations([
@@ -65,7 +60,6 @@ class _PlayerPageState extends State<PlayerPage>
 
   @override
   void dispose() {
-    _vinylSpin.dispose();
     PlayerPage._stackCount--;
     // 离开播放页时还原系统方向（允许所有方向），避免把其他页面锁住
     SystemChrome.setPreferredOrientations([
@@ -494,22 +488,17 @@ class _PlayerPageState extends State<PlayerPage>
         size: s,
         requestSize: 600);
     if (style == 'vinyl') {
-      if (playing) {
-        _vinylSpin.repeat();
-      } else {
-        _vinylSpin.stop();
-      }
       return SizedBox(
         width: s * 1.32,
         height: s * 1.08,
         child: Stack(
           alignment: Alignment.centerLeft,
           children: [
-            // 唱片盘：深色圆盘+中心标签，播放时旋转
+            // 唱片盘：深色圆盘+唱纹+反光斜带+定位点，播放时由 _SpinRotator 旋转
             Positioned(
               left: s * 0.38,
-              child: RotationTransition(
-                turns: _vinylSpin,
+              child: _SpinRotator(
+                spinning: playing,
                 child: Container(
                   width: s * 0.96,
                   height: s * 0.96,
@@ -527,17 +516,66 @@ class _PlayerPageState extends State<PlayerPage>
                           offset: const Offset(4, 10))
                     ],
                   ),
-                  child: Center(
-                    child: Container(
-                      width: s * 0.26,
-                      height: s * 0.26,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer,
-                        border: Border.all(color: Colors.black38, width: 2),
-                      ),
+                  child: ClipOval(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // 唱纹：同心细环
+                        for (final f in [0.90, 0.80, 0.70, 0.60, 0.50])
+                          Container(
+                            width: s * 0.96 * f,
+                            height: s * 0.96 * f,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Colors.white12, width: 1),
+                            ),
+                          ),
+                        // 反光斜带：不对称参照物，旋转肉眼可见
+                        Transform.rotate(
+                          angle: -0.6,
+                          child: Container(
+                            width: s * 1.1,
+                            height: s * 0.16,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [
+                                Colors.transparent,
+                                Colors.white.withValues(alpha: 0.12),
+                                Colors.transparent,
+                              ]),
+                            ),
+                          ),
+                        ),
+                        // 边缘定位点：旋转标记
+                        Positioned(
+                          top: s * 0.03,
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white60,
+                            ),
+                          ),
+                        ),
+                        // 中心标签 + 音符（随盘旋转，明显可见）
+                        Container(
+                          width: s * 0.26,
+                          height: s * 0.26,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer,
+                            border: Border.all(color: Colors.black38, width: 2),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.music_note,
+                                size: s * 0.11,
+                                color: Theme.of(context).colorScheme.primary),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
