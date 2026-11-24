@@ -913,6 +913,32 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// 大图卡片统一装饰：图片铺满 + 底部渐变 + 半透明标题覆盖（首页卡片新样式）。
+  /// 自适应字号标题：长名称从 base 每次 -0.5 缩到 minSize，直到 maxLines 行内放下（ellipsis 兜底）。
+  Widget _fitTitle(String text,
+      {required double base,
+      required int maxLines,
+      required TextStyle style,
+      double minSize = 8.5}) {
+    return LayoutBuilder(builder: (context, box) {
+      double fs = base;
+      while (fs > minSize) {
+        final tp = TextPainter(
+          text: TextSpan(text: text, style: style.copyWith(fontSize: fs)),
+          textDirection: TextDirection.ltr,
+          maxLines: maxLines,
+        )..layout(maxWidth: box.maxWidth);
+        final ok = !tp.didExceedMaxLines;
+        tp.dispose();
+        if (ok) break;
+        fs -= 0.5;
+      }
+      return Text(text,
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
+          style: style.copyWith(fontSize: fs));
+    });
+  }
+
   Widget _cardOverlay(Widget img, String name, {String? badge}) {
     return Stack(
       fit: StackFit.expand,
@@ -956,12 +982,12 @@ class _HomePageState extends State<HomePage> {
               color: Colors.black54,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+            child: _fitTitle(
+                name,
+                base: 13 * widget.settings.homeTitleFont,
+                maxLines: 3,
+                style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13 * widget.settings.homeTitleFont,
                     fontWeight: FontWeight.w700,
                     height: 1.2)),
           ),

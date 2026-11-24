@@ -328,17 +328,35 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  /// 布局设置入口齿轮：与路径区同一行右端（设置键和路径区对齐）。
+  /// 布局设置入口齿轮：与左右侧栏图标同大小（手机小图标/车机圆钮），齿轮图标。
   Widget _settingsButton(BuildContext context) {
+    final car = _carUI(context);
+    final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
+    final Color? color = widget.settings.playerLayoutIsDefault
+        ? null
+        : Theme.of(context).colorScheme.primary;
+    final void Function() onTap = () => _showPlayerLayoutPanel(context);
+    if (car) {
+      return TvFocus(
+        enabled: widget.settings.tvMode,
+        onSelect: onTap,
+        child: _MiniCornerButton(
+          icon: Icons.settings,
+          color: color,
+          scale: widget.settings.playerAdv('sideIcon'),
+          onTap: onTap,
+        ),
+      );
+    }
     return TvFocus(
       enabled: widget.settings.tvMode,
-      onSelect: () => _showPlayerLayoutPanel(context),
-      child: _MiniCornerButton(
-        icon: Icons.tune_rounded,
-        color: widget.settings.playerLayoutIsDefault
-            ? null
-            : Theme.of(context).colorScheme.primary,
-        onTap: () => _showPlayerLayoutPanel(context),
+      onSelect: onTap,
+      child: IconButton(
+        iconSize: side,
+        tooltip: '界面设置',
+        icon: Icon(Icons.settings, color: color),
+        onPressed: onTap,
       ),
     );
   }
@@ -791,53 +809,18 @@ class _PlayerPageState extends State<PlayerPage> {
   // 右侧竖排按钮：歌词缩放、收藏、下载、上传NAS、黑名单。放在歌词板块右边，不占歌名行。
   /// 左侧动作栏（手机）：歌词缩放 + 收藏 + 黑名单；车机无需下载按钮，左侧为空。
   Widget _actionSidebarLeft(BuildContext context) {
-    final car = _carUI(context);
-    final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
-    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
-    if (car) return const SizedBox.shrink();
-    final Widget bar = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconTheme(
-          data: IconThemeData(size: side),
-          child: LyricSizeControls(settings: widget.settings, land: _landP),
-        ),
-        SizedBox(height: _gap),
-        IconTheme(
-          data: IconThemeData(size: side),
-          child: _FavoriteButton(controller: widget.controller),
-        ),
-      ],
-    );
-    return Container(
-      width: _landP ? 40 : 44,
-      margin: const EdgeInsets.only(left: 8),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.center,
-        child: bar,
-      ),
-    );
-  }
-
-  Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
+    // [xmusic] 2026-11-24 左列4钮：A-、A+、收藏、不喜欢/黑名单（黑名单在收藏下方），车机/手机统一左4右3
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
     final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
     final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
     if (car) {
-      // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸；Column占满高度spaceEvenly均匀分布
       return Container(
         width: 72,
-        margin: const EdgeInsets.only(right: 8),
+        margin: const EdgeInsets.only(left: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TvFocus(enabled: widget.settings.tvMode, onSelect: () => _showEqPanel(context),
-              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.equalizer_rounded, onTap: () => _showEqPanel(context))),
-            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null,
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
             SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
@@ -878,7 +861,80 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       );
     }
-    // 手机：竖屏小图标 IconTheme 30；横屏用 FittedBox 把整列按钮自适应缩放到歌词区可用高度，避免溢出到进度条
+    final Widget bar = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: LyricSizeControls(settings: widget.settings, land: _landP),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: _FavoriteButton(controller: widget.controller),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final sg = widget.controller.current;
+              final blocked = sg != null && widget.settings.isBlacklisted(sg);
+              return IconButton(
+                iconSize: side,
+                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
+                icon: Icon(Icons.heart_broken_rounded,
+                    color: blocked ? Theme.of(context).colorScheme.error : null),
+                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+    return Container(
+      width: (_landP ? 40 : 44) * widget.settings.playerAdv('sideIcon'),
+      margin: const EdgeInsets.only(left: 8),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: bar,
+      ),
+    );
+  }
+
+  Widget _actionSidebar(BuildContext context) {
+    // [xmusic] 2026-11-24 右列3钮：EQ、下载、NAS（不喜欢/黑名单移左列收藏下方），车机/手机统一左4右3
+    final car = _carUI(context);
+    final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
+    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
+    Future<void> uploadNas() async {
+      showTopToast(context, '正在上传到NAS…');
+      final msg = await widget.controller.uploadCurrentToNas();
+      if (!context.mounted) return;
+      showTopToast(context, msg, duration: const Duration(seconds: 2));
+    }
+    if (car) {
+      return Container(
+        width: 72,
+        margin: const EdgeInsets.only(right: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TvFocus(enabled: widget.settings.tvMode, onSelect: () => _showEqPanel(context),
+              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.equalizer_rounded, onTap: () => _showEqPanel(context))),
+            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            TvFocus(enabled: widget.settings.tvMode, onSelect: () => _downloadMenu(context),
+              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.download_rounded, onTap: () => _downloadMenu(context))),
+            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            TvFocus(enabled: widget.settings.tvMode, onSelect: uploadNas,
+              child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.cloud_download_rounded, onTap: uploadNas)),
+          ],
+        ),
+      );
+    }
     final Widget bar = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -909,30 +965,7 @@ class _PlayerPageState extends State<PlayerPage> {
             iconSize: side,
             tooltip: '下载当前歌曲到NAS',
             icon: Icon(Icons.cloud_download_rounded),
-            onPressed: () async {
-              showTopToast(context, '正在上传到NAS…');
-              final msg = await widget.controller.uploadCurrentToNas();
-              if (!context.mounted) return;
-              showTopToast(context, msg, duration: const Duration(seconds: 2));
-            },
-          ),
-        ),
-        SizedBox(height: _gap),
-        IconTheme(
-          data: IconThemeData(size: side),
-          child: ListenableBuilder(
-            listenable: widget.controller,
-            builder: (context, _) {
-              final sg = widget.controller.current;
-              final blocked = sg != null && widget.settings.isBlacklisted(sg);
-              return IconButton(
-                iconSize: side,
-                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
-                icon: Icon(Icons.heart_broken_rounded,
-                    color: blocked ? Theme.of(context).colorScheme.error : null),
-                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
-              );
-            },
+            onPressed: uploadNas,
           ),
         ),
       ],
