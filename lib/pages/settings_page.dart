@@ -665,6 +665,66 @@ class SettingsPage extends StatelessWidget {
 
           ListTile(
 
+            leading: const Icon(Icons.dashboard_customize_outlined),
+
+            title: const Text('首页卡片大小'),
+
+            subtitle: Text('${(settings.homeCardScale * 100).round()}%'),
+
+            trailing: SizedBox(
+
+              width: 220,
+
+              child: _tvSlider(
+
+                value: settings.homeCardScale,
+
+                min: 0.6,
+
+                max: 1.8,
+
+                divisions: 12,
+
+                onChanged: (v) => settings.setHomeCardScale(v),
+
+              ),
+
+            ),
+
+          ),
+
+          ListTile(
+
+            leading: const Icon(Icons.title_rounded),
+
+            title: const Text('首页标题字号'),
+
+            subtitle: Text('${(settings.homeTitleFont * 100).round()}%'),
+
+            trailing: SizedBox(
+
+              width: 220,
+
+              child: _tvSlider(
+
+                value: settings.homeTitleFont,
+
+                min: 0.6,
+
+                max: 2.0,
+
+                divisions: 14,
+
+                onChanged: (v) => settings.setHomeTitleFont(v),
+
+              ),
+
+            ),
+
+          ),
+
+          ListTile(
+
             leading: const Icon(Icons.volume_up_rounded, color: Colors.amber),
 
             title: const Text('当前行颜色'),

@@ -488,120 +488,8 @@ class _PlayerPageState extends State<PlayerPage> {
         size: s,
         requestSize: 600);
     if (style == 'vinyl') {
-      return SizedBox(
-        width: s * 1.32,
-        height: s * 1.08,
-        child: Stack(
-          alignment: Alignment.centerLeft,
-          children: [
-            // 唱片盘：深色圆盘+唱纹+反光斜带+定位点，播放时由 _SpinRotator 旋转
-            Positioned(
-              left: s * 0.38,
-              child: _SpinRotator(
-                spinning: playing,
-                child: Container(
-                  width: s * 0.96,
-                  height: s * 0.96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const RadialGradient(colors: [
-                      Color(0xFF2A2A2A),
-                      Color(0xFF111111),
-                      Color(0xFF000000)
-                    ]),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black45,
-                          blurRadius: 20,
-                          offset: const Offset(4, 10))
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // 唱纹：同心细环
-                        for (final f in [0.90, 0.80, 0.70, 0.60, 0.50])
-                          Container(
-                            width: s * 0.96 * f,
-                            height: s * 0.96 * f,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: Colors.white12, width: 1),
-                            ),
-                          ),
-                        // 反光斜带：不对称参照物，旋转肉眼可见
-                        Transform.rotate(
-                          angle: -0.6,
-                          child: Container(
-                            width: s * 1.1,
-                            height: s * 0.16,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [
-                                Colors.transparent,
-                                Colors.white.withValues(alpha: 0.12),
-                                Colors.transparent,
-                              ]),
-                            ),
-                          ),
-                        ),
-                        // 边缘定位点：旋转标记
-                        Positioned(
-                          top: s * 0.03,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white60,
-                            ),
-                          ),
-                        ),
-                        // 中心标签 + 音符（随盘旋转，明显可见）
-                        Container(
-                          width: s * 0.26,
-                          height: s * 0.26,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primaryContainer,
-                            border: Border.all(color: Colors.black38, width: 2),
-                          ),
-                          child: Center(
-                            child: Icon(Icons.music_note,
-                                size: s * 0.11,
-                                color: Theme.of(context).colorScheme.primary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // 圆形封面盖在左侧
-            Positioned(
-              left: 0,
-              child: Container(
-                width: s,
-                height: s,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black38,
-                        blurRadius: 26,
-                        offset: const Offset(0, 12))
-                  ],
-                ),
-                child: ClipOval(child: cov),
-              ),
-            ),
-          ],
-        ),
-      );
+      // 封面作为唱片标签嵌入盘面，封面+唱片一体整体旋转（复用 _CdDisc：凹槽+反光+中心孔+卡针）
+      return _CdDisc(cover: cov, size: s * 0.92, spinning: playing);
     }
     if (style == 'iphone') {
       return Container(
@@ -1043,7 +931,9 @@ class _PlayerPageState extends State<PlayerPage> {
   // ---- 横屏（车机）：左=大黑胶+歌曲信息栏；右=五行歌词+下方播放控制栏 ----
   Widget _landscapeView(BuildContext context, Song song) {
     final theme = Theme.of(context);
-    return Row(
+    return Stack(
+      children: [
+        Row(
       children: [
         // 左侧：大黑胶 + 歌曲信息（自适应尺寸，不溢出）
         Expanded(
@@ -1058,7 +948,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   .toDouble();
               return Column(
                 children: [
-                  // 路径区：来源文字 + 设置齿轮同一行右端；pathArea 控制行高
+                  // 路径区：来源文字（齿轮悬浮在屏幕最右，x 轴最大）；pathArea 控制行高
                   ConstrainedBox(
                     constraints: BoxConstraints(
                         minHeight: 36 * widget.settings.playerArea('pathArea')),
@@ -1083,7 +973,6 @@ class _PlayerPageState extends State<PlayerPage> {
                             )
                           else
                             const Spacer(),
-                          _settingsButton(context),
                         ],
                       ),
                     ),
@@ -1189,6 +1078,15 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
             ],
           ),
+        ),
+      ],
+        ),
+        // 横屏：调整齿轮贴屏幕最右（x 轴最大）
+        Positioned(
+          top: math.max(isCarScreen(context) ? 40 : 0,
+              MediaQuery.viewPaddingOf(context).top + 6),
+          right: 0,
+          child: _settingsButton(context),
         ),
       ],
     );

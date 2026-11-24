@@ -51,6 +51,15 @@ class _HomePageState extends State<HomePage> {
     {'id': 64, 'name': 'KTV热歌'},
   ];
   late Future<List<Song>> _localRec;
+  /// 首页大类分区定位（TV 分层导航：OK 大类 → 滚动定位）
+  final Map<String, GlobalKey> _secKeys = {
+    'toplists': GlobalKey(),
+    'playlists': GlobalKey(),
+    'radio': GlobalKey(),
+  };
+  /// 小类选择行焦点节点（OK 大类后交焦点 = 进小类）
+  final FocusNode _playlistCatFocus = FocusNode();
+  final FocusNode _radioCatFocus = FocusNode();
 
   SubsonicClient? get _client => widget.controller.client;
 
@@ -170,6 +179,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _playlistCatFocus.dispose();
+    _radioCatFocus.dispose();
     widget.settings.removeListener(_onSettingsChanged);
     super.dispose();
   }
@@ -382,8 +393,11 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
+            // 顶部大类导航（TV 遥控器：左右跳大类，OK 定位分区进小类）
+            _homeNavBar(),
             // QQ 电台（匿名接口：电台列表 → 点进拉 5 首推荐歌曲）
             Padding(
+              key: _secKeys['radio'],
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
@@ -447,34 +461,66 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            value: gi,
-                            borderRadius: BorderRadius.circular(10),
-                            isDense: true,
-                            icon: const Icon(Icons.arrow_drop_down_rounded),
-                            items: [
-                              for (var i = 0; i < groups.length; i++)
-                                DropdownMenuItem<int>(
-                                  value: i,
-                                  child: Text(
-                                      ((groups[i]['groupName'] as String?) ??
-                                          '电台'),
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600)),
+                      child: widget.settings.tvMode
+                          // TV：小类改横向 chips（OK 大类后焦点落这里 = 进小类）
+                          ? Align(
+                              alignment: Alignment.centerLeft,
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  for (var i = 0; i < groups.length; i++)
+                                    TvFocus(
+                                      enabled: true,
+                                      focusNode: i == 0 ? _radioCatFocus : null,
+                                      onSelect: () {
+                                        if (i == gi) return;
+                                        setState(() => _qqRadioGroupIdx = i);
+                                        _saveRadioGroup(i);
+                                      },
+                                      child: ChoiceChip(
+                                        label: Text(
+                                            (groups[i]['groupName'] as String?) ??
+                                                '电台'),
+                                        selected: i == gi,
+                                        onSelected: (_) {
+                                          if (i == gi) return;
+                                          setState(() => _qqRadioGroupIdx = i);
+                                          _saveRadioGroup(i);
+                                        },
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            )
+                          : Align(
+                              alignment: Alignment.centerLeft,
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: gi,
+                                  borderRadius: BorderRadius.circular(10),
+                                  isDense: true,
+                                  icon: const Icon(Icons.arrow_drop_down_rounded),
+                                  items: [
+                                    for (var i = 0; i < groups.length; i++)
+                                      DropdownMenuItem<int>(
+                                        value: i,
+                                        child: Text(
+                                            ((groups[i]['groupName'] as String?) ??
+                                                '电台'),
+                                            style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v == null || v == gi) return;
+                                    setState(() => _qqRadioGroupIdx = v);
+                                    _saveRadioGroup(v);
+                                  },
                                 ),
-                            ],
-                            onChanged: (v) {
-                              if (v == null || v == gi) return;
-                              setState(() => _qqRadioGroupIdx = v);
-                              _saveRadioGroup(v);
-                            },
-                          ),
-                        ),
-                      ),
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 8),
                     GridView(
@@ -488,13 +534,13 @@ class _HomePageState extends State<HomePage> {
                               crossAxisSpacing: 10,
                               childAspectRatio: 0.86)
                           : SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: car ? 176 : 118,
+                              maxCrossAxisExtent: (car ? 176 : 118) * widget.settings.homeCardScale,
                               mainAxisSpacing: car ? 12 : 10,
                               crossAxisSpacing: 10,
                               childAspectRatio: car ? 0.7 : 0.72),
                       children: [
                         for (final r in radios)
-                          _radioCard(
+                          _radioCardV2(
                             (r['name'] as String?) ?? '',
                             int.tryParse(r['id'].toString()) ?? 0,
                             r['coverUrl'] as String?,
@@ -508,6 +554,7 @@ class _HomePageState extends State<HomePage> {
 
             // QQ 精选歌单（用户强烈要求；硬编码 dissid，点进才拉歌曲）
             Padding(
+              key: _secKeys['playlists'],
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
@@ -522,35 +569,77 @@ class _HomePageState extends State<HomePage> {
             // QQ歌单分类切换（歌单广场）：下拉菜单选择分类
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _qqCategoryId,
-                    borderRadius: BorderRadius.circular(10),
-                    isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down_rounded),
-                    items: [
-                      for (final c in _qqCategories)
-                        DropdownMenuItem<int>(
-                          value: c['id'] as int,
-                          child: Text('${c['name']}',
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600)),
+              child: widget.settings.tvMode
+                  // TV：小类改横向 chips（OK 大类后焦点落这里 = 进小类）
+                  ? Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          for (final c in _qqCategories)
+                            TvFocus(
+                              enabled: true,
+                              focusNode: c['id'] == _qqCategories.first['id']
+                                  ? _playlistCatFocus
+                                  : null,
+                              onSelect: () {
+                                final v = c['id'] as int;
+                                if (v == _qqCategoryId) return;
+                                setState(() {
+                                  _qqCategoryId = v;
+                                  _qqPlaylists = widget.controller.external
+                                      .qqPlaylists(categoryId: v);
+                                });
+                                _saveCategory(v);
+                              },
+                              child: ChoiceChip(
+                                label: Text('${c['name']}'),
+                                selected: c['id'] == _qqCategoryId,
+                                onSelected: (_) {
+                                  final v = c['id'] as int;
+                                  if (v == _qqCategoryId) return;
+                                  setState(() {
+                                    _qqCategoryId = v;
+                                    _qqPlaylists = widget.controller.external
+                                        .qqPlaylists(categoryId: v);
+                                  });
+                                  _saveCategory(v);
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  : Align(
+                      alignment: Alignment.centerLeft,
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _qqCategoryId,
+                          borderRadius: BorderRadius.circular(10),
+                          isDense: true,
+                          icon: const Icon(Icons.arrow_drop_down_rounded),
+                          items: [
+                            for (final c in _qqCategories)
+                              DropdownMenuItem<int>(
+                                value: c['id'] as int,
+                                child: Text('${c['name']}',
+                                    style: const TextStyle(
+                                        fontSize: 14, fontWeight: FontWeight.w600)),
+                              ),
+                          ],
+                          onChanged: (v) {
+                            if (v == null || v == _qqCategoryId) return;
+                            setState(() {
+                              _qqCategoryId = v;
+                              _qqPlaylists = widget.controller.external
+                                  .qqPlaylists(categoryId: v);
+                            });
+                            _saveCategory(v);
+                          },
                         ),
-                    ],
-                    onChanged: (v) {
-                      if (v == null || v == _qqCategoryId) return;
-                      setState(() {
-                        _qqCategoryId = v;
-                        _qqPlaylists = widget.controller.external
-                            .qqPlaylists(categoryId: v);
-                      });
-                      _saveCategory(v);
-                    },
-                  ),
-                ),
-              ),
+                      ),
+                    ),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _qqPlaylists,
@@ -599,8 +688,8 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   gridDelegate: _carP
                       ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
-                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
-                  children: cards.map((p) => _qqPlaylistCard(
+                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: (isCarScreen(context) ? 176 : 118) * widget.settings.homeCardScale, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
+                  children: cards.map((p) => _qqPlaylistCardV2(
                     p['name'] as String,
                     p['dissid'] as String,
                     p['coverImgUrl'] as String?,
@@ -611,6 +700,7 @@ class _HomePageState extends State<HomePage> {
 
             // 排行榜网格（QQ音乐榜 → lx精选 → 网易云榜，无总标题）
             FutureBuilder<List<Map<String, dynamic>>>(
+              key: _secKeys['toplists'],
               future: _toplists,
               builder: (context, snap) {
                 if (!snap.hasData || snap.data!.isEmpty) {
@@ -623,7 +713,7 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     gridDelegate: carP
                         ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
-                        : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.8 : 1.1),
+                        : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: (car ? 176 : 118) * widget.settings.homeCardScale, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.8 : 1.1),
                     children: List.generate(carP ? 9 : 12, (i) {
                       const phs = [
                         [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
@@ -660,8 +750,8 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     gridDelegate: carP
                         ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
-                        : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.8 : 1.1),
-                    children: items.map((t) => _toplistCard(
+                        : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: (car ? 176 : 118) * widget.settings.homeCardScale, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.8 : 1.1),
+                    children: items.map((t) => _toplistCardV2(
                       t['name'] as String,
                       t['id'] as String,
                       t['coverImgUrl'] as String?,
@@ -691,8 +781,8 @@ class _HomePageState extends State<HomePage> {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: carP
                             ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
-                            : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.7 : 0.72),
-                        children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
+                            : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: (car ? 176 : 118) * widget.settings.homeCardScale, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.7 : 0.72),
+                        children: ExternalApi.lxPresets.map((p) => _lxCardV2(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
                       ),
                     ),
                   ],
@@ -816,6 +906,303 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 大图卡片统一装饰：图片铺满 + 底部渐变 + 半透明标题覆盖（首页卡片新样式）。
+  Widget _cardOverlay(Widget img, String name, {String? badge}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        img,
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+              ),
+            ),
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            left: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(badge,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
+        Positioned(
+          left: 6,
+          right: 6,
+          bottom: 6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13 * widget.settings.homeTitleFont,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 顶部大类导航（TV 遥控器：左右跳大类，OK 定位分区并进小类）。
+  Widget _homeNavBar() {
+    const items = [
+      ['榜单', 'toplists'],
+      ['QQ歌单', 'playlists'],
+      ['QQ电台', 'radio'],
+    ];
+    return SizedBox(
+      height: 46,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+        children: [
+          for (final e in items)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: TvFocus(
+                enabled: widget.settings.tvMode,
+                onSelect: () => _gotoSection(e[1]),
+                child: ActionChip(
+                  label: Text(e[0]),
+                  onPressed: () => _gotoSection(e[1]),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// OK 大类：滚到分区；TV 模式把焦点交给该分区小类选择行（进小类）。
+  void _gotoSection(String key) {
+    final ctx = _secKeys[key]?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+          alignment: 0.02);
+    }
+    if (!widget.settings.tvMode) return;
+    final node = key == 'playlists'
+        ? _playlistCatFocus
+        : key == 'radio'
+            ? _radioCatFocus
+            : null;
+    if (node != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) node.requestFocus();
+      });
+    }
+  }
+
+  /// 榜单卡 v2：大图 + 半透明标题覆盖 + TV 焦点。
+  Widget _toplistCardV2(String name, String id, String? coverUrl,
+      {String source = ''}) {
+    final theme = Theme.of(context);
+    final srcLabel = source == 'qq' ? 'QQ音乐' : '网易云';
+    void open() {
+      if (source == 'qq') {
+        _openQqToplist(name, id, coverUrl);
+      } else {
+        _openPlaylist(name, id, coverUrl: coverUrl);
+      }
+    }
+
+    return TvFocus(
+      enabled: widget.settings.tvMode,
+      onSelect: open,
+      child: Material(
+        borderRadius: BorderRadius.circular(12),
+        elevation: 1,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: open,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _cardOverlay(
+              (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 256,
+                      memCacheHeight: 256,
+                      httpHeaders: _imgHeaders(coverUrl!),
+                      placeholder: (_, __) =>
+                          Container(color: theme.colorScheme.surfaceContainerHighest),
+                      errorWidget: (_, __, ___) =>
+                          Container(color: theme.colorScheme.surfaceContainerHighest),
+                    )
+                  : Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.queue_music_rounded,
+                          color: Colors.white54, size: 34),
+                    ),
+              name,
+              badge: srcLabel,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// QQ 电台卡 v2：大图 + 半透明标题覆盖 + TV 焦点。
+  Widget _radioCardV2(String name, int id, String? coverUrl) {
+    final theme = Theme.of(context);
+    return TvFocus(
+      enabled: widget.settings.tvMode,
+      onSelect: () => id > 0 ? _openQqRadio(name, id, coverUrl: coverUrl) : null,
+      child: Material(
+        borderRadius: BorderRadius.circular(12),
+        elevation: 1,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => id > 0 ? _openQqRadio(name, id, coverUrl: coverUrl) : null,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _cardOverlay(
+              (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 256,
+                      memCacheHeight: 256,
+                      httpHeaders: const {
+                        'User-Agent': 'Mozilla/5.0',
+                        'Referer': 'https://y.qq.com/'
+                      },
+                      placeholder: (_, __) =>
+                          Container(color: theme.colorScheme.surfaceContainerHighest),
+                      errorWidget: (_, __, ___) =>
+                          Container(color: theme.colorScheme.surfaceContainerHighest),
+                    )
+                  : Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Icon(Icons.radio_rounded,
+                          color: theme.colorScheme.onSurfaceVariant),
+                    ),
+              name,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// QQ 歌单卡 v2：大图 + 半透明标题覆盖 + TV 焦点。
+  Widget _qqPlaylistCardV2(String name, String dissid, String? coverUrl) {
+    final theme = Theme.of(context);
+    return TvFocus(
+      enabled: widget.settings.tvMode,
+      onSelect: () => _openQqPlaylist(name, dissid, coverUrl),
+      child: Material(
+        borderRadius: BorderRadius.circular(12),
+        elevation: 1,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openQqPlaylist(name, dissid, coverUrl),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _cardOverlay(
+              (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 256,
+                      memCacheHeight: 256,
+                      httpHeaders: const {
+                        'User-Agent': 'Mozilla/5.0',
+                        'Referer': 'https://y.qq.com/'
+                      },
+                      placeholder: (_, __) =>
+                          Container(color: theme.colorScheme.surfaceContainerHighest),
+                      errorWidget: (_, __, ___) =>
+                          Container(color: theme.colorScheme.surfaceContainerHighest),
+                    )
+                  : Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Icon(Icons.queue_music_rounded,
+                          color: theme.colorScheme.onSurfaceVariant),
+                    ),
+              name,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// LX 精选卡 v2：大图 + 半透明标题覆盖 + TV 焦点。
+  Widget _lxCardV2(String name, String id, String? coverUrl) {
+    final theme = Theme.of(context);
+    Widget fallback() => Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+            ),
+          ),
+          child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
+        );
+    return TvFocus(
+      enabled: widget.settings.tvMode,
+      onSelect: () => _openLxPlaylist(name, id),
+      child: Material(
+        borderRadius: BorderRadius.circular(12),
+        elevation: 1,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openLxPlaylist(name, id),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _cardOverlay(
+              (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 256,
+                      memCacheHeight: 256,
+                      httpHeaders: const {
+                        'User-Agent': 'Mozilla/5.0',
+                        'Referer': 'https://music.163.com/'
+                      },
+                      placeholder: (_, __) => fallback(),
+                      errorWidget: (_, __, ___) => fallback(),
+                    )
+                  : fallback(),
+              name,
+            ),
           ),
         ),
       ),

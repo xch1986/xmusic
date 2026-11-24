@@ -444,24 +444,35 @@ class TvFocus extends StatefulWidget {
     this.enabled = true,
     this.onSelect,
     this.autofocus = false,
+    this.focusNode,
   });
 
   final Widget child;
   final bool enabled;
   final VoidCallback? onSelect;
   final bool autofocus;
+  /// 外部焦点节点（可选）：用于把焦点交给指定控件（如 OK 大类进小类）。
+  /// 传入时由调用方创建与 dispose。
+  final FocusNode? focusNode;
 
   @override
   State<TvFocus> createState() => _TvFocusState();
 }
 
 class _TvFocusState extends State<TvFocus> {
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode;
+  bool _ownNode = true;
   bool _focused = false;
 
   @override
   void initState() {
     super.initState();
+    if (widget.focusNode != null) {
+      _focusNode = widget.focusNode!;
+      _ownNode = false;
+    } else {
+      _focusNode = FocusNode();
+    }
     _focusNode.addListener(_onFocusChanged);
   }
 
@@ -483,7 +494,7 @@ class _TvFocusState extends State<TvFocus> {
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
-    _focusNode.dispose();
+    if (_ownNode) _focusNode.dispose();
     super.dispose();
   }
 

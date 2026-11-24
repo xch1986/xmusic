@@ -292,6 +292,23 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---- 首页 UI：卡片图片大小 / 标题字号 ----
+  double _homeCardScale = 1.0;
+  double _homeTitleFont = 1.0;
+  double get homeCardScale => _homeCardScale;
+  double get homeTitleFont => _homeTitleFont;
+  Future<void> setHomeCardScale(double v) async {
+    _homeCardScale = v.clamp(0.6, 1.8);
+    await _prefs.setDouble('home_card_scale', _homeCardScale);
+    notifyListeners();
+  }
+
+  Future<void> setHomeTitleFont(double v) async {
+    _homeTitleFont = v.clamp(0.6, 2.0);
+    await _prefs.setDouble('home_title_font', _homeTitleFont);
+    notifyListeners();
+  }
+
   /// 播放页布局是否仍全部为中性默认（用于面板显示"恢复默认"状态）。
   bool get playerLayoutIsDefault =>
       _playerCoverScale == 1.0 && _playerLyricFontScale == 1.0 &&
@@ -454,6 +471,8 @@ class AppSettings extends ChangeNotifier {
       _eqCustomGains.add(0.0);
     }
     _coverStyle = _prefs.getString(_kCoverStyle) ?? 'classic';
+    _homeCardScale = _prefs.getDouble('home_card_scale') ?? 1.0;
+    _homeTitleFont = _prefs.getDouble('home_title_font') ?? 1.0;
     unawaited(_applyEq());
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';

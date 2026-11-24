@@ -17,14 +17,14 @@ final AudioPlayer sharedPlayer = AudioPlayer(
 /// EQ 预设：5 个标准频点 [60, 230, 910, 3600, 14000] Hz 的增益曲线（dB）。
 const Map<String, List<double>> eqPresets = {
   'flat':      [0, 0, 0, 0, 0],
-  'bass':      [9, 6, 1, -1, -1],
-  'vocal':     [-2, 0, 4, 4, 1],
-  'stereo':    [0, 1, 1, 3, 5],
-  'pop':       [-1, 2, 4, 2, -1],
-  'rock':      [5, 2, -1, 2, 5],
-  'classical': [3, 2, 0, 1, 3],
-  'jazz':      [3, 1, 1, 2, 3],
-  'electronic': [6, 4, 0, 2, 5],
+  'bass':      [10, 5, 1, -1, -2],
+  'vocal':     [-3, -1, 4, 5, 2],
+  'stereo':    [1, 0, 1, 4, 6],
+  'pop':       [-1, 3, 4, 3, -1],
+  'rock':      [6, 2, -2, 2, 5],
+  'classical': [4, 2, -1, 1, 3],
+  'jazz':      [4, 1, 0, 2, 4],
+  'electronic': [7, 3, -1, 2, 6],
 };
 
 const List<double> eqBandFreqs = [60, 230, 910, 3600, 14000];
