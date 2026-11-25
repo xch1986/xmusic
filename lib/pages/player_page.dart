@@ -808,8 +808,9 @@ class _PlayerPageState extends State<PlayerPage> {
     final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
     final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
     if (car) {
-      return Container(
-        width: 72,
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Container(
         margin: const EdgeInsets.only(left: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -852,6 +853,7 @@ class _PlayerPageState extends State<PlayerPage> {
             ),
           ],
         ),
+      ),
       );
     }
     final Widget bar = Column(
@@ -910,8 +912,9 @@ class _PlayerPageState extends State<PlayerPage> {
       showTopToast(context, msg, duration: const Duration(seconds: 2));
     }
     if (car) {
-      return Container(
-        width: 72,
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Container(
         margin: const EdgeInsets.only(right: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -930,6 +933,7 @@ class _PlayerPageState extends State<PlayerPage> {
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.cloud_download_rounded, onTap: uploadNas)),
           ],
         ),
+      ),
       );
     }
     final Widget bar = Column(
@@ -1062,8 +1066,8 @@ class _PlayerPageState extends State<PlayerPage> {
                   child: ClipRect(
                     child: Padding(
                       padding: EdgeInsets.only(
-                        top: car ? 72 : 4,
-                        bottom: car ? 60 : 4,
+                        top: car ? 8 : 4,
+                        bottom: car ? 8 : 4,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
