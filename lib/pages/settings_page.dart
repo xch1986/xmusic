@@ -468,6 +468,282 @@ class SettingsPage extends StatelessWidget {
 
 
   /// [xmusic] TV 模式用 TvSlider（左右键调值、上下键交还焦点导航），触屏仍用系统 Slider。
+  /// 显示调整子面板：滑块整合于此，点进才能调（防遥控器方向键卡在滑块上）。
+  /// 面板半透明（surface 88%），透出底下设置页，方便查看调整效果。
+  void _showDisplayAdjustSheet(BuildContext context) {
+
+    showModalBottomSheet(
+
+      context: context,
+
+      isScrollControlled: true,
+
+      backgroundColor: Colors.transparent,
+
+      builder: (ctx) => AnimatedBuilder(
+
+        animation: settings,
+
+        builder: (ctx, _) => Container(
+
+          constraints: BoxConstraints(
+
+              maxHeight: MediaQuery.sizeOf(ctx).height * 0.72),
+
+          decoration: BoxDecoration(
+
+            color: Theme.of(ctx).colorScheme.surface.withOpacity(0.88),
+
+            borderRadius:
+
+                const BorderRadius.vertical(top: Radius.circular(16)),
+
+          ),
+
+          child: ListView(
+
+            shrinkWrap: true,
+
+            padding: const EdgeInsets.symmetric(vertical: 8),
+
+            children: [
+
+              const Padding(
+
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 4),
+
+                child: Text('显示调整（点进调整，防遥控器卡住）',
+
+                    style: TextStyle(
+
+                        fontSize: 15, fontWeight: FontWeight.w700)),
+
+              ),
+
+          ListTile(
+
+            leading: const Icon(Icons.dashboard_customize_outlined),
+
+            title: const Text('首页卡片大小'),
+
+            subtitle: Text('${(settings.homeCardScale * 100).round()}%'),
+
+            trailing: SizedBox(
+
+              width: 220,
+
+              child: _tvSlider(
+
+                value: settings.homeCardScale,
+
+                min: 0.6,
+
+                max: 1.8,
+
+                divisions: 12,
+
+                onChanged: (v) => settings.setHomeCardScale(v),
+
+              ),
+
+            ),
+
+          ),
+          ListTile(
+
+            leading: const Icon(Icons.title_rounded),
+
+            title: const Text('首页标题字号'),
+
+            subtitle: Text('${(settings.homeTitleFont * 100).round()}%'),
+
+            trailing: SizedBox(
+
+              width: 220,
+
+              child: _tvSlider(
+
+                value: settings.homeTitleFont,
+
+                min: 0.6,
+
+                max: 2.0,
+
+                divisions: 14,
+
+                onChanged: (v) => settings.setHomeTitleFont(v),
+
+              ),
+
+            ),
+
+          ),
+          // ===== 车机顶部避让 =====
+
+          ListTile(
+
+            leading: const Icon(Icons.vertical_align_top),
+
+            title: const Text('车机顶部避让'),
+
+            subtitle: Text('当前 ${settings.carTopInset.round()} dp · 默认 0 不留白；若顶部内容被迪友状态条盖住再调大'),
+
+          ),
+
+          Padding(
+
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+
+            child: Row(
+
+              children: [
+
+                const Icon(Icons.straighten_rounded, size: 20),
+
+                Expanded(
+
+                  child: _tvSlider(
+
+                    min: AppSettings.minCarTopInset,
+
+                    max: AppSettings.maxCarTopInset,
+
+                    divisions: 12,
+
+                    value: settings.carTopInset,
+
+                    label: '${settings.carTopInset.round()} dp',
+
+                    onChanged: (v) => settings.setCarTopInset(v.roundToDouble()),
+
+                  ),
+
+                ),
+
+                Text('${settings.carTopInset.round()} dp',
+
+                    style: Theme.of(context).textTheme.bodySmall),
+
+              ],
+
+            ),
+
+          ),
+          ListTile(
+
+            leading: const Icon(Icons.vertical_align_bottom_rounded),
+
+            title: const Text('车机底部避让'),
+
+            subtitle: Text('当前 ${settings.carBottomInset.round()} dp · 用于避开迪友桌面底部导航条'),
+
+          ),
+
+          Padding(
+
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+
+            child: Row(
+
+              children: [
+
+                const Icon(Icons.straighten_rounded, size: 20),
+
+                Expanded(
+
+                  child: _tvSlider(
+
+                    min: AppSettings.minCarBottomInset,
+
+                    max: AppSettings.maxCarBottomInset,
+
+                    divisions: 15,
+
+                    value: settings.carBottomInset,
+
+                    label: '${settings.carBottomInset.round()} dp',
+
+                    onChanged: (v) => settings.setCarBottomInset(v.roundToDouble()),
+
+                  ),
+
+                ),
+
+                Text('${settings.carBottomInset.round()} dp',
+
+                    style: Theme.of(context).textTheme.bodySmall),
+
+              ],
+
+            ),
+
+          ),
+          // ===== 歌曲列表显示大小 =====
+
+          ListTile(
+
+            leading: const Icon(Icons.format_size_rounded),
+
+            title: const Text('歌曲列表显示大小'),
+
+            subtitle: Text('当前 ${(settings.listTextScale * 100).round()}% · 排行榜/歌单一屏显示的歌曲数'),
+
+          ),
+
+          Padding(
+
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+
+            child: Row(
+
+              children: [
+
+                const Icon(Icons.text_fields_rounded, size: 20),
+
+                Expanded(
+
+                  child: _tvSlider(
+
+                    min: AppSettings.minListTextScale,
+
+                    max: AppSettings.maxListTextScale,
+
+                    divisions: 12,
+
+                    value: settings.listTextScale,
+
+                    label: '${(settings.listTextScale * 100).round()}%',
+
+                    onChanged: (v) =>
+
+                        settings.setListTextScale((v * 20).roundToDouble() / 20),
+
+                  ),
+
+                ),
+
+                Text('${(settings.listTextScale * 100).round()}%',
+
+                    style: Theme.of(context).textTheme.bodySmall),
+
+              ],
+
+            ),
+
+          ),
+
+            ],
+
+          ),
+
+        ),
+
+      ),
+
+    );
+
+  }
+
   Widget _tvSlider({
     required double value,
     required double min,
@@ -665,61 +941,15 @@ class SettingsPage extends StatelessWidget {
 
           ListTile(
 
-            leading: const Icon(Icons.dashboard_customize_outlined),
+            leading: const Icon(Icons.tune_rounded),
 
-            title: const Text('首页卡片大小'),
+            title: const Text('显示调整'),
 
-            subtitle: Text('${(settings.homeCardScale * 100).round()}%'),
+            subtitle: const Text('卡片/字号/避让等滑块收在这里，点进调整'),
 
-            trailing: SizedBox(
+            trailing: const Icon(Icons.chevron_right_rounded),
 
-              width: 220,
-
-              child: _tvSlider(
-
-                value: settings.homeCardScale,
-
-                min: 0.6,
-
-                max: 1.8,
-
-                divisions: 12,
-
-                onChanged: (v) => settings.setHomeCardScale(v),
-
-              ),
-
-            ),
-
-          ),
-
-          ListTile(
-
-            leading: const Icon(Icons.title_rounded),
-
-            title: const Text('首页标题字号'),
-
-            subtitle: Text('${(settings.homeTitleFont * 100).round()}%'),
-
-            trailing: SizedBox(
-
-              width: 220,
-
-              child: _tvSlider(
-
-                value: settings.homeTitleFont,
-
-                min: 0.6,
-
-                max: 2.0,
-
-                divisions: 14,
-
-                onChanged: (v) => settings.setHomeTitleFont(v),
-
-              ),
-
-            ),
+            onTap: () => _showDisplayAdjustSheet(context),
 
           ),
 
@@ -942,162 +1172,6 @@ class SettingsPage extends StatelessWidget {
           ],
 
           // ===== 车机适配 =====
-
-          // ===== 车机顶部避让 =====
-
-          ListTile(
-
-            leading: const Icon(Icons.vertical_align_top),
-
-            title: const Text('车机顶部避让'),
-
-            subtitle: Text('当前 ${settings.carTopInset.round()} dp · 默认 0 不留白；若顶部内容被迪友状态条盖住再调大'),
-
-          ),
-
-          Padding(
-
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-
-            child: Row(
-
-              children: [
-
-                const Icon(Icons.straighten_rounded, size: 20),
-
-                Expanded(
-
-                  child: _tvSlider(
-
-                    min: AppSettings.minCarTopInset,
-
-                    max: AppSettings.maxCarTopInset,
-
-                    divisions: 12,
-
-                    value: settings.carTopInset,
-
-                    label: '${settings.carTopInset.round()} dp',
-
-                    onChanged: (v) => settings.setCarTopInset(v.roundToDouble()),
-
-                  ),
-
-                ),
-
-                Text('${settings.carTopInset.round()} dp',
-
-                    style: Theme.of(context).textTheme.bodySmall),
-
-              ],
-
-            ),
-
-          ),
-
-          ListTile(
-
-            leading: const Icon(Icons.vertical_align_bottom_rounded),
-
-            title: const Text('车机底部避让'),
-
-            subtitle: Text('当前 ${settings.carBottomInset.round()} dp · 用于避开迪友桌面底部导航条'),
-
-          ),
-
-          Padding(
-
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-
-            child: Row(
-
-              children: [
-
-                const Icon(Icons.straighten_rounded, size: 20),
-
-                Expanded(
-
-                  child: _tvSlider(
-
-                    min: AppSettings.minCarBottomInset,
-
-                    max: AppSettings.maxCarBottomInset,
-
-                    divisions: 15,
-
-                    value: settings.carBottomInset,
-
-                    label: '${settings.carBottomInset.round()} dp',
-
-                    onChanged: (v) => settings.setCarBottomInset(v.roundToDouble()),
-
-                  ),
-
-                ),
-
-                Text('${settings.carBottomInset.round()} dp',
-
-                    style: Theme.of(context).textTheme.bodySmall),
-
-              ],
-
-            ),
-
-          ),
-
-          // ===== 歌曲列表显示大小 =====
-
-          ListTile(
-
-            leading: const Icon(Icons.format_size_rounded),
-
-            title: const Text('歌曲列表显示大小'),
-
-            subtitle: Text('当前 ${(settings.listTextScale * 100).round()}% · 排行榜/歌单一屏显示的歌曲数'),
-
-          ),
-
-          Padding(
-
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-
-            child: Row(
-
-              children: [
-
-                const Icon(Icons.text_fields_rounded, size: 20),
-
-                Expanded(
-
-                  child: _tvSlider(
-
-                    min: AppSettings.minListTextScale,
-
-                    max: AppSettings.maxListTextScale,
-
-                    divisions: 12,
-
-                    value: settings.listTextScale,
-
-                    label: '${(settings.listTextScale * 100).round()}%',
-
-                    onChanged: (v) =>
-
-                        settings.setListTextScale((v * 20).roundToDouble() / 20),
-
-                  ),
-
-                ),
-
-                Text('${(settings.listTextScale * 100).round()}%',
-
-                    style: Theme.of(context).textTheme.bodySmall),
-
-              ],
-
-            ),
-
-          ),
 
           const Divider(),
 

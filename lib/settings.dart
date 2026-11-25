@@ -59,6 +59,8 @@ class AppSettings extends ChangeNotifier {
   static const _kPlayerMarginScale = 'player_margin_scale';
   static const _kPlayerTopPad = 'player_top_pad';
   static const _kPlayerBottomPad = 'player_bottom_pad';
+  static const _kPlayerTopPadLand = 'player_top_pad_land';
+  static const _kPlayerBottomPadLand = 'player_bottom_pad_land';
   // ---- 播放页高级细分参数（统一倍率 key，默认 1.0 = 原样） ----
   static const playerAdvKeys = <String>[
     'titleFont',        // 歌名字号
@@ -83,6 +85,20 @@ class AppSettings extends ChangeNotifier {
     'titleArea',    // 歌名区高度占比
     'controlArea',  // 控制栏区高度占比
   ];
+  // ---- 播放页横屏双轴占比（x: 封面/歌词宽度；y: 路径/中部/歌名/控制栏） ----
+  static const playerLandXKeys = <String>[
+    'landXCover',   // 封面宽度占比
+    'landXLyric',   // 歌词宽度占比（含左右侧栏）
+  ];
+  static const playerLandYKeys = <String>[
+    'landYPath',    // 路径行高度占比
+    'landYMid',     // 中部高度占比（封面+歌词统一调整）
+    'landYTitle',   // 歌名区高度占比
+    'landYControl', // 控制栏+进度条高度占比
+  ];
+  /// 全部区域 key（竖屏 5 + 横屏 x2 + 横屏 y4），load/reset 用。
+  static List<String> get playerAllAreaKeys =>
+      <String>[...playerAreaKeys, ...playerLandXKeys, ...playerLandYKeys];
   static const _kPlayerAreaPrefix = 'player_area_';
   // ---- EQ / 封面样式 ----
   static const _kEqPreset = 'eq_preset';
@@ -183,6 +199,10 @@ class AppSettings extends ChangeNotifier {
   double get playerTopPad => _playerTopPad;
   double _playerBottomPad = 0.0;
   double get playerBottomPad => _playerBottomPad;
+  double _playerTopPadLand = 0.0;
+  double get playerTopPadLand => _playerTopPadLand;
+  double _playerBottomPadLand = 0.0;
+  double get playerBottomPadLand => _playerBottomPadLand;
   Future<void> setPlayerCoverScale(double v) async {
     _playerCoverScale = v.clamp(minPlayerScale, maxPlayerScale);
     await _prefs.setDouble(_kPlayerCoverScale, _playerCoverScale);
@@ -223,6 +243,16 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setDouble(_kPlayerBottomPad, _playerBottomPad);
     notifyListeners();
   }
+  Future<void> setPlayerTopPadLand(double v) async {
+    _playerTopPadLand = v.clamp(-40.0, 120.0);
+    await _prefs.setDouble(_kPlayerTopPadLand, _playerTopPadLand);
+    notifyListeners();
+  }
+  Future<void> setPlayerBottomPadLand(double v) async {
+    _playerBottomPadLand = v.clamp(-40.0, 120.0);
+    await _prefs.setDouble(_kPlayerBottomPadLand, _playerBottomPadLand);
+    notifyListeners();
+  }
   // ---- 播放页高级细分参数：统一 Map 存储（默认 1.0 = 原样） ----
   final Map<String, double> _playerAdv = {};
   double playerAdv(String key) => _playerAdv[key] ?? 1.0;
@@ -255,6 +285,28 @@ class AppSettings extends ChangeNotifier {
       if (k != key) others += (_playerArea[k] ?? 1.0);
     }
     if (others <= 0) others = playerAreaKeys.length - 1.0;
+    final val = (p * others / (1 - p)).clamp(0.05, 30.0);
+    _playerArea[key] = val;
+    await _prefs.setDouble(_kPlayerAreaPrefix + key, val);
+    notifyListeners();
+  }
+  /// 分组内百分比（组内权重归一，总和恒 100%）。横屏 x/y 轴用。
+  double groupPct(List<String> keys, String key) {
+    double t = 0;
+    for (final k in keys) {
+      t += (_playerArea[k] ?? 1.0);
+    }
+    if (t <= 0) t = keys.length.toDouble();
+    return (_playerArea[key] ?? 1.0) / t * 100.0;
+  }
+  /// 设置分组内某项百分比（2%~92%）：其余项按权重比例自动缩小（此消彼长）。
+  Future<void> setGroupPct(List<String> keys, String key, double pct) async {
+    final p = (pct / 100.0).clamp(0.02, 0.92);
+    double others = 0;
+    for (final k in keys) {
+      if (k != key) others += (_playerArea[k] ?? 1.0);
+    }
+    if (others <= 0) others = keys.length - 1.0;
     final val = (p * others / (1 - p)).clamp(0.05, 30.0);
     _playerArea[key] = val;
     await _prefs.setDouble(_kPlayerAreaPrefix + key, val);
@@ -315,13 +367,15 @@ class AppSettings extends ChangeNotifier {
       _playerLyricLineScale == 1.0 && _playerControlGapScale == 1.0 &&
       _playerIconScale == 1.0 && _playerMarginScale == 1.0 &&
       _playerTopPad == 0.0 && _playerBottomPad == 0.0 &&
+      _playerTopPadLand == 0.0 && _playerBottomPadLand == 0.0 &&
       playerAdvKeys.every((k) => playerAdv(k) == 1.0) &&
-      playerAreaKeys.every((k) => playerAreaRaw(k) == 1.0);
+      playerAllAreaKeys.every((k) => playerAreaRaw(k) == 1.0);
   Future<void> resetPlayerLayout() async {
     _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
     _playerIconScale = 1.0; _playerMarginScale = 1.0;
     _playerTopPad = 0.0; _playerBottomPad = 0.0;
+    _playerTopPadLand = 0.0; _playerBottomPadLand = 0.0;
     await _prefs.remove(_kPlayerCoverScale);
     await _prefs.remove(_kPlayerLyricFontScale);
     await _prefs.remove(_kPlayerLyricLineScale);
@@ -330,11 +384,13 @@ class AppSettings extends ChangeNotifier {
     await _prefs.remove(_kPlayerMarginScale);
     await _prefs.remove(_kPlayerTopPad);
     await _prefs.remove(_kPlayerBottomPad);
+    await _prefs.remove(_kPlayerTopPadLand);
+    await _prefs.remove(_kPlayerBottomPadLand);
     for (final k in playerAdvKeys) {
       _playerAdv.remove(k);
       await _prefs.remove(_kPlayerAdvPrefix + k);
     }
-    for (final k in playerAreaKeys) {
+    for (final k in playerAllAreaKeys) {
       _playerArea.remove(k);
       await _prefs.remove(_kPlayerAreaPrefix + k);
     }
@@ -453,11 +509,13 @@ class AppSettings extends ChangeNotifier {
     _playerMarginScale = (_prefs.getDouble(_kPlayerMarginScale) ?? 1.0).clamp(0.0, 3.0);
     _playerTopPad = (_prefs.getDouble(_kPlayerTopPad) ?? 0.0).clamp(-40.0, 120.0);
     _playerBottomPad = (_prefs.getDouble(_kPlayerBottomPad) ?? 0.0).clamp(-40.0, 120.0);
+    _playerTopPadLand = (_prefs.getDouble(_kPlayerTopPadLand) ?? 0.0).clamp(-40.0, 120.0);
+    _playerBottomPadLand = (_prefs.getDouble(_kPlayerBottomPadLand) ?? 0.0).clamp(-40.0, 120.0);
     for (final k in playerAdvKeys) {
       final v = _prefs.getDouble(_kPlayerAdvPrefix + k);
       if (v != null) _playerAdv[k] = v.clamp(0.3, 3.0);
     }
-    for (final k in playerAreaKeys) {
+    for (final k in playerAllAreaKeys) {
       final v = _prefs.getDouble(_kPlayerAreaPrefix + k);
       if (v != null) _playerArea[k] = v.clamp(0.05, 30.0);
     }
