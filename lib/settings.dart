@@ -85,18 +85,17 @@ class AppSettings extends ChangeNotifier {
     'titleArea',    // 歌名区高度占比
     'controlArea',  // 控制栏区高度占比
   ];
-  // ---- 播放页横屏双轴占比（x: 封面/歌词宽度；y: 路径/中部/歌名/控制栏） ----
+  // ---- 播放页横屏双轴占比（x: 封面列/歌词列宽度；y: 路径/中部/底部，同段同高对齐） ----
   static const playerLandXKeys = <String>[
     'landXCover',   // 封面宽度占比
     'landXLyric',   // 歌词宽度占比（含左右侧栏）
   ];
   static const playerLandYKeys = <String>[
     'landYPath',    // 路径行高度占比
-    'landYMid',     // 中部高度占比（封面+歌词统一调整）
-    'landYTitle',   // 歌名区高度占比
-    'landYControl', // 控制栏+进度条高度占比
+    'landYMid',     // 中部高度占比（封面+歌词同高对齐）
+    'landYBottom',  // 底部高度占比（歌名块+控制栏同高对齐）
   ];
-  /// 全部区域 key（竖屏 5 + 横屏 x2 + 横屏 y4），load/reset 用。
+  /// 全部区域 key（竖屏 5 + 横屏 x2 + 横屏 y3），load/reset 用。
   static List<String> get playerAllAreaKeys =>
       <String>[...playerAreaKeys, ...playerLandXKeys, ...playerLandYKeys];
   static const _kPlayerAreaPrefix = 'player_area_';
