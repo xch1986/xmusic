@@ -987,7 +987,7 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // ---- 横屏（车机）：y 轴 4 段（路径/中部/歌名/控制栏）+ x 轴（封面|歌词）双轴占比 ----
+  // ---- 横屏（车机）：顶部路径行 + 左右双列（左=封面+歌名区 / 右=歌词+控制栏），x/y 轴占比 ----
   Widget _landscapeView(BuildContext context, Song song) {
     final theme = Theme.of(context);
     final car = isCarScreen(context);
@@ -1002,7 +1002,7 @@ class _PlayerPageState extends State<PlayerPage> {
       final pathH = segH('landYPath', 30.0);
       final titleH = segH('landYTitle', 40.0);
       final ctrlH = segH('landYControl', 48.0);
-      final midH = (totalH - pathH - titleH - ctrlH).clamp(80.0, totalH);
+      final bodyH = (totalH - pathH).clamp(80.0, totalH);
       final xCover =
           widget.settings.groupPct(landX, 'landXCover').round().clamp(1, 100);
       final xLyric =
@@ -1038,142 +1038,157 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
             ),
           ),
-          // 2) 中部：封面 | 歌词（+左右侧栏；右栏第一枚为设置齿轮，与图标 y 对齐）
+          // 2) 左右双列（歌名/控制栏左右排列，回到 v0.4.416 布局）：
+          //     左列 = 封面 + 歌名/歌手/专辑 + 首页/返回（底部）；右列 = 歌词 + 侧栏 + 进度条/控制栏（底部）
           SizedBox(
-            height: midH,
+            height: bodyH,
             child: Row(
               children: [
                 Expanded(
                   flex: xCover,
-                  child: LayoutBuilder(builder: (context, box) {
-                    final s = (math.min(box.maxWidth * (car ? 0.72 : 0.62),
-                                midH * (car ? 0.78 : 0.62)) *
-                            widget.settings.playerCoverScale)
-                        .clamp(20.0, midH * 0.98)
-                        .toDouble();
-                    return Center(
-                      child: StreamBuilder<bool>(
-                        stream: widget.controller.player.playingStream,
-                        builder: (context, snap) {
-                          return _coverDisplay(song, s, snap.data ?? false);
-                        },
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: LayoutBuilder(builder: (context, box) {
+                          final s = (math.min(box.maxWidth * (car ? 0.72 : 0.62),
+                                      box.maxHeight * (car ? 0.78 : 0.62)) *
+                                  widget.settings.playerCoverScale)
+                              .clamp(20.0, box.maxHeight * 0.98)
+                              .toDouble();
+                          return Center(
+                            child: StreamBuilder<bool>(
+                              stream: widget.controller.player.playingStream,
+                              builder: (context, snap) {
+                                return _coverDisplay(song, s, snap.data ?? false);
+                              },
+                            ),
+                          );
+                        }),
                       ),
-                    );
-                  }),
+                      // 歌名/歌手/专辑 + 首页/返回（y 轴 landYTitle，左列底部）
+                      SizedBox(
+                        height: titleH,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              16 * widget.settings.playerMarginScale,
+                              6,
+                              16 * widget.settings.playerMarginScale,
+                              6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              TvFocus(
+                                enabled: widget.settings.tvMode,
+                                onSelect: () {
+                                  Navigator.of(context).popUntil((r) => r.isFirst);
+                                  HomeShell.switchToHome();
+                                },
+                                child: _MiniCornerButton(
+                                    icon: Icons.home_rounded,
+                                    scale: widget.settings.playerAdv('cornerIcon'),
+                                    onTap: () {
+                                      Navigator.of(context).popUntil((r) => r.isFirst);
+                                      HomeShell.switchToHome();
+                                    }),
+                              ),
+                              SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
+                              Flexible(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    _MarqueeText(song.title,
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.titleLarge?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: (car ? 26 : 24) *
+                                                widget.settings.playerAdv('titleFont'))),
+                                    SizedBox(
+                                        height: (car ? 10 : 6) *
+                                            widget.settings.playerAdv('titleGap')),
+                                    Text('${song.artist} - ${song.album}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: theme.colorScheme.onSurfaceVariant,
+                                            fontSize: (car ? 17 : 15) *
+                                                widget.settings.playerAdv('artistFont'))),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
+                              TvFocus(
+                                enabled: widget.settings.tvMode,
+                                onSelect: () => Navigator.of(context).maybePop(),
+                                child: _MiniCornerButton(
+                                    icon: Icons.arrow_back_ios_new_rounded,
+                                    scale: widget.settings.playerAdv('cornerIcon'),
+                                    onTap: () => Navigator.of(context).maybePop()),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    ],
+                  ),
                 ),
                 Expanded(
                   flex: xLyric,
-                  child: ClipRect(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        top: car ? 8 : 4,
-                        bottom: car ? 8 : 4,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _actionSidebarLeft(context),
-                          Expanded(
-                            child: _lyricsArea(context, song.id),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: ClipRect(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              top: car ? 8 : 4,
+                              bottom: car ? 8 : 4,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _actionSidebarLeft(context),
+                                Expanded(
+                                  child: _lyricsArea(context, song.id),
+                                ),
+                                _actionSidebar(context, withGear: true),
+                              ],
+                            ),
                           ),
-                          _actionSidebar(context, withGear: true),
-                        ],
+                        ),
                       ),
-                    ),
+                      // 进度条 + 播放控制栏（y 轴 landYControl，右列底部）
+                      SizedBox(
+                        height: ctrlH,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              0,
+                              2 * widget.settings.playerAdv('seekGap'),
+                              8 * widget.settings.playerMarginScale,
+                              (car ? 24 : 10) * widget.settings.playerAdv('seekGap')),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _SeekBar(
+                                  player: widget.controller.player,
+                                  tvMode: widget.settings.tvMode),
+                              _Controls(
+                                  controller: widget.controller,
+                                  settings: widget.settings,
+                                  compact: false,
+                                  tvMode: widget.settings.tvMode,
+                                  onShowQueue: () => _openQueue(context)),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    ],
                   ),
                 ),
               ],
-            ),
-          ),
-          // 3) 歌名/歌手/专辑 + 首页/返回（y 轴 landYTitle）
-          SizedBox(
-            height: titleH,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                  16 * widget.settings.playerMarginScale,
-                  6,
-                  16 * widget.settings.playerMarginScale,
-                  6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  TvFocus(
-                    enabled: widget.settings.tvMode,
-                    onSelect: () {
-                      Navigator.of(context).popUntil((r) => r.isFirst);
-                      HomeShell.switchToHome();
-                    },
-                    child: _MiniCornerButton(
-                        icon: Icons.home_rounded,
-                        scale: widget.settings.playerAdv('cornerIcon'),
-                        onTap: () {
-                          Navigator.of(context).popUntil((r) => r.isFirst);
-                          HomeShell.switchToHome();
-                        }),
-                  ),
-                  SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _MarqueeText(song.title,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: (car ? 26 : 24) *
-                                    widget.settings.playerAdv('titleFont'))),
-                        SizedBox(
-                            height: (car ? 10 : 6) *
-                                widget.settings.playerAdv('titleGap')),
-                        Text('${song.artist} - ${song.album}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: (car ? 17 : 15) *
-                                    widget.settings.playerAdv('artistFont'))),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
-                  TvFocus(
-                    enabled: widget.settings.tvMode,
-                    onSelect: () => Navigator.of(context).maybePop(),
-                    child: _MiniCornerButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        scale: widget.settings.playerAdv('cornerIcon'),
-                        onTap: () => Navigator.of(context).maybePop()),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 4) 进度条 + 播放控制栏（y 轴 landYControl）
-          SizedBox(
-            height: ctrlH,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                  0,
-                  2 * widget.settings.playerAdv('seekGap'),
-                  8 * widget.settings.playerMarginScale,
-                  (car ? 24 : 10) * widget.settings.playerAdv('seekGap')),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _SeekBar(
-                      player: widget.controller.player,
-                      tvMode: widget.settings.tvMode),
-                  _Controls(
-                      controller: widget.controller,
-                      settings: widget.settings,
-                      compact: false,
-                      tvMode: widget.settings.tvMode,
-                      onShowQueue: () => _openQueue(context)),
-                ],
-              ),
             ),
           ),
         ],
