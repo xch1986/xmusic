@@ -129,10 +129,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 const Text('默认 1.00× / 0dp 即原样；调完即时生效并保存。',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 6),
-                const Text('— 基础 —',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                _layoutSlider('封面大小', s.playerCoverScale, 0.5, 2.0,
-                    s.setPlayerCoverScale, ctx),
+                _groupTitle('封面'),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Column(
@@ -148,14 +145,46 @@ class _PlayerPageState extends State<PlayerPage> {
                     ],
                   ),
                 ),
+                _layoutSlider('封面大小', s.playerCoverScale, 0.5, 2.0,
+                    s.setPlayerCoverScale, ctx),
+                if (MediaQuery.sizeOf(ctx).width >
+                    MediaQuery.sizeOf(ctx).height)
+                  _groupSlider('封面宽度（x轴）', AppSettings.playerLandXKeys,
+                      'landXCover', ctx, s)
+                else
+                  _areaSlider('封面区高度占比', 'coverArea', ctx, s),
+                _groupTitle('歌词'),
                 _layoutSlider('歌词字号', s.playerLyricFontScale, 0.2, 4.0,
                     s.setPlayerLyricFontScale, ctx),
                 _layoutSlider('歌词行距', s.playerLyricLineScale, 0.5, 2.0,
                     s.setPlayerLyricLineScale, ctx),
-                _layoutSlider('控件间距', s.playerControlGapScale, 0.5, 3.0,
-                    s.setPlayerControlGapScale, ctx),
+                _advSlider('歌词左右边距', 'lyricMargin', ctx, s),
+                if (MediaQuery.sizeOf(ctx).width >
+                    MediaQuery.sizeOf(ctx).height)
+                  _groupSlider('歌词宽度（x轴）', AppSettings.playerLandXKeys,
+                      'landXLyric', ctx, s)
+                else
+                  _areaSlider('歌词区高度占比', 'lyricArea', ctx, s),
+                _groupTitle('歌名 / 歌手'),
+                _advSlider('歌名字号', 'titleFont', ctx, s),
+                _advSlider('歌手/专辑字号', 'artistFont', ctx, s),
+                _advSlider('歌名-歌手间距', 'titleGap', ctx, s),
+                _groupTitle('图标按钮'),
                 _layoutSlider('图标大小', s.playerIconScale, 0.5, 2.0,
                     s.setPlayerIconScale, ctx),
+                _advSlider('首页/返回图标大小', 'cornerIcon', ctx, s),
+                _advSlider('首页/返回-歌名间距', 'cornerGap', ctx, s),
+                _advSlider('侧栏图标大小', 'sideIcon', ctx, s),
+                _advSlider('侧栏图标间距', 'sideGap', ctx, s),
+                _groupTitle('控制栏'),
+                _layoutSlider('控件间距', s.playerControlGapScale, 0.5, 3.0,
+                    s.setPlayerControlGapScale, ctx),
+                _advSlider('控制栏图标大小', 'controlIcon', ctx, s),
+                _advSlider('进度条区上下间距', 'seekGap', ctx, s),
+                _groupTitle('播放列表'),
+                _advSlider('播放列表歌名字号', 'queueTitleFont', ctx, s),
+                _advSlider('播放列表歌手字号', 'queueArtistFont', ctx, s),
+                _groupTitle('整体'),
                 _layoutSlider('左右边距', s.playerMarginScale, 0.0, 3.0,
                     s.setPlayerMarginScale, ctx),
                 _layoutSlider('竖屏距顶', s.playerTopPad, -40.0, 120.0,
@@ -166,71 +195,23 @@ class _PlayerPageState extends State<PlayerPage> {
                     s.setPlayerTopPadLand, ctx, unit: 'dp'),
                 _layoutSlider('横屏距底', s.playerBottomPadLand, -40.0, 120.0,
                     s.setPlayerBottomPadLand, ctx, unit: 'dp'),
-                const SizedBox(height: 8),
-                StatefulBuilder(builder: (_, setState2) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TvFocus(
-                        enabled: s.tvMode,
-                        onSelect: () => setState2(() => _advExpanded = !_advExpanded),
-                        child: InkWell(
-                          onTap: () => setState2(() => _advExpanded = !_advExpanded),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(children: [
-                              Text('— 精细调整 ${_advExpanded ? '▾' : '▸'}',
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                            ]),
-                          ),
-                        ),
-                      ),
-                      if (_advExpanded) ...[
-                        _advSlider('歌名字号', 'titleFont', ctx, s),
-                        _advSlider('歌手/专辑字号', 'artistFont', ctx, s),
-                        _advSlider('歌名-歌手间距', 'titleGap', ctx, s),
-                        _advSlider('首页/返回图标大小', 'cornerIcon', ctx, s),
-                        _advSlider('首页/返回-歌名间距', 'cornerGap', ctx, s),
-                        _advSlider('控制栏图标大小', 'controlIcon', ctx, s),
-                        _advSlider('侧栏图标大小', 'sideIcon', ctx, s),
-                        _advSlider('侧栏图标间距', 'sideGap', ctx, s),
-                        _advSlider('歌词左右边距', 'lyricMargin', ctx, s),
-                        _advSlider('进度条区上下间距', 'seekGap', ctx, s),
-                        _advSlider('播放列表歌名字号', 'queueTitleFont', ctx, s),
-                        _advSlider('播放列表歌手字号', 'queueArtistFont', ctx, s),
-                        const SizedBox(height: 6),
-                        if (MediaQuery.sizeOf(ctx).width >
-                            MediaQuery.sizeOf(ctx).height) ...[
-                          const Text('— 横屏 x 轴（封面/歌词宽度，总和 100%） —',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          _groupSlider('封面宽度', AppSettings.playerLandXKeys,
-                              'landXCover', ctx, s),
-                          _groupSlider('歌词宽度', AppSettings.playerLandXKeys,
-                              'landXLyric', ctx, s),
-                          const SizedBox(height: 4),
-                          const Text('— 横屏 y 轴（总和 100%，此消彼长） —',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          _groupSlider('路径行高度', AppSettings.playerLandYKeys,
-                              'landYPath', ctx, s),
-                          _groupSlider('中部高度（封面+歌词）',
-                              AppSettings.playerLandYKeys, 'landYMid', ctx, s),
-                          _groupSlider('歌名区高度', AppSettings.playerLandYKeys,
-                              'landYTitle', ctx, s),
-                          _groupSlider('控制栏高度', AppSettings.playerLandYKeys,
-                              'landYControl', ctx, s),
-                        ] else ...[
-                          const Text('— 区域占比（总和 100%，此消彼长） —',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          _areaSlider('路径区占比', 'pathArea', ctx, s),
-                          _areaSlider('封面区占比', 'coverArea', ctx, s),
-                          _areaSlider('歌词区占比', 'lyricArea', ctx, s),
-                          _areaSlider('歌名区占比', 'titleArea', ctx, s),
-                          _areaSlider('控制栏区占比', 'controlArea', ctx, s),
-                        ],
-                      ],
-                    ],
-                  );
-                }),
+                if (MediaQuery.sizeOf(ctx).width >
+                    MediaQuery.sizeOf(ctx).height) ...[
+                  _groupTitle('横屏 y 轴高度（总和 100%，此消彼长）'),
+                  _groupSlider('路径行高度', AppSettings.playerLandYKeys,
+                      'landYPath', ctx, s),
+                  _groupSlider('中部高度（封面+歌词）',
+                      AppSettings.playerLandYKeys, 'landYMid', ctx, s),
+                  _groupSlider('歌名区高度', AppSettings.playerLandYKeys,
+                      'landYTitle', ctx, s),
+                  _groupSlider('控制栏高度', AppSettings.playerLandYKeys,
+                      'landYControl', ctx, s),
+                ] else ...[
+                  _groupTitle('竖屏区域高度（总和 100%，此消彼长）'),
+                  _areaSlider('路径行高度', 'pathArea', ctx, s),
+                  _areaSlider('歌名区高度', 'titleArea', ctx, s),
+                  _areaSlider('控制栏高度', 'controlArea', ctx, s),
+                ],
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: s.playerLayoutIsDefault
@@ -350,6 +331,13 @@ class _PlayerPageState extends State<PlayerPage> {
       ]),
     );
   }
+
+  /// 面板分组标题。
+  Widget _groupTitle(String t) => Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 2),
+        child: Text('— $t —',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      );
 
   /// 横屏双轴分组滑块：组内总和恒 100%，此消彼长（x 轴/ y 轴各一组）。
   Widget _groupSlider(String label, List<String> keys, String key,
@@ -566,7 +554,7 @@ class _PlayerPageState extends State<PlayerPage> {
         requestSize: 600);
     if (style == 'vinyl') {
       // 封面作为唱片标签嵌入盘面，封面+唱片一体整体旋转（复用 _CdDisc：凹槽+反光+中心孔+卡针）
-      return _CdDisc(cover: cov, size: s * 0.92, spinning: playing);
+      return _CdDisc(cover: cov, size: s * 0.86, spinning: playing);
     }
     if (style == 'iphone') {
       return Container(
@@ -681,7 +669,7 @@ class _PlayerPageState extends State<PlayerPage> {
             builder: (context, box) {
               final s = (math.min(size, box.maxHeight * 0.92) *
                       widget.settings.playerCoverScale)
-                  .clamp(20.0, box.maxHeight * 0.98)
+                  .clamp(20.0, box.maxHeight * 0.90)
                   .toDouble();
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -729,21 +717,23 @@ class _PlayerPageState extends State<PlayerPage> {
             },
           ),
         ),
-        // 歌词区：左4右3侧栏 + 歌词（独立分栏，不压封面）
+        // 歌词区：左4右3侧栏 + 歌词（独立分栏；ClipRect 硬裁剪防歌词溢出叠到封面）
         Expanded(
           flex: (4 * widget.settings.playerArea('lyricArea')).round().clamp(1, 50),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _actionSidebarLeft(context),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: _lyricsArea(context, song.id),
+          child: ClipRect(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _actionSidebarLeft(context),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: _lyricsArea(context, song.id),
+                  ),
                 ),
-              ),
-              _actionSidebar(context),
-            ],
+                _actionSidebar(context),
+              ],
+            ),
           ),
         ),
         // 歌名+歌手：左右各一个小玻璃按钮（首页/返回）
@@ -1110,20 +1100,22 @@ class _PlayerPageState extends State<PlayerPage> {
                 ),
                 Expanded(
                   flex: xLyric,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      top: car ? 72 : 4,
-                      bottom: car ? 60 : 4,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _actionSidebarLeft(context),
-                        Expanded(
-                          child: _lyricsArea(context, song.id),
-                        ),
-                        _actionSidebar(context, withGear: true),
-                      ],
+                  child: ClipRect(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        top: car ? 72 : 4,
+                        bottom: car ? 60 : 4,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _actionSidebarLeft(context),
+                          Expanded(
+                            child: _lyricsArea(context, song.id),
+                          ),
+                          _actionSidebar(context, withGear: true),
+                        ],
+                      ),
                     ),
                   ),
                 ),
