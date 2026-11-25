@@ -699,6 +699,7 @@ class TvSlider extends StatefulWidget {
     required this.onChanged,
     this.divisions,
     this.label,
+    this.tapJumps = false,
   });
   final double value;
   final double min;
@@ -706,6 +707,8 @@ class TvSlider extends StatefulWidget {
   final ValueChanged<double> onChanged;
   final int? divisions;
   final String? label;
+  /// true=点按轨道跳值（进度条用）；false=点按仅选中该调整项、拖动才调值（防误触）。
+  final bool tapJumps;
 
   @override
   State<TvSlider> createState() => _TvSliderState();
@@ -714,6 +717,9 @@ class TvSlider extends StatefulWidget {
 class _TvSliderState extends State<TvSlider> {
   final FocusNode _fn = FocusNode();
   bool _focused = false;
+  bool _selected = false; // 触摸点击选中（不改值）
+  double _dragBase = 0; // 拖动起始值（相对位移调值，点一下不会跳）
+  double _dragDx = 0; // 累计水平位移
 
   @override
   void initState() {
@@ -737,6 +743,35 @@ class _TvSliderState extends State<TvSlider> {
     final step = widget.divisions != null
         ? (widget.max - widget.min) / widget.divisions!
         : (widget.max - widget.min) / 50.0;
+    Widget slider = Slider(
+      value: widget.value.clamp(widget.min, widget.max).toDouble(),
+      min: widget.min,
+      max: widget.max,
+      divisions: widget.divisions,
+      label: widget.label,
+      onChanged: widget.tapJumps ? widget.onChanged : (_) {},
+    );
+    if (!widget.tapJumps) {
+      // 防误触：点击只选中（高亮该调整项）不改值；拖动按相对位移调值
+      slider = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _selected = !_selected),
+        onHorizontalDragStart: (_) {
+          _dragBase = widget.value.clamp(widget.min, widget.max).toDouble();
+          _dragDx = 0;
+          setState(() => _selected = true);
+        },
+        onHorizontalDragUpdate: (d) {
+          final w = context.size?.width ?? 240.0;
+          _dragDx += d.primaryDelta ?? 0;
+          final range = widget.max - widget.min;
+          var v = _dragBase + (_dragDx / w) * range;
+          v = (v / step).roundToDouble() * step;
+          widget.onChanged(v.clamp(widget.min, widget.max).toDouble());
+        },
+        child: AbsorbPointer(child: slider),
+      );
+    }
     return Focus(
       focusNode: _fn,
       descendantsAreFocusable: false,
@@ -757,20 +792,13 @@ class _TvSliderState extends State<TvSlider> {
         return KeyEventResult.ignored;
       },
       child: Container(
-        decoration: _focused
+        decoration: (_focused || _selected)
             ? BoxDecoration(
                 border: Border.all(color: cs.primary, width: 2),
                 borderRadius: BorderRadius.circular(10),
               )
             : null,
-        child: Slider(
-          value: widget.value.clamp(widget.min, widget.max).toDouble(),
-          min: widget.min,
-          max: widget.max,
-          divisions: widget.divisions,
-          label: widget.label,
-          onChanged: widget.onChanged,
-        ),
+        child: slider,
       ),
     );
   }

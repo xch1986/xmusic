@@ -752,23 +752,14 @@ class SettingsPage extends StatelessWidget {
     int? divisions,
     String? label,
   }) {
-    return settings.tvMode
-        ? TvSlider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            label: label,
-            onChanged: onChanged,
-          )
-        : Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            label: label,
-            onChanged: onChanged,
-          );
+    return TvSlider(
+      value: value,
+      min: min,
+      max: max,
+      divisions: divisions,
+      label: label,
+      onChanged: onChanged,
+    );
   }
 
   Widget _slider(String label, double val, double min, double max, ValueChanged<double> onChanged) {

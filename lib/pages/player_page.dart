@@ -250,21 +250,13 @@ class _PlayerPageState extends State<PlayerPage> {
                     fontSize: 13,
                     color: Theme.of(ctx).colorScheme.primary)),
           ]),
-          widget.settings.tvMode
-              ? TvSlider(
-                  value: value.clamp(min, max).toDouble(),
-                  min: min,
-                  max: max,
-                  divisions: 100,
-                  onChanged: (v) => setter(v),
-                )
-              : Slider(
-                  value: value.clamp(min, max).toDouble(),
-                  min: min,
-                  max: max,
-                  divisions: 100,
-                  onChanged: (v) => setter(v),
-                ),
+          TvSlider(
+            value: value.clamp(min, max).toDouble(),
+            min: min,
+            max: max,
+            divisions: 100,
+            onChanged: (v) => setter(v),
+          ),
         ],
       ),
     );
@@ -282,21 +274,13 @@ class _PlayerPageState extends State<PlayerPage> {
           Text('${value.toStringAsFixed(2)}×',
               style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.primary)),
         ]),
-        s.tvMode
-            ? TvSlider(
-                value: value.clamp(0.3, 3.0).toDouble(),
-                min: 0.3,
-                max: 3.0,
-                divisions: 100,
-                onChanged: (v) => s.setPlayerAdv(key, v),
-              )
-            : Slider(
-                value: value.clamp(0.3, 3.0).toDouble(),
-                min: 0.3,
-                max: 3.0,
-                divisions: 100,
-                onChanged: (v) => s.setPlayerAdv(key, v),
-              ),
+        TvSlider(
+          value: value.clamp(0.3, 3.0).toDouble(),
+          min: 0.3,
+          max: 3.0,
+          divisions: 100,
+          onChanged: (v) => s.setPlayerAdv(key, v),
+        ),
       ]),
     );
   }
@@ -313,21 +297,13 @@ class _PlayerPageState extends State<PlayerPage> {
           Text('${value.toStringAsFixed(0)}%',
               style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.primary)),
         ]),
-        s.tvMode
-            ? TvSlider(
-                value: value.clamp(2.0, 80.0).toDouble(),
-                min: 2.0,
-                max: 80.0,
-                divisions: 78,
-                onChanged: (v) => s.setPlayerAreaPct(key, v),
-              )
-            : Slider(
-                value: value.clamp(2.0, 80.0).toDouble(),
-                min: 2.0,
-                max: 80.0,
-                divisions: 78,
-                onChanged: (v) => s.setPlayerAreaPct(key, v),
-              ),
+        TvSlider(
+          value: value.clamp(2.0, 80.0).toDouble(),
+          min: 2.0,
+          max: 80.0,
+          divisions: 78,
+          onChanged: (v) => s.setPlayerAreaPct(key, v),
+        ),
       ]),
     );
   }
@@ -352,21 +328,13 @@ class _PlayerPageState extends State<PlayerPage> {
           Text('${value.toStringAsFixed(0)}%',
               style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.primary)),
         ]),
-        s.tvMode
-            ? TvSlider(
-                value: value.clamp(2.0, 92.0).toDouble(),
-                min: 2.0,
-                max: 92.0,
-                divisions: 90,
-                onChanged: (v) => s.setGroupPct(keys, key, v),
-              )
-            : Slider(
-                value: value.clamp(2.0, 92.0).toDouble(),
-                min: 2.0,
-                max: 92.0,
-                divisions: 90,
-                onChanged: (v) => s.setGroupPct(keys, key, v),
-              ),
+        TvSlider(
+          value: value.clamp(2.0, 92.0).toDouble(),
+          min: 2.0,
+          max: 92.0,
+          divisions: 90,
+          onChanged: (v) => s.setGroupPct(keys, key, v),
+        ),
       ]),
     );
   }
@@ -507,31 +475,18 @@ class _PlayerPageState extends State<PlayerPage> {
                                   fontSize: 12,
                                   color: Theme.of(ctx).colorScheme.primary)),
                         ]),
-                        s.tvMode
-                            ? TvSlider(
-                                value: s.eqCustomGains[i]
-                                    .clamp(-15.0, 15.0)
-                                    .toDouble(),
-                                min: -15.0,
-                                max: 15.0,
-                                divisions: 60,
-                                onChanged: (v) async {
-                                  await s.setEqCustomGain(i, v);
-                                  setSheet(() {});
-                                },
-                              )
-                            : Slider(
-                                value: s.eqCustomGains[i]
-                                    .clamp(-15.0, 15.0)
-                                    .toDouble(),
-                                min: -15.0,
-                                max: 15.0,
-                                divisions: 60,
-                                onChanged: (v) async {
-                                  await s.setEqCustomGain(i, v);
-                                  setSheet(() {});
-                                },
-                              ),
+                        TvSlider(
+                          value: s.eqCustomGains[i]
+                              .clamp(-15.0, 15.0)
+                              .toDouble(),
+                          min: -15.0,
+                          max: 15.0,
+                          divisions: 60,
+                          onChanged: (v) async {
+                            await s.setEqCustomGain(i, v);
+                            setSheet(() {});
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -665,56 +620,60 @@ class _PlayerPageState extends State<PlayerPage> {
         // 封面区：路径行 + 设置齿轮 + 黑胶封面（与歌词上下分栏，互不重叠）
         Expanded(
           flex: (5 * widget.settings.playerArea('coverArea')).round().clamp(1, 50),
-          child: LayoutBuilder(
-            builder: (context, box) {
-              final s = (math.min(size, box.maxHeight * 0.92) *
-                      widget.settings.playerCoverScale)
-                  .clamp(20.0, box.maxHeight * 0.90)
-                  .toDouble();
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 路径区：来源文字 + 设置齿轮同一行右端；pathArea 控制行高
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                        minHeight: 36 * widget.settings.playerArea('pathArea')),
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          left: 16 * widget.settings.playerMarginScale,
-                          right: 0,
-                          bottom: 4,
-                          top: math.max(isCarScreen(context) ? 40 : 0,
-                              MediaQuery.viewPaddingOf(context).top + 6)),
-                      child: Row(
-                        children: [
-                          if ((widget.controller.queueSource ?? '').isNotEmpty)
-                            Expanded(
-                              child: Text(
-                                widget.controller.queueSource!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant, fontSize: 16),
-                              ),
-                            )
-                          else
-                            const Spacer(),
-                          _settingsButton(context),
-                        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 路径区：来源文字 + 设置齿轮同一行右端；pathArea 控制行高
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                    minHeight: 36 * widget.settings.playerArea('pathArea')),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      left: 16 * widget.settings.playerMarginScale,
+                      right: 0,
+                      bottom: 4,
+                      top: math.max(isCarScreen(context) ? 40 : 0,
+                          MediaQuery.viewPaddingOf(context).top + 6)),
+                  child: Row(
+                    children: [
+                      if ((widget.controller.queueSource ?? '').isNotEmpty)
+                        Expanded(
+                          child: Text(
+                            widget.controller.queueSource!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant, fontSize: 16),
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      _settingsButton(context),
+                    ],
+                  ),
+                ),
+              ),
+              // 封面本体：LayoutBuilder 只包封面（路径行在外），s 按「路径行以下
+              // 剩余高度」计算——封面图物理上不可能溢出画进歌词区
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    final s = (math.min(size, box.maxHeight * 0.92) *
+                            widget.settings.playerCoverScale)
+                        .clamp(20.0, box.maxHeight * 0.90)
+                        .toDouble();
+                    return Center(
+                      child: StreamBuilder<bool>(
+                        stream: widget.controller.player.playingStream,
+                        builder: (context, snap) {
+                          return _coverDisplay(song, s, snap.data ?? false);
+                        },
                       ),
-                    ),
-                  ),
-                  Center(
-                    child: StreamBuilder<bool>(
-                      stream: widget.controller.player.playingStream,
-                      builder: (context, snap) {
-                        return _coverDisplay(song, s, snap.data ?? false);
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
         // 歌词区：左4右3侧栏 + 歌词（独立分栏；ClipRect 硬裁剪防歌词溢出叠到封面）
@@ -1652,7 +1611,13 @@ class _LyricsViewState extends State<LyricsView> {
         final i = widget.lyrics.indexAt(pos);
         if (i != _current) {
           setState(() => _current = i);
-          _follow();
+          // 已唱行折叠为零高后布局才稳定：等本帧结束再定位，且用 jump
+          //（jumpTo 走 anchor 定位与几何无关）。此前 _follow() 的 scrollTo
+          // 按折叠前旧几何算偏移——重进播放页时当前行卡到歌词区顶部、
+          // 叠到溢出的封面图上；拖滑块走的 jump 路径则一直正确。
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _follow(jump: true);
+          });
         }
       });
     }
@@ -1670,8 +1635,16 @@ class _LyricsViewState extends State<LyricsView> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _follow(jump: true));
   }
 
-  void _follow({bool jump = false}) {
-    if (_current < 0 || !_scroll.isAttached) return;
+  void _follow({bool jump = false, int retries = 2}) {
+    if (_current < 0) return;
+    if (!_scroll.isAttached) {
+      // 尚未挂载（首帧/重建中）：下一帧重试，不能静默丢弃
+      if (retries <= 0) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _follow(jump: jump, retries: retries - 1);
+      });
+      return;
+    }
     if (jump) {
       _scroll.jumpTo(index: _current, alignment: _anchor);
     } else {
@@ -2154,6 +2127,7 @@ class _SeekBarState extends State<_SeekBar> {
                   ),
                       child: widget.tvMode
                       ? TvSlider(
+                          tapJumps: true,
                           value: value.toDouble(),
                           min: 0.0,
                           max: maxMs,
