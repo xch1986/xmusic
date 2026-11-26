@@ -1686,17 +1686,18 @@ class _LyricsViewState extends State<LyricsView> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            // 已唱占1行、当前占1行、余下给未唱：当前行锚在顶部 padding+1行已唱 处
+            // 已唱行折叠为零高不再占位：当前行贴近顶部（约 1.1 行留白），
+            // 不再按「已唱1行」预留大段空白（重进/跟随时歌词上方不再空一大截）
             final _rowH = (_baseFontSize * 1.4 + 18) * fontScale;
-            _anchor = ((constraints.maxHeight * 0.30) + 1.5 * _rowH) / constraints.maxHeight;
-            _anchor = _anchor.clamp(0.04, 0.50);
+            _anchor = (_rowH * 1.1) / constraints.maxHeight;
+            _anchor = _anchor.clamp(0.02, 0.20);
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,
               padding: EdgeInsets.only(
                 left: 24 * widget.settings.playerAdv('lyricMargin'),
                 right: 24 * widget.settings.playerAdv('lyricMargin'),
-                top: constraints.maxHeight * 0.23,
+                top: constraints.maxHeight * 0.04,
                 bottom: constraints.maxHeight * 0.26,
               ),
               itemBuilder: (context, i) {

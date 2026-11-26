@@ -99,6 +99,7 @@ class AppSettings extends ChangeNotifier {
   static List<String> get playerAllAreaKeys =>
       <String>[...playerAreaKeys, ...playerLandXKeys, ...playerLandYKeys];
   static const _kPlayerAreaPrefix = 'player_area_';
+  static const _kPlayerAreaLandYMigrated = 'player_area_land_y_migrated_431';
   // ---- EQ / 封面样式 ----
   static const _kEqPreset = 'eq_preset';
   static const _kEqCustom = 'eq_custom';
@@ -263,11 +264,19 @@ class AppSettings extends ChangeNotifier {
   }
   // ---- 区域占比 Map（权重，归一化后 5 区总和恒为 100%，此消彼长） ----
   final Map<String, double> _playerArea = {};
-  double playerAreaRaw(String key) => _playerArea[key] ?? 1.0;
+  // 各键默认权重（未存档时生效）：横屏 y 轴默认 路径10%/中部62%/底部28%，
+  // 其余键默认 1.0。权重仅在归一化时有意义（组内总和恒 100%）。
+  static const Map<String, double> _playerAreaDefaults = {
+    'landYPath': 0.25,
+    'landYMid': 1.55,
+    'landYBottom': 0.70,
+  };
+  static double _areaDefault(String key) => _playerAreaDefaults[key] ?? 1.0;
+  double playerAreaRaw(String key) => _playerArea[key] ?? _areaDefault(key);
   double get _playerAreaTotal {
     double t = 0;
     for (final k in playerAreaKeys) {
-      t += (_playerArea[k] ?? 1.0);
+      t += (_playerArea[k] ?? _areaDefault(k));
     }
     return t <= 0 ? playerAreaKeys.length.toDouble() : t;
   }
@@ -281,7 +290,7 @@ class AppSettings extends ChangeNotifier {
     final p = (pct / 100.0).clamp(0.02, 0.80);
     double others = 0;
     for (final k in playerAreaKeys) {
-      if (k != key) others += (_playerArea[k] ?? 1.0);
+      if (k != key) others += (_playerArea[k] ?? _areaDefault(k));
     }
     if (others <= 0) others = playerAreaKeys.length - 1.0;
     final val = (p * others / (1 - p)).clamp(0.05, 30.0);
@@ -293,17 +302,17 @@ class AppSettings extends ChangeNotifier {
   double groupPct(List<String> keys, String key) {
     double t = 0;
     for (final k in keys) {
-      t += (_playerArea[k] ?? 1.0);
+      t += (_playerArea[k] ?? _areaDefault(k));
     }
     if (t <= 0) t = keys.length.toDouble();
-    return (_playerArea[key] ?? 1.0) / t * 100.0;
+    return (_playerArea[key] ?? _areaDefault(key)) / t * 100.0;
   }
   /// 设置分组内某项百分比（2%~92%）：其余项按权重比例自动缩小（此消彼长）。
   Future<void> setGroupPct(List<String> keys, String key, double pct) async {
     final p = (pct / 100.0).clamp(0.02, 0.92);
     double others = 0;
     for (final k in keys) {
-      if (k != key) others += (_playerArea[k] ?? 1.0);
+      if (k != key) others += (_playerArea[k] ?? _areaDefault(k));
     }
     if (others <= 0) others = keys.length - 1.0;
     final val = (p * others / (1 - p)).clamp(0.05, 30.0);
@@ -368,7 +377,7 @@ class AppSettings extends ChangeNotifier {
       _playerTopPad == 0.0 && _playerBottomPad == 0.0 &&
       _playerTopPadLand == 0.0 && _playerBottomPadLand == 0.0 &&
       playerAdvKeys.every((k) => playerAdv(k) == 1.0) &&
-      playerAllAreaKeys.every((k) => playerAreaRaw(k) == 1.0);
+      playerAllAreaKeys.every((k) => playerAreaRaw(k) == _areaDefault(k));
   Future<void> resetPlayerLayout() async {
     _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;
@@ -517,6 +526,15 @@ class AppSettings extends ChangeNotifier {
     for (final k in playerAllAreaKeys) {
       final v = _prefs.getDouble(_kPlayerAreaPrefix + k);
       if (v != null) _playerArea[k] = v.clamp(0.05, 30.0);
+    }
+    // 一次性迁移（v0.4.431）：横屏 y 轴默认权重由均分改为 路径10%/中部62%/底部28%，
+    // 清掉旧均分语义下的 y 轴存档让新默认立即生效（x 列宽/竖屏各区存档保留）。
+    if (_prefs.getBool(_kPlayerAreaLandYMigrated) != true) {
+      for (final k in playerLandYKeys) {
+        _playerArea.remove(k);
+        await _prefs.remove(_kPlayerAreaPrefix + k);
+      }
+      await _prefs.setBool(_kPlayerAreaLandYMigrated, true);
     }
     // EQ / 封面样式恢复
     _eqPreset = _prefs.getString(_kEqPreset) ?? 'off';
