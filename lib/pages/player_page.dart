@@ -147,24 +147,12 @@ class _PlayerPageState extends State<PlayerPage> {
                 ),
                 _layoutSlider('封面大小', s.playerCoverScale, 0.5, 2.0,
                     s.setPlayerCoverScale, ctx),
-                if (MediaQuery.sizeOf(ctx).width >
-                    MediaQuery.sizeOf(ctx).height)
-                  _groupSlider('封面列宽（含歌名块，x轴）', AppSettings.playerLandXKeys,
-                      'landXCover', ctx, s)
-                else
-                  _areaSlider('封面区高度占比', 'coverArea', ctx, s),
                 _groupTitle('歌词'),
                 _layoutSlider('歌词字号', s.playerLyricFontScale, 0.2, 4.0,
                     s.setPlayerLyricFontScale, ctx),
                 _layoutSlider('歌词行距', s.playerLyricLineScale, 0.5, 2.0,
                     s.setPlayerLyricLineScale, ctx),
                 _advSlider('歌词左右边距', 'lyricMargin', ctx, s),
-                if (MediaQuery.sizeOf(ctx).width >
-                    MediaQuery.sizeOf(ctx).height)
-                  _groupSlider('歌词列宽（含控制栏，x轴）', AppSettings.playerLandXKeys,
-                      'landXLyric', ctx, s)
-                else
-                  _areaSlider('歌词区高度占比', 'lyricArea', ctx, s),
                 _groupTitle('歌名 / 歌手'),
                 _advSlider('歌名字号', 'titleFont', ctx, s),
                 _advSlider('歌手/专辑字号', 'artistFont', ctx, s),
@@ -197,17 +185,24 @@ class _PlayerPageState extends State<PlayerPage> {
                     s.setPlayerBottomPadLand, ctx, unit: 'dp'),
                 if (MediaQuery.sizeOf(ctx).width >
                     MediaQuery.sizeOf(ctx).height) ...[
-                  _groupTitle('横屏 y 轴高度（总和 100%，此消彼长）'),
+                  _groupTitle('横屏 x 列宽（封面列+歌词列=100%）'),
+                  _groupSlider('封面列宽（含歌名块）', AppSettings.playerLandXKeys,
+                      'landXCover', ctx, s),
+                  _groupSlider('歌词列宽（含控制栏）', AppSettings.playerLandXKeys,
+                      'landXLyric', ctx, s),
+                  _groupTitle('横屏 y 高度（路径+中部+底部=100%）'),
                   _groupSlider('路径行高度', AppSettings.playerLandYKeys,
                       'landYPath', ctx, s),
-                  _groupSlider('中部高度（封面+歌词同高）',
+                  _groupSlider('中部高度（封面=歌词同高）',
                       AppSettings.playerLandYKeys, 'landYMid', ctx, s),
-                  _groupSlider('底部高度（歌名+控制栏同高）',
+                  _groupSlider('底部高度（歌名=控制栏同高）',
                       AppSettings.playerLandYKeys, 'landYBottom', ctx, s),
                 ] else ...[
-                  _groupTitle('竖屏区域高度（总和 100%，此消彼长）'),
+                  _groupTitle('竖屏 y 高度（单列五段总和 100%）'),
                   _areaSlider('路径行高度', 'pathArea', ctx, s),
-                  _areaSlider('歌名区高度', 'titleArea', ctx, s),
+                  _areaSlider('封面高度', 'coverArea', ctx, s),
+                  _areaSlider('歌词高度', 'lyricArea', ctx, s),
+                  _areaSlider('歌名歌手高度', 'titleArea', ctx, s),
                   _areaSlider('控制栏高度', 'controlArea', ctx, s),
                 ],
                 const SizedBox(height: 8),
