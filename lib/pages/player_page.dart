@@ -158,12 +158,9 @@ class _PlayerPageState extends State<PlayerPage> {
                 _advSlider('歌手/专辑字号', 'artistFont', ctx, s),
                 _advSlider('歌名-歌手间距', 'titleGap', ctx, s),
                 _groupTitle('图标按钮'),
-                _layoutSlider('图标大小', s.playerIconScale, 0.5, 2.0,
-                    s.setPlayerIconScale, ctx),
                 _advSlider('首页/返回图标大小', 'cornerIcon', ctx, s),
-                _advSlider('首页/返回-歌名间距', 'cornerGap', ctx, s),
                 _advSlider('侧栏图标大小', 'sideIcon', ctx, s),
-                _advSlider('侧栏图标间距', 'sideGap', ctx, s),
+                _advSlider('侧栏图标间距(首页↔歌名)', 'cornerGap', ctx, s),
                 _groupTitle('控制栏'),
                 _layoutSlider('控件间距', s.playerControlGapScale, 0.5, 3.0,
                     s.setPlayerControlGapScale, ctx),
@@ -213,10 +210,51 @@ class _PlayerPageState extends State<PlayerPage> {
                   icon: const Icon(Icons.restore_rounded),
                   label: const Text('恢复默认'),
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _showExportDialog(ctx, s),
+                  icon: const Icon(Icons.ios_share_rounded),
+                  label: const Text('导出设置'),
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 导出当前全部可调设置（JSON 文本弹窗，可复制）；用于把调好的值设为软件默认值。
+  void _showExportDialog(BuildContext ctx, AppSettings s) {
+    final text = s.exportSettingsJson();
+    showDialog<void>(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('导出设置'),
+        content: SizedBox(
+          width: 520,
+          height: 380,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              text,
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: text));
+              if (dCtx.mounted) Navigator.of(dCtx).pop();
+              if (ctx.mounted) showTopToast(ctx, '已复制到剪贴板');
+            },
+            child: const Text('复制'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dCtx).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
       ),
     );
   }
@@ -336,7 +374,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _settingsButton(BuildContext context) {
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
+    final double side = (_landP ? 18 : 30) * widget.settings.playerAdv('sideIcon');
     final Color? color = widget.settings.playerLayoutIsDefault
         ? null
         : Theme.of(context).colorScheme.primary;
@@ -688,13 +726,14 @@ class _PlayerPageState extends State<PlayerPage> {
             ),
           ),
         ),
-        // 歌名+歌手：左右各一个小玻璃按钮（首页/返回）
+        // 歌名+歌手：左右各一个小玻璃按钮（首页/返回）；首页/返回↔歌名间距由「侧栏图标间距」(cornerGap) 控制
         Padding(
           padding: EdgeInsets.fromLTRB(8 * widget.settings.playerMarginScale,
             8 * widget.settings.playerArea('titleArea'),
             8 * widget.settings.playerMarginScale,
             2 * widget.settings.playerArea('titleArea')),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               TvFocus(
@@ -708,51 +747,52 @@ class _PlayerPageState extends State<PlayerPage> {
                   HomeShell.switchToHome();
                 }),
               ),
-              Expanded(
+              SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
+              Flexible(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-              SizedBox(
-                width: double.infinity,
-                child: _MarqueeText(song.title,
-                  maxWidth: MediaQuery.sizeOf(context).width - 140,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22) * widget.settings.playerAdv('titleFont'),
-                    height: 1.2)),
-              ),
-              SizedBox(height: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 10 : 4) * widget.settings.playerAdv('titleGap')),
-              // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
-              SizedBox(
-                width: double.infinity,
-                child: _MarqueeText('${song.artist} - ${song.album}',
-                  maxWidth: MediaQuery.sizeOf(context).width - 140,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14) * widget.settings.playerAdv('artistFont'))),
-              ),
+                    _MarqueeText(song.title,
+                      shrinkWrap: true,
+                      textAlign: TextAlign.center,
+                      maxWidth: MediaQuery.sizeOf(context).width - 140,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22) * widget.settings.playerAdv('titleFont'),
+                        height: 1.2)),
+                    SizedBox(height: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 10 : 4) * widget.settings.playerAdv('titleGap')),
+                    // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
+                    _MarqueeText('${song.artist} - ${song.album}',
+                      shrinkWrap: true,
+                      textAlign: TextAlign.center,
+                      maxWidth: MediaQuery.sizeOf(context).width - 140,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: ((isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14) * widget.settings.playerAdv('artistFont'))),
 
-              // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
-              if (widget.controller.loadingUrl) ...[
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 12, height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2, color: theme.colorScheme.primary),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('正在解析播放地址…', style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary, fontSize: 13)),
-                  ],
-                ),
-              ],
+                    // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
+                    if (widget.controller.loadingUrl) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 12, height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2, color: theme.colorScheme.primary),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('正在解析播放地址…', style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary, fontSize: 13)),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
+              SizedBox(width: 60 * widget.settings.playerAdv('cornerGap')),
               TvFocus(
                 enabled: widget.settings.tvMode,
                 onSelect: () => Navigator.of(context).maybePop(),
@@ -798,8 +838,8 @@ class _PlayerPageState extends State<PlayerPage> {
     // [xmusic] 2026-11-24 左列4钮：A-、A+、收藏、不喜欢/黑名单（黑名单在收藏下方），车机/手机统一左4右3
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
-    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
+    final double side = (_landP ? 18 : 30) * widget.settings.playerAdv('sideIcon');
+    final double _gap = (_landP ? 2.0 : 6.0);
     if (car) {
       return FittedBox(
         fit: BoxFit.scaleDown,
@@ -810,10 +850,10 @@ class _PlayerPageState extends State<PlayerPage> {
           children: [
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null,
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null)),
-            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            SizedBox(height: 24),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null,
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null)),
-            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            SizedBox(height: 24),
             TvFocus(enabled: widget.settings.tvMode, onSelect: widget.controller.toggleStar,
               child: ListenableBuilder(
                 listenable: widget.controller,
@@ -828,7 +868,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 },
               ),
             ),
-            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            SizedBox(height: 24),
             TvFocus(enabled: widget.settings.tvMode, onSelect: () { final sg = widget.controller.current; if (sg != null) _toggleBlacklist(sg); },
               child: ListenableBuilder(
                 listenable: widget.controller,
@@ -896,8 +936,8 @@ class _PlayerPageState extends State<PlayerPage> {
     // [xmusic] 2026-11-24 右列3钮：EQ、下载、NAS（不喜欢/黑名单移左列收藏下方），车机/手机统一左4右3
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = (_landP ? 18 : 30) * widget.settings.playerIconScale * widget.settings.playerAdv('sideIcon');
-    final double _gap = (_landP ? 2.0 : 6.0) * widget.settings.playerIconScale * widget.settings.playerAdv('sideGap');
+    final double side = (_landP ? 18 : 30) * widget.settings.playerAdv('sideIcon');
+    final double _gap = (_landP ? 2.0 : 6.0);
     Future<void> uploadNas() async {
       showTopToast(context, '正在上传到NAS…');
       final msg = await widget.controller.uploadCurrentToNas();
@@ -914,14 +954,14 @@ class _PlayerPageState extends State<PlayerPage> {
           children: [
             if (withGear) ...[
               _settingsButton(context),
-              SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+              SizedBox(height: 24),
             ],
             TvFocus(enabled: widget.settings.tvMode, onSelect: () => _showEqPanel(context),
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.equalizer_rounded, onTap: () => _showEqPanel(context))),
-            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            SizedBox(height: 24),
             TvFocus(enabled: widget.settings.tvMode, onSelect: () => _downloadMenu(context),
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.download_rounded, onTap: () => _downloadMenu(context))),
-            SizedBox(height: 24 * widget.settings.playerAdv('sideGap')),
+            SizedBox(height: 24),
             TvFocus(enabled: widget.settings.tvMode, onSelect: uploadNas,
               child: _MiniCornerButton(scale: widget.settings.playerAdv('sideIcon'), icon: Icons.cloud_download_rounded, onTap: uploadNas)),
           ],
@@ -1129,6 +1169,7 @@ class _PlayerPageState extends State<PlayerPage> {
                             children: [
                               _MarqueeText(song.title,
                                   textAlign: TextAlign.center,
+                                  shrinkWrap: true,
                                   style: theme.textTheme.titleLarge?.copyWith(
                                       fontWeight: FontWeight.w800,
                                       fontSize: (car ? 26 : 24) *
@@ -2149,7 +2190,10 @@ class _SeekBarState extends State<_SeekBar> {
                           max: maxMs,
                           onChanged: (v) {
                             setState(() => _dragMs = v);
+                          },
+                          onCommit: (v) {
                             widget.player.seek(Duration(milliseconds: v.round()));
+                            setState(() => _dragMs = null);
                           },
                         )
                       : Slider(
@@ -2202,14 +2246,14 @@ class _Controls extends StatelessWidget {
     final gap = compact ? 20.0 : 20.0;
     // 播放界面布局自定义：控件间距 / 图标大小倍率（默认 1.0 = 原样）
     final ctrlGap = gap * settings.playerControlGapScale;
-    final iconScale = settings.playerIconScale;
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
+    // 2026-11-28 去掉 iconScale 主倍率：控制栏图标只由「控制栏图标大小」(controlIcon) 控制
     final car = isCarScreen(context);
     final land = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
     final controlIconScale = settings.playerAdv('controlIcon');
-    final playSize = (car ? (land ? 76.0 : 82.0) : 40.0) * iconScale * controlIconScale;
-    final navSize = (car ? (land ? 76.0 : 82.0) : 40.0) * iconScale * controlIconScale;
-    final sideIcon = (car ? 72.0 : 40.0) * iconScale * controlIconScale;
+    final playSize = (car ? (land ? 76.0 : 82.0) : 40.0) * controlIconScale;
+    final navSize = (car ? (land ? 76.0 : 82.0) : 40.0) * controlIconScale;
+    final sideIcon = (car ? 72.0 : 40.0) * controlIconScale;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -2317,7 +2361,8 @@ Future<void> openPlayerPage(
 /// 歌名滚动组件：文本超出可用宽度时循环左右滚动展示（不超出则普通省略号文本）。
 class _MarqueeText extends StatefulWidget {
   const _MarqueeText(this.text,
-      {super.key, this.style, this.textAlign = TextAlign.start, this.maxWidth, this.span});
+      {super.key, this.style, this.textAlign = TextAlign.start, this.maxWidth, this.span,
+      this.shrinkWrap = false});
   final String text;
   final TextStyle? style;
   /// 可选富文本（如歌名/歌手不同字号）；提供后优先于 [text]/[style]。
@@ -2325,6 +2370,8 @@ class _MarqueeText extends StatefulWidget {
   final TextAlign textAlign;
   /// 确定的可视宽度；不传则用父约束。传明确宽度可避免 LayoutBuilder 拿到不准确的约束。
   final double? maxWidth;
+  /// true=短文本按实际宽度收缩包裹（首页/返回↔歌名簇布局需要），false=撑满可用宽度。
+  final bool shrinkWrap;
   @override
   State<_MarqueeText> createState() => _MarqueeTextState();
 }
@@ -2369,15 +2416,19 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
       if (boxW <= 0) return const SizedBox.shrink();
       // 短文本（能完整显示）：不滚动，按 textAlign 对齐（居中则真正居中），完整展示
       if (tp.width <= boxW) {
-        return Align(
-          alignment: widget.textAlign == TextAlign.center ? Alignment.center : Alignment.centerLeft,
-          child: Text.rich(
-              widget.span ?? TextSpan(text: widget.text, style: widget.style),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              textAlign: widget.textAlign),
-        );
+        final t = Text.rich(
+            widget.span ?? TextSpan(text: widget.text, style: widget.style),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: widget.textAlign);
+        return widget.shrinkWrap
+            ? SizedBox(width: tp.width, child: t)
+            : Align(
+                alignment: widget.textAlign == TextAlign.center
+                    ? Alignment.center
+                    : Alignment.centerLeft,
+                child: t);
       }
       return ClipRect(
         child: SizedBox(

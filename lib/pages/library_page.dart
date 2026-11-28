@@ -809,6 +809,32 @@ class _ImportTab extends StatefulWidget {
   State<_ImportTab> createState() => _ImportTabState();
 }
 
+/// 与主页歌单卡一致的自适应标题（超宽自动缩小字号，最多 maxLines 行）。
+Widget _fitTitleLocal(String text,
+    {required double base,
+    required int maxLines,
+    required TextStyle style,
+    double minSize = 8.5}) {
+  return LayoutBuilder(builder: (context, box) {
+    double fs = base;
+    while (fs > minSize) {
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: style.copyWith(fontSize: fs)),
+        textDirection: TextDirection.ltr,
+        maxLines: maxLines,
+      )..layout(maxWidth: box.maxWidth);
+      final ok = !tp.didExceedMaxLines;
+      tp.dispose();
+      if (ok) break;
+      fs -= 0.5;
+    }
+    return Text(text,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        style: style.copyWith(fontSize: fs));
+  });
+}
+
 class _ImportTabState extends State<_ImportTab> {
   bool _busy = false;
 
@@ -1061,42 +1087,74 @@ class _ImportTabState extends State<_ImportTab> {
                             aspectRatio: 1,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Color(0xFF3A6DF0),
-                                      Color(0xFF5B8CFA),
-                                    ],
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: (e['cover'] ?? '').toString().isEmpty
-                                    ? const Icon(Icons.queue_music_rounded,
-                                        color: Colors.white, size: 34)
-                                    : Image.network(
-                                        (e['cover'] ?? '').toString(),
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Icon(
-                                            Icons.queue_music_rounded,
-                                            color: Colors.white,
-                                            size: 34),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Color(0xFF3A6DF0),
+                                          Color(0xFF5B8CFA),
+                                        ],
                                       ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: (e['cover'] ?? '').toString().isEmpty
+                                        ? const Icon(Icons.queue_music_rounded,
+                                            color: Colors.white, size: 34)
+                                        : Image.network(
+                                            (e['cover'] ?? '').toString(),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => const Icon(
+                                                Icons.queue_music_rounded,
+                                                color: Colors.white,
+                                                size: 34),
+                                          ),
+                                  ),
+                                  // 名称显示与主页歌单卡一致：底部渐变 + 黑底白字自适应（跟随主页标题字号）
+                                  Positioned.fill(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.black.withOpacity(0.6),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 6,
+                                    right: 6,
+                                    bottom: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: _fitTitleLocal(
+                                        e['name'] ?? '歌单',
+                                        base: 13 * widget.settings.homeTitleFont,
+                                        maxLines: 3,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            height: 1.2),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(e['name'] ?? '歌单',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.25)),
                         ],
                       ),
                     );

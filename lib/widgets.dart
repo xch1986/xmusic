@@ -700,15 +700,19 @@ class TvSlider extends StatefulWidget {
     this.divisions,
     this.label,
     this.tapJumps = false,
+    this.onCommit,
   });
   final double value;
   final double min;
   final double max;
+  /// 值变化回调（拖动中内部 ~80ms 节流 + 交互结束必定回调最终值）。
   final ValueChanged<double> onChanged;
   final int? divisions;
   final String? label;
   /// true=点按轨道跳值（进度条用）；false=点按仅选中该调整项、拖动才调值（防误触）。
   final bool tapJumps;
+  /// 交互结束（拖动抬起/点按跳值）时的最终提交（如进度条 seek）；不传则调用 [onChanged]。
+  final ValueChanged<double>? onCommit;
 
   @override
   State<TvSlider> createState() => _TvSliderState();
@@ -720,6 +724,9 @@ class _TvSliderState extends State<TvSlider> {
   bool _selected = false; // 触摸点击选中（不改值）
   double _dragBase = 0; // 拖动起始值（相对位移调值，点一下不会跳）
   double _dragDx = 0; // 累计水平位移
+  double? _dragValue; // 拖动中的本地值：仅本控件 setState，避免整面板重建导致卡顿
+  bool _dragging = false;
+  DateTime _lastEmit = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -737,37 +744,78 @@ class _TvSliderState extends State<TvSlider> {
     super.dispose();
   }
 
+  double get _step => widget.divisions != null
+      ? (widget.max - widget.min) / widget.divisions!
+      : (widget.max - widget.min) / 50.0;
+
+  double get _shown =>
+      (_dragValue ?? widget.value).clamp(widget.min, widget.max).toDouble();
+
+  // 拖动过程节流回调（~80ms），避免每个指针像素都写设置/重建整面板
+  void _emit(double v, {bool force = false}) {
+    final now = DateTime.now();
+    if (!force && now.difference(_lastEmit).inMilliseconds < 80) return;
+    _lastEmit = now;
+    widget.onChanged(v.clamp(widget.min, widget.max).toDouble());
+  }
+
+  void _finish(double v) {
+    final out = v.clamp(widget.min, widget.max).toDouble();
+    _lastEmit = DateTime.fromMillisecondsSinceEpoch(0);
+    (widget.onCommit ?? widget.onChanged)(out);
+    if (mounted) setState(() => _dragValue = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final step = widget.divisions != null
-        ? (widget.max - widget.min) / widget.divisions!
-        : (widget.max - widget.min) / 50.0;
     Widget slider = Slider(
-      value: widget.value.clamp(widget.min, widget.max).toDouble(),
+      value: _shown,
       min: widget.min,
       max: widget.max,
       divisions: widget.divisions,
       label: widget.label,
-      onChanged: widget.tapJumps ? widget.onChanged : (_) {},
+      onChanged: widget.tapJumps
+          ? (v) {
+              setState(() => _dragValue = v);
+              _emit(v);
+            }
+          : (_) {},
+      onChangeEnd: widget.tapJumps ? (v) => _finish(v) : null,
     );
     if (!widget.tapJumps) {
-      // 防误触：点击只选中（高亮该调整项）不改值；拖动按相对位移调值
-      slider = GestureDetector(
+      // 防误触：点按仅选中（高亮该调整项）不改值；拖动用原始指针事件（无滑动阈值迟滞）按相对位移调值
+      slider = Listener(
         behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _selected = !_selected),
-        onHorizontalDragStart: (_) {
-          _dragBase = widget.value.clamp(widget.min, widget.max).toDouble();
+        onPointerDown: (_) {
+          _dragBase = _shown;
           _dragDx = 0;
-          setState(() => _selected = true);
+          _dragging = false;
         },
-        onHorizontalDragUpdate: (d) {
+        onPointerMove: (e) {
+          _dragDx += e.delta.dx;
+          if (!_dragging) {
+            if (_dragDx.abs() < 2) return;
+            _dragging = true;
+            setState(() => _selected = true);
+          }
           final w = context.size?.width ?? 240.0;
-          _dragDx += d.primaryDelta ?? 0;
           final range = widget.max - widget.min;
-          var v = _dragBase + (_dragDx / w) * range;
-          v = (v / step).roundToDouble() * step;
-          widget.onChanged(v.clamp(widget.min, widget.max).toDouble());
+          final v = (_dragBase + (_dragDx / w) * range)
+              .clamp(widget.min, widget.max)
+              .toDouble();
+          setState(() => _dragValue = v);
+          _emit(v);
+        },
+        onPointerUp: (_) {
+          if (!_dragging) {
+            setState(() => _selected = !_selected);
+            return;
+          }
+          _finish(_shown);
+        },
+        onPointerCancel: (_) {
+          if (_dragging) _finish(_shown);
         },
         child: AbsorbPointer(child: slider),
       );
@@ -779,12 +827,12 @@ class _TvSliderState extends State<TvSlider> {
         if (event is KeyDownEvent || event is KeyRepeatEvent) {
           if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
             widget.onChanged(
-                (widget.value - step).clamp(widget.min, widget.max).toDouble());
+                (_shown - _step).clamp(widget.min, widget.max).toDouble());
             return KeyEventResult.handled;
           }
           if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
             widget.onChanged(
-                (widget.value + step).clamp(widget.min, widget.max).toDouble());
+                (_shown + _step).clamp(widget.min, widget.max).toDouble());
             return KeyEventResult.handled;
           }
         }

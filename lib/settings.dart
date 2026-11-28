@@ -378,6 +378,42 @@ class AppSettings extends ChangeNotifier {
       _playerTopPadLand == 0.0 && _playerBottomPadLand == 0.0 &&
       playerAdvKeys.every((k) => playerAdv(k) == 1.0) &&
       playerAllAreaKeys.every((k) => playerAreaRaw(k) == _areaDefault(k));
+
+  /// 导出全部用户可调设置为 JSON（用于把当前调好的值设为软件默认值）。
+  String exportSettingsJson() {
+    final adv = <String, double>{
+      for (final k in playerAdvKeys) k: playerAdv(k),
+    };
+    final area = <String, double>{
+      for (final k in playerAllAreaKeys) k: playerAreaRaw(k),
+    };
+    final m = <String, dynamic>{
+      'adv': adv,
+      'area': area,
+      'playerCoverScale': playerCoverScale,
+      'playerLyricFontScale': playerLyricFontScale,
+      'playerLyricLineScale': playerLyricLineScale,
+      'playerControlGapScale': playerControlGapScale,
+      'playerMarginScale': playerMarginScale,
+      'playerTopPad': playerTopPad,
+      'playerBottomPad': playerBottomPad,
+      'playerTopPadLand': playerTopPadLand,
+      'playerBottomPadLand': playerBottomPadLand,
+      'lyricScalePortrait': lyricScaleFor(false),
+      'lyricScaleLandscape': lyricScaleFor(true),
+      'eqPreset': eqPreset,
+      'eqCustomGains': eqCustomGains,
+      'coverStyle': coverStyle,
+      'homeTitleFont': homeTitleFont,
+      'homeCardScale': homeCardScale,
+      'listTextScale': listTextScale,
+      'tvMode': tvMode,
+      'carBottomInset': carBottomInset,
+      'carTopInset': carTopInset,
+    };
+    return const JsonEncoder.withIndent('  ').convert(m);
+  }
+
   Future<void> resetPlayerLayout() async {
     _playerCoverScale = 1.0; _playerLyricFontScale = 1.0;
     _playerLyricLineScale = 1.0; _playerControlGapScale = 1.0;

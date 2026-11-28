@@ -906,29 +906,6 @@ class SettingsPage extends StatelessWidget {
 
           ),
 
-          ListTile(
-
-            leading: const Icon(Icons.format_size_rounded),
-
-            title: const Text('歌词大小'),
-
-            subtitle: Builder(builder: (ctx) { final land = MediaQuery.sizeOf(ctx).width > MediaQuery.sizeOf(ctx).height; return Text('${(settings.lyricScaleFor(land) * 100).round()}%'); }),
-
-            trailing: Row(
-
-              mainAxisSize: MainAxisSize.min,
-
-              children: [
-
-                IconButton(icon: const Icon(Icons.remove), onPressed: settings.canDecreaseLyricFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? () => settings.decreaseLyricFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) : null),
-
-                IconButton(icon: const Icon(Icons.add), onPressed: settings.canIncreaseLyricFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? () => settings.increaseLyricFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) : null),
-
-              ],
-
-            ),
-
-          ),
 
           ListTile(
 
